@@ -1,0 +1,9 @@
+Feature setup code generation
+====
+Once the plugin has enough features across enough C files, setting up and
+tearing down everything will get kind of annoying. That's where some more code
+generation might be nice.
+
+There's a few vague ideas of how to do this but really it's pretty open-ended
+overall. In the meantime, we're just calling functions manually. Not a huge
+deal, really.

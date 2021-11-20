@@ -1,0 +1,24 @@
+These are imported 3rd party library sources, wrangled for ease of plonking into
+the build (e.g. relative #includes, etc.).
+
+Used in SST itself:
+  - libmpack
+  - monocypher
+  - udis86
+
+Used at build time:
+  - chibicc (somewhat hacked up for use as a lexer)
+  - asprintf() from OpenBSD (for compatibility on Windows)
+
+Most of the C sources have wrappers in the parent directory to build proper
+objects for use in the project, and wrapper headers to get the full APIs as
+conveniently as possible. In other words, most of these files aren't built or
+used directly.
+
+It is possible that these libraries may end up lightly modified; we err on the
+side of changing things to fit our use case rather than working around problems
+in outer layers. A couple of the libraries are pretty old and don't see much
+upstream change, but are small enough to be comfortably maintained as vendored.
+
+IMPORTANT! Libraries are distributed subject to their copyright notices; please
+refer to those!

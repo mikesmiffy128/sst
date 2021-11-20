@@ -1,0 +1,33 @@
+/* This file is dedicated to the public domain. */
+
+#include "version.h"
+
+#define EN_GB 0x809
+
+1 VERSIONINFO
+FILEVERSION VERSION_MAJOR,VERSION_MINOR,0,0
+PRODUCTVERSION VERSION_MAJOR,VERSION_MINOR,0,0
+FILEFLAGSMASK 0x17L
+FILEFLAGS 0
+FILEOS 4
+
+BEGIN
+	BLOCK "StringFileInfo"
+	BEGIN
+		BLOCK "080904b0"
+		BEGIN
+			VALUE "FileDescription", LONGNAME
+			VALUE "FileVersion", VERSION
+			VALUE "InternalName", NAME
+			VALUE "LegalCopyright", "Copyright (C) 2021 Michael Smith and others. All rights reserved."
+			VALUE "ProductName", LONGNAME
+			VALUE "ProductVersion", VERSION
+		END
+	END
+	BLOCK "VarFileInfo"
+	BEGIN
+		VALUE "Translation", EN_GB, 1200
+	END
+END
+
+// vi: sw=4 ts=4 noet tw=80 cc=80

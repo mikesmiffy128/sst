@@ -1,0 +1,50 @@
+Hey! This README is for those looking to work on the code. For actual plugin
+documentation, you'll want to look at the website, which doesn't exist yet,
+or ask for help in the relevant speedrunning Discord, which does exist yet.
+
+NOTE: Please read and understand LICENCE before redistributing this software!
+
+== Compiling ==
+
+Windows:
+ - Install the Windows 10 SDK via the Visual Studio Installer.
+ - Install native Clang from https://clang.llvm.org (NOT MinGW/MSYS2 Clang!).
+ - Run compile.bat (in lieu of a better build tool, to be figured out later).
+
+Linux:
+ - Install Clang (and LLD) via your system package manager. Technically, GCC
+   might be able to compile this too, but Clang is heavily preferred in the name
+   of consistency and using GCC will require a decent amount of fiddling. It's
+   also not tested and might break and I probably won't care that much.
+ - Install 32-bit C libraries and the C library headers if they're not already
+   installed.
+ - Run ./compile (in lieu of a better build tool, to be figured out later).
+
+* NOTE: Linux builds currently fail; there's a bunch of code that needs to be
+  written. See also TODO/linux.
+
+== How and where to install ==
+
+Very old Source builds load plugins from the top-level bin/ folder, while
+relatively modern builds load them from the mod-specific directory, e.g.
+left4dead2/, hl2/. Since this plugin is designed to be universal, the
+recommended practice is to put it in bin/ regardless and then use the command
+`plugin_load ../bin/sst`. The way the paths work out, that ends up always
+working no matter what, and allows the plugin to be shared between different
+mods in the same engine installation where relevant. It's also possible to just
+back out of the game installation with ../ and load from whatever directory you
+want, as long as it's not on a different Windows drive letter. In that case, the
+plugin can be shared between multiple games. That said, it's a little more
+annoying to do and a little less self contained.
+
+IMPORTANT: If your game supports multiplayer, always launch with -insecure as a
+launch option before loading this plugin! In theory, plugins shouldn't be able
+to load without this, or it should at least be impossible to connect to a VAC-
+enabled server with the plugin loaded, but -insecure is the safest way to ensure
+VAC is completely disabled, otherwise you use the plugin AT YOUR OWN RISK OF
+BEING BANNED!
+
+Note: some very old (and very new) Source builds don't have a plugin_load
+command. It may be possible (although questionably necessary) to support these
+games with an injector to forcibly load the library into the game. For the time
+being, however, these versions are unsupported.

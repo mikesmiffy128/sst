@@ -1,0 +1,57 @@
+#!/bin/sh -e
+# This file is dedicated to the public domain.
+
+case "`uname -s`" in
+	# weird people using Windows Bash might type ./compile, help them out :)
+	*NT*)
+		echo "You're on Windows, idiot! Running compile.bat for you."
+		exec cmd /c compile.bat ;;
+esac
+
+mkdir -p .build/include
+
+warnings=-Wall -pedantic -Wno-parentheses -Wno-missing-braces
+
+objs=
+cc() {
+	objs="$objs .build/${1%%.c}.o"
+	clang -m32 -c -O2 -flto -fpic $warnings -I.build/include \
+		-D_FILE_OFFSET_BITS=64 -DFILE_BASENAME="${1%%.c}" \
+		-o ".build/${1%%.c}.o" "src/$1"
+}
+
+ld() {
+	clang -m32 -shared -O2 -flto -fpic -s -fuse-ld=lld -L.build -ldl -o sst.so$objs
+}
+
+src="\
+	con_.c \
+	demorec.c \
+	dbg.c \
+	extmalloc.c \
+	gameinfo.c \
+	hook.c \
+	kv.c \
+	os.c \
+	sst.c \
+	udis86.c"
+
+clang -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/codegen \
+		src/build/codegen.c src/build/cmeta.c src/os.c
+clang -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/mkgamedata \
+		src/build/mkgamedata.c src/kv.c src/os.c
+.build/codegen `for s in $src; do echo "src/$s"; done`
+.build/mkgamedata gamedata/gamelib.kv gamedata/engine.kv
+for s in $src; do cc "$s" done
+clang -m32 -shared -fpic -fuse-ld=lld -O0 -w -o .build/libtier0.so src/tier0stub.c
+ld
+
+clang -fuse-ld=lld -O2 -g3 -include test/test.h -o .build/bitbuf.test test/bitbuf.test.c
+.build/bitbuf.test
+# skipping this test on linux for now, since inline hooks aren't compiled in
+#clang -m32 -fuse-ld=lld -O2 -g3 -include test/test.h -o .build/hook.test test/hook.test.c
+#.build/hook.test
+clang -fuse-ld=lld -O2 -g3 -include test/test.h -o .build/kv test/kv.test.c
+.build/kv.test
+
+# vi: sw=4 tw=4 noet tw=80 cc=80

@@ -1,0 +1,5 @@
+#!/bin/sh -e
+# This file is dedicated to the public domain.
+
+. "$0.sh"
+todo "$@"

@@ -1,0 +1,8 @@
+/.build/
+/sst.dll
+/sst.pdb
+/sst.so
+/compile_commands.json
+
+# a place to plonk crap you don't wanna commit yet
+/junk

@@ -1,0 +1,5 @@
+Improve performance
+====
+Simple C code tends to go fast, but that doesn't mean we can't make a note of
+possibly-weird stuff that should maybe go more fast if we care enough to
+improve it.
