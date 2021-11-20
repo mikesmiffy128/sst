@@ -44,7 +44,7 @@ static int auto_demonum = 1;
 static bool auto_recording = false;
 
 DEF_CVAR(sst_autorecord, "Continue recording demos through map changes",
-		"0", CON_ARCHIVE | CON_HIDDEN)
+		"1", CON_ARCHIVE | CON_HIDDEN)
 
 static void VCALLCONV hook_StopRecording(void *this) {
 	// This hook will get called twice per loaded save (in most games/versions,
