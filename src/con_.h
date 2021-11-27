@@ -144,9 +144,11 @@ struct con_var { // ConVar in engine
 	int minval;
 	bool hasmax; // just sticking to sdk position for now
 	int maxval;
-	//void *cb; we don't currently bother with callback support. add if needed!
+	//void *cb; // we don't currently bother with callback support. add if needed!
 };
 
+/* The change callback used in most branches of Source. Takes an IConVar :) */
+typedef void (*con_varcb)(void *v, const char *, float);
 
 /*
  * These functions get and set the values of console variables in a

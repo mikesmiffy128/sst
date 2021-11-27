@@ -29,6 +29,8 @@ src="\
 	demorec.c \
 	dbg.c \
 	extmalloc.c \
+	fixes.c \
+	gamedata.c \
 	gameinfo.c \
 	hook.c \
 	kv.c \

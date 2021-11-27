@@ -19,6 +19,7 @@
 #include "con_.h"
 #include "demorec.h"
 #include "factory.h"
+#include "fixes.h"
 #include "gamedata.h"
 #include "gameinfo.h"
 #include "gametype.h"
@@ -108,6 +109,7 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 nc:	gamedata_init();
 	// TODO(autojump): we'd init that here
 	has_demorec = demorec_init();
+	fixes_apply();
 
 	con_colourmsg(RGBA(64, 255, 64, 255),
 			NAME " v" VERSION " successfully loaded");
