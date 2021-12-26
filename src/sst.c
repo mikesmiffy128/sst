@@ -15,6 +15,7 @@
  */
 
 #include <stdbool.h>
+#include <string.h>
 
 #include "con_.h"
 #include "demorec.h"
@@ -66,6 +67,20 @@ ifacefactory factory_client = 0, factory_server = 0, factory_engine = 0;
 // plonking ~~some bools~~ one bool here and worrying about it later. :^)
 static bool has_demorec = false;
 
+// HACK: later versions of L4D2 show an annoying dialog on every plugin_load.
+// We can suppress this by catching the message string that's passed from
+// engine.dll to gameui.dll through KeyValuesSystem in vstdlib.dll and just
+// replacing it with some other arbitrary garbage string. This makes gameui fail
+// to match the message and thus do nothing. :)
+static void **kvsvt;
+typedef const char *(*VCALLCONV GetStringForSymbol_func)(void *this, int s);
+static GetStringForSymbol_func orig_GetStringForSymbol = 0;
+static const char *VCALLCONV GetStringForSymbol_hook(void *this, int s) {
+	const char *ret = orig_GetStringForSymbol(this, s);
+	if (!strcmp(ret, "OnClientPluginWarning")) ret = "sstBlockedThisEvent";
+	return ret;
+}
+
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	factory_engine = enginef; factory_server = serverf;
 #ifndef __linux__
@@ -111,7 +126,37 @@ nc:	gamedata_init();
 	has_demorec = demorec_init();
 	fixes_apply();
 
-	con_colourmsg(RGBA(64, 255, 64, 255),
+	// NOTE: this is technically redundant for early versions but I CBA writing
+	// a version check; it's easier to just do this unilaterally.
+	if (GAMETYPE_MATCHES(L4D2)) {
+#ifdef _WIN32
+		// XXX: not sure if vstdlib should be done dynamically like this or just
+		// another stub like tier0?
+		void *vstdlib = GetModuleHandleW(L"vstdlib.dll");
+		if (!vstdlib) {
+			con_warn("sst: warning: couldn't get vstdlib, won't be able to "
+					"prevent nag message\n");
+			goto e;
+		}
+		void *(*KeyValuesSystem)(void) = (void *(*)(void))os_dlsym(vstdlib,
+				"KeyValuesSystem");
+		if (KeyValuesSystem) {
+			void *kvs = KeyValuesSystem();
+			kvsvt = *(void ***)kvs;
+			if (!os_mprot(kvsvt + 4, sizeof(void *), PAGE_READWRITE)) {
+				con_warn("sst: warning: couldn't unprotect KeyValuesSystem "
+						"vtable; won't be able to prevent nag message\n");
+				goto e;
+			}
+			orig_GetStringForSymbol = (GetStringForSymbol_func)hook_vtable(
+					kvsvt, 4, (void *)GetStringForSymbol_hook);
+		}
+#else
+#warning TODO(linux) suitably abstract this stuff to Linux!
+#endif
+	}
+
+e:	con_colourmsg(RGBA(64, 255, 64, 255),
 			NAME " v" VERSION " successfully loaded");
 	con_colourmsg(RGBA(255, 255, 255, 255), " for game ");
 	con_colourmsg(RGBA(0, 255, 255, 255), "%s\n", gameinfo_title);
@@ -127,6 +172,10 @@ static void do_unload(void) {
 	if (clientlib) dlclose(clientlib);
 #endif
 	con_disconnect();
+
+	if (orig_GetStringForSymbol) {
+		unhook_vtable(kvsvt, 4, (void *)orig_GetStringForSymbol);
+	}
 }
 
 // since this is static/global, it only becomes false again when the plugin SO
