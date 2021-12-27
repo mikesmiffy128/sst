@@ -16,9 +16,13 @@
  */
 
 #include <stdbool.h>
+#include <string.h>
 
+#include "bitbuf.h"
 #include "con_.h"
+#include "demorec.h"
 #include "hook.h"
+#include "factory.h"
 #include "gamedata.h"
 #include "intdefs.h"
 #include "mem.h"
@@ -39,6 +43,8 @@ static int *demonum;
 static f_SetSignonState orig_SetSignonState;
 static f_StopRecording orig_StopRecording;
 static con_cmdcb orig_stop_callback;
+static int nbits_msgtype;
+static int nbits_datalen;
 
 static int auto_demonum = 1;
 static bool auto_recording = false;
@@ -89,6 +95,51 @@ static void hook_stop_callback(const struct con_cmdargs *args) {
 	orig_stop_callback(args);
 }
 
+
+// The engine allows usermessages up to 255 bytes, we add 2 bytes of overhead,
+// and then there's the leading bits before that too (see create_message)
+static char bb_buf[DEMOREC_CUSTOM_MSG_MAX + 4];
+static struct bitbuf bb = {
+	bb_buf, sizeof(bb_buf), sizeof(bb_buf) * 8, 0, false, false, "SST"
+};
+
+static void create_message(struct bitbuf *msg, const void *buf, int len) {
+	// The way we pack our custom demo data is via a user message packet with
+	// type "HudText" - this causes the client to do a text lookup which will
+	// simply silently fail on invalid keys. By making the first byte null
+	// (creating an empty string), we get the rest of the packet to stick in
+	// whatever other data we want.
+	//
+	// Notes from Uncrafted:
+	// > But yeah the data you want to append is as follows:
+	// > - 6 bits (5 bits in older versions) for the message type - should be 23
+	// >   for user message
+	bitbuf_appendbits(msg, 23, nbits_msgtype);
+	// > - 1 byte for the user message type - should be 2 for HudText
+	bitbuf_appendbyte(msg, 2);
+	// > - ~~an int~~ 11 or 12 bits for the length of your data in bits,
+	// NOTE: this assumes len <= 254
+	bitbuf_appendbits(msg, len * 8, nbits_datalen);
+	// > - your data
+	// [first the aforementioned null byte, plus an arbitrary marker byte to
+	// avoid confusion when parsing the demo later...
+	bitbuf_appendbyte(msg, 0);
+	bitbuf_appendbyte(msg, 0xAC);
+	// ... and then just the data itself]
+	bitbuf_appendbuf(msg, buf, len);
+	// Thanks Uncrafted, very cool!
+}
+
+typedef void (*VCALLCONV WriteMessages_func)(void *this, struct bitbuf *msg);
+static WriteMessages_func WriteMessages = 0;
+
+void demorec_writecustom(void *buf, int len) {
+	create_message(&bb, buf, len);
+	WriteMessages(demorecorder, &bb);
+	bitbuf_reset(&bb);
+}
+
+
 // This finds the "demorecorder" global variable (the engine-wide CDemoRecorder
 // instance).
 static inline void *find_demorecorder(struct con_cmd *cmd_stop) {
@@ -117,8 +168,8 @@ static inline void *find_demorecorder(struct con_cmd *cmd_stop) {
 }
 
 // This finds "m_bRecording" and "m_nDemoNumber" using the pointer to the
-// original "StopRecording" demorecorder function
-static inline bool find_recmembers(void *stop_recording_func, void *demorec) {
+// original "StopRecording" demorecorder function.
+static inline bool find_recmembers(void *stop_recording_func) {
 	struct ud udis;
 	ud_init(&udis);
 	ud_set_mode(&udis, 32);
@@ -138,10 +189,12 @@ static inline bool find_recmembers(void *stop_recording_func, void *demorec) {
 			// the byte immediate refers to m_bRecording
 			if (src->type == UD_OP_IMM && src->lval.ubyte == 0) {
 				if (src->size == 8) {
-					recording = (bool *)mem_offset(demorec, dest->lval.udword);
+					recording = (bool *)mem_offset(demorecorder,
+							dest->lval.udword);
 				}
 				else {
-					demonum = (int *)mem_offset(demorec, dest->lval.udword);
+					demonum = (int *)mem_offset(demorecorder,
+							dest->lval.udword);
 				}
 				if (recording && demonum) return true; // blegh
 			}
@@ -152,6 +205,37 @@ static inline bool find_recmembers(void *stop_recording_func, void *demorec) {
 #else // linux is probably different here idk
 #error TODO(linux): implement linux equivalent
 #endif
+	}
+	return false;
+}
+
+// This finds the CDemoRecorder::WriteMessages() function, which takes a raw
+// network packet, wraps it up in the appropriate demo framing format and writes
+// it out to the demo file being recorded.
+static bool find_WriteMessages(void) {
+	const uchar *insns = (*(uchar ***)demorecorder)[gamedata_vtidx_RecordPacket];
+	// RecordPacket calls WriteMessages pretty much right away:
+	// 56           push  esi
+	// 57           push  edi
+	// 8B F1        mov   esi,ecx
+	// 8D BE        lea   edi,[esi + 0x68c]
+	// 8C 06 00 00
+	// 57           push  edi
+	// E8           call  CDemoRecorder_WriteMessages
+	// B0 EF FF FF
+	// So we just double check the byte pattern...
+	static const uchar bytes[] =
+#ifdef _WIN32
+{0x56, 0x57, 0x8B, 0xF1, 0x8D, 0xBE, 0x8C, 0x06, 0x00, 0x00, 0x57, 0xE8};
+#else
+#error This is possibly different on Linux too, have a look!
+#endif
+	if (!memcmp(insns, bytes, sizeof(bytes))) {
+		ssize off = mem_loadoffset(insns + sizeof(bytes));
+		// ... and then offset is relative to the address of whatever is _after_
+		// the call instruction... because x86.
+		WriteMessages = (WriteMessages_func)(insns + sizeof(bytes) + 4 + off);
+		return true;
 	}
 	return false;
 }
@@ -189,7 +273,7 @@ bool demorec_init(void) {
 		return false;
 	}
 
-	if (!find_recmembers(vtable[7], demorecorder)) {
+	if (!find_recmembers(vtable[7])) {
 		con_warn("demorec: couldn't find m_bRecording and m_nDemoNumber\n");
 		return false;
 	}
@@ -204,6 +288,56 @@ bool demorec_init(void) {
 
 	sst_autorecord->base.flags &= ~CON_HIDDEN;
 	return true;
+}
+
+// make custom data a separate feature so we don't lose autorecording if we
+// can't find the WriteMessage stuff
+bool demorec_custom_init(void) { 
+	if (!gamedata_has_vtidx_GetEngineBuildNumber ||
+			!gamedata_has_vtidx_RecordPacket) {
+		con_warn("demorec: custom: missing gamedata entries for this engine\n");
+		return false;
+	}
+	// TODO(featgen): auto-check this factory
+	if (!factory_engine) {
+		con_warn("demorec: missing required interfaces\n");
+		return false;
+	}
+
+	// More UncraftedkNowledge:
+	// > yeah okay so [the usermessage length is] 11 bits if the demo protocol
+	// > is 11 or if the game is l4d2 and the network protocol is 2042.
+	// > otherwise it's 12 bits
+	// > there might be some other l4d2 versions where it's 11 but idk
+	// So here we have to figure out the network protocol version!
+	void *clientiface;
+	uint buildnum;
+	// TODO(compat): probably expose VEngineClient/VEngineServer some other way
+	// if it's useful elsewhere later!?
+	if (clientiface = factory_engine("VEngineClient013", 0)) {
+		typedef uint (*VCALLCONV GetEngineBuildNumber_func)(void *this);
+		buildnum = (*(GetEngineBuildNumber_func **)clientiface)[
+				gamedata_vtidx_GetEngineBuildNumber](clientiface);
+	}
+	// add support for other interfaces here:
+	// else if (clientiface = factory_engine("VEngineClient0XX", 0)) {
+	//     ...
+	// }
+	else {
+		return false;
+	}
+	// condition is redundant until other GetEngineBuildNumber offsets are added
+	// if (GAMETYPE_MATCHES(L4D2)) {
+		nbits_msgtype = 6;
+		// based on Some Code I Read, buildnum *should* be the protocol version,
+		// however L4D2 returns the actual game version instead, because sure
+		// why not. The only practical difference though is that the network
+		// protocol froze after 2042, so we just have to do a >=. No big deal
+		// really.
+		if (buildnum >= 2042) nbits_datalen = 11; else nbits_datalen = 12;
+	// }
+	
+	return find_WriteMessages();
 }
 
 void demorec_end(void) {

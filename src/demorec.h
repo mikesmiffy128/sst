@@ -23,6 +23,17 @@
 bool demorec_init(void);
 void demorec_end(void);
 
+bool demorec_custom_init(void);
+
+/* maximum length of a custom demo message, in bytes */
+#define DEMOREC_CUSTOM_MSG_MAX 253
+
+/*
+ * Write a block of up to DEMOWRITER_MSG_MAX bytes into the currently recording
+ * demo - NOT bounds checked, caller MUST ensure length is okay!
+ */
+void demorec_writecustom(void *buf, int len);
+
 #endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

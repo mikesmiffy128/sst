@@ -68,6 +68,7 @@ ifacefactory factory_client = 0, factory_server = 0, factory_engine = 0;
 // plonking ~~some bools~~ one bool here and worrying about it later. :^)
 static bool has_autojump = false;
 static bool has_demorec = false;
+static bool has_demorec_custom = false;
 
 // HACK: later versions of L4D2 show an annoying dialog on every plugin_load.
 // We can suppress this by catching the message string that's passed from
@@ -126,6 +127,7 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 nc:	gamedata_init();
 	has_autojump = autojump_init();
 	has_demorec = demorec_init();
+	if (has_demorec) has_demorec_custom = demorec_custom_init();
 	fixes_apply();
 
 	// NOTE: this is technically redundant for early versions but I CBA writing
