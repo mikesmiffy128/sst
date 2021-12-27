@@ -25,6 +25,7 @@ ld() {
 }
 
 src="\
+	autojump.c \
 	con_.c \
 	demorec.c \
 	dbg.c \

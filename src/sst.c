@@ -17,6 +17,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "autojump.h"
 #include "con_.h"
 #include "demorec.h"
 #include "factory.h"
@@ -65,6 +66,7 @@ ifacefactory factory_client = 0, factory_server = 0, factory_engine = 0;
 // figures out the dependencies at build time and generates all the init glue
 // but we want to actually release the plugin this decade so for now I'm just
 // plonking ~~some bools~~ one bool here and worrying about it later. :^)
+static bool has_autojump = false;
 static bool has_demorec = false;
 
 // HACK: later versions of L4D2 show an annoying dialog on every plugin_load.
@@ -122,7 +124,7 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	}
 
 nc:	gamedata_init();
-	// TODO(autojump): we'd init that here
+	has_autojump = autojump_init();
 	has_demorec = demorec_init();
 	fixes_apply();
 
@@ -164,7 +166,7 @@ e:	con_colourmsg(RGBA(64, 255, 64, 255),
 }
 
 static void do_unload(void) {
-	// TODO(autojump): we'd end that here
+	if (has_autojump) autojump_end();
 	if (has_demorec) demorec_end();
 
 #ifdef __linux__

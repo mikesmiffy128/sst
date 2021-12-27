@@ -1,0 +1,6 @@
+Add back autojump
+====
+I already wrote (and rewrote) the code long ago, but we kept it secret for a
+long time to prevent L4D2 cheating. Now that proof standards are soon to 
+raised across the board, this is safe to include without having to worry about
+verification headaches.
