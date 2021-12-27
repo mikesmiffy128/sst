@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "con_.h"
+#include "gametype.h"
 
 static void unhide(const char *name) {
 	struct con_var *v = con_findvar(name);
@@ -54,6 +55,23 @@ void fixes_apply(void) {
 	// able to use cheats. Took literally hours of staring at Ghidra to find
 	// this out. Good meme 8/10.
 	unhide("sv_hosting_lobby");
+
+	// L4D2 resets mat_queue_mode to -1 (multicore rendering off) all the time
+	// if gpu_level is 0 (low shader detail), causing lag that can only be fixed
+	// by manually fixing the setting in video settings. Make mat_queue_mode
+	// public so it can be set on a bind or something to work around this bug,
+	// *but* constrain it so people don't use the other two modes, which aren't
+	// available otherwise. Unlike other fixes, make this one only fire for L4D2
+	// since we don't know what video modes should be available for every other
+	// Source game.
+	if (GAMETYPE_MATCHES(L4D2)) {
+		// TODO(compat): *technically* this should also check for newer
+		// versions since they don't have the bug but whatever that's a nitpick
+		struct con_var *v = con_findvar("mat_queue_mode");
+		if (v) v->parent->base.flags &= ~(CON_DEVONLY | CON_HIDDEN);
+		v->parent->hasmax = true; v->parent->maxval = 0;
+		unhide("mat_queue_mode");
+	}
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
