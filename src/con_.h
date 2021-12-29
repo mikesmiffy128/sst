@@ -225,10 +225,15 @@ extern void *_con_vtab_iconvar[];
 		}, \
 		.vtable_iconvar = _con_vtab_iconvar, \
 		.parent = &_cvar_##name_, /* bizarre, but how the engine does it */ \
-		.defaultval = value, .strlen = sizeof("" value), \
+		.defaultval = _Generic(value, char *: value, int: #value, \
+				float: #value), \
+		.strlen = _Generic(value, char *: sizeof(value), \
+				default: sizeof(#value)), \
+		.fval = _Generic(value, char *: 0, int: value, float: value), \
+		.ival = _Generic(value, char *: 0, int: value, float: (int)value), \
 		.hasmin = hasmin_, .minval = (min), .hasmax = hasmax_, .maxval = (max) \
 	}; \
-	struct con_var *name_ = (struct con_var *)&_cvar_##name_;
+	struct con_var *name_ = &_cvar_##name_;
 
 /* Defines a console variable with no min/max values. */
 #define DEF_CVAR(name, desc, value, flags) \
@@ -237,6 +242,10 @@ extern void *_con_vtab_iconvar[];
 /* Defines a console variable with a given mininum numeric value. */
 #define DEF_CVAR_MIN(name_, desc, value, min, flags_) \
 	_DEF_CVAR(name, desc, value, true, min, false, 0, flags)
+
+/* Defines a console variable with a given maximum numeric value. */
+#define DEF_CVAR_MAX(name_, desc, value, max, flags_) \
+	_DEF_CVAR(name, desc, value, false, 0, true, max, flags)
 
 /* Defines a console variable in the given numeric value range. */
 #define DEF_CVAR_MINMAX(name_, desc, value, min, max, flags_) \

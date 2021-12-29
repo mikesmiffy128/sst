@@ -201,7 +201,7 @@ void cmeta_conmacros(const struct cmeta *cm, void (*cb)(const char *, bool)) {
 		bool isplusminus = false, isvar = false;
 		if (equal(tp, "DEF_CCMD_PLUSMINUS")) isplusminus = true;
 		else if (equal(tp, "DEF_CVAR") || equal(tp, "DEF_CVAR_MIN") ||
-				equal(tp, "DEF_CVAR_MINMAX")) {
+				equal(tp, "DEF_CVAR_MAX") || equal(tp, "DEF_CVAR_MINMAX")) {
 			isvar = true;
 		}
 		else if (!equal(tp, "DEF_CCMD") && !equal(tp, "DEF_CCMD_HERE")) {
