@@ -28,7 +28,7 @@
 #include <time.h>
 //#include <unistd.h>
 
-// exists on all Unixes but normally hidden _GNU_SOURCE on Linux.
+// exists on all Unixes but normally hidden behind _GNU_SOURCE on Linux.
 // missing entirely on Windows (implemented in 3p/openbsd/asprintf.c for compat)
 int vasprintf(char **str, const char *fmt, va_list ap);
 
