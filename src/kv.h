@@ -49,7 +49,7 @@ struct kv_parser {
 #define KV_PARSER_ERROR -1
 
 /*
- * These are the tokens that can be receieved by a kv_parser_cb (below).
+ * These are the tokens that can be received by a kv_parser_cb (below).
  * The x-macro and string descriptions are given to allow for easy debug
  * stringification. Note that this "parser" is really just lexing out these
  * tokens - handling the actual structure of the file should be done in the

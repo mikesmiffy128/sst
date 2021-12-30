@@ -31,7 +31,7 @@
 #include "vcall.h"
 
 #define SIGNONSTATE_SPAWN 5 // ready to receive entity packets
-#define SIGNONSTATE_FULL 6 // fully connected, first non-delta packet receieved
+#define SIGNONSTATE_FULL 6 // fully connected, first non-delta packet received
 
 typedef void (*VCALLCONV f_StopRecording)(void *);
 typedef void (*VCALLCONV f_SetSignonState)(void *, int);

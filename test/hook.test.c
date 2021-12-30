@@ -5,7 +5,6 @@
 #ifdef _WIN32
 
 #include "../src/udis86.c"
-#include "../src/os.c"
 #include "../src/hook.c"
 
 #include <stdarg.h>

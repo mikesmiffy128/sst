@@ -20,8 +20,8 @@
 
 #include "../intdefs.h"
 #include "../kv.h"
+#include "../noreturn.h"
 #include "../os.h"
-#include "../noreturn.h" // must come after os.h due to __declspec(noreturn)
 
 #ifdef _WIN32
 #define fS "S"
