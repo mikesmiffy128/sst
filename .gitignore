@@ -5,4 +5,7 @@
 /compile_commands.json
 
 # a place to plonk crap you don't wanna commit yet
-/junk
+/junk/
+
+# where release archives get plonked
+/release/

@@ -24,4 +24,7 @@ Files under src/3p/ are written and licensed by third parties. See the copyright
 notices in and alongside those files for details of authorship and relevant
 redistribution rights. Some - but not all - of this third party code is
 incorporated into binary builds (sst.dll or sst.so). Please take care when
-redistributing binaries to respect all the relevant copyright notices.
+redistributing binaries to respect all the relevant copyright notices. Also note
+that the LICENCE.windows and LICENCE.linux files under dist/ are used for
+official binary release archives, but will need to be modified if other code is
+incorporated into a binary.

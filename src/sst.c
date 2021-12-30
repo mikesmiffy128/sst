@@ -161,7 +161,7 @@ nc:	gamedata_init();
 	}
 
 e:	con_colourmsg(RGBA(64, 255, 64, 255),
-			NAME " v" VERSION " successfully loaded");
+			LONGNAME " v" VERSION " successfully loaded");
 	con_colourmsg(RGBA(255, 255, 255, 255), " for game ");
 	con_colourmsg(RGBA(0, 255, 255, 255), "%s\n", gameinfo_title);
 	return true;
