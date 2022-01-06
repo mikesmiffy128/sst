@@ -54,7 +54,7 @@ static int storeargs(int argc, char *argv[]) {
 	return 0;
 }
 __attribute__((used, section(".init_array")))
-static void *pstoreargs = &storeargs;
+static void *pstoreargs = (void *)&storeargs;
 #endif
 
 // case insensitive substring match, expects s2 to be lowercase already!
@@ -333,8 +333,8 @@ bool gameinfo_init(void) {
 	}
 	os_char gameinfopath[PATH_MAX];
 	if (os_snprintf(gameinfopath, PATH_MAX, OS_LIT("%s/gameinfo.txt"),
-			gamedir, modname) >= PATH_MAX) {
-		con_warn("gameinfo: gameinfo.text path is too long!\n");
+			gamedir) >= PATH_MAX) {
+		con_warn("gameinfo: gameinfo.txt path is too long!\n");
 		return false;
 	}
 

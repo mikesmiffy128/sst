@@ -42,6 +42,7 @@
 #else
 #include <dlfcn.h>
 #include <limits.h>
+#include <stdio.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/mman.h>
