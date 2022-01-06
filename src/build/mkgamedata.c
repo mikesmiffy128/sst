@@ -86,7 +86,7 @@ static noreturn badparse(struct parsestate *state, const char *e) {
 static void kv_cb(enum kv_token type, const char *p, uint len, void *ctxt) {
 	struct parsestate *state = ctxt;
 	switch (type) {
-		case KV_IDENT: case KV_IDENT_QUOTED:
+		case KV_IDENT: case KV_IDENT_QUOTED:;
 			char *k = malloc(len + 1);
 			if (!k) die("couldn't allocate key string");
 			memcpy(k, p, len);

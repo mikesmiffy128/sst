@@ -98,13 +98,23 @@ static void die1(const char *s) {
 	exit(100);
 }
 
+#ifndef _WIN32
+static void die2(const char *s1, const char *s2) {
+	fprintf(stderr, "cmeta: fatal: %s%s\n", s1, s2);
+	exit(100);
+}
+#endif
+
 static char *readsource(const os_char *f) {
 	int fd = os_open(f, O_RDONLY);
 #ifndef _WIN32
 	if (fd == -1) die2("couldn't open ", f);
 #else
-	// TODO/FIXME/TEMP this is dumb and bad
-	if (fd == -1) { fprintf(stderr, "couldn't open %S", f); exit(100); }
+	// XXX: this is dumb and bad
+	if (fd == -1) {
+		fprintf(stderr, "cmeta: fatal: couldn't open %S", f);
+		exit(100);
+	}
 #endif
 	uint bufsz = 8192;
 	char *buf = malloc(bufsz);

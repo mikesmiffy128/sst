@@ -10,7 +10,7 @@ esac
 
 mkdir -p .build/include
 
-warnings=-Wall -pedantic -Wno-parentheses -Wno-missing-braces
+warnings="-Wall -pedantic -Wno-parentheses -Wno-missing-braces"
 
 objs=
 cc() {
@@ -44,7 +44,7 @@ clang -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/mkgamedata \
 		src/build/mkgamedata.c src/kv.c
 .build/codegen `for s in $src; do echo "src/$s"; done`
 .build/mkgamedata gamedata/gamelib.kv gamedata/engine.kv
-for s in $src; do cc "$s" done
+for s in $src; do cc "$s"; done
 clang -m32 -shared -fpic -fuse-ld=lld -O0 -w -o .build/libtier0.so src/tier0stub.c
 ld
 
