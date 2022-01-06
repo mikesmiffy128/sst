@@ -1,6 +1,7 @@
 Hey! This README is for those looking to work on the code. For actual plugin
-documentation, you'll want to look at the website, which doesn't exist yet,
-or ask for help in the relevant speedrunning Discord, which does exist yet.
+documentation, you'll want to look at the website, which currently exists in a
+semi-temporary state at https://mikes.software.sst - or or ask for help in a
+relevant speedrunning community.
 
 NOTE: Please read and understand LICENCE before redistributing this software!
 
@@ -20,8 +21,9 @@ Linux:
    installed.
  - Run ./compile (in lieu of a better build tool, to be figured out later).
 
-* NOTE: Linux builds currently fail; there's a bunch of code that needs to be
-  written. See also TODO/linux.
+* NOTE: Linux builds currently produce a binary that most definitely does not
+  work, along with a whole host of warnings; there's a bunch of code that needs
+  to be written. See also TODO/linux.
 
 == How and where to install ==
 

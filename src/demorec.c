@@ -161,7 +161,8 @@ static inline void *find_demorecorder(struct con_cmd *cmd_stop) {
 			}
 		}
 #else
-#error TODO(linux): implement linux equivalent (cdecl!)
+#warning TODO(linux): implement linux equivalent (cdecl!)
+		return 0;
 #endif
 	}
 	return 0;
@@ -203,7 +204,8 @@ static inline bool find_recmembers(void *stop_recording_func) {
 			return false;
 		}
 #else // linux is probably different here idk
-#error TODO(linux): implement linux equivalent
+#warning TODO(linux): implement linux equivalent
+		return false;
 #endif
 	}
 	return false;
@@ -228,7 +230,8 @@ static bool find_WriteMessages(void) {
 #ifdef _WIN32
 {0x56, 0x57, 0x8B, 0xF1, 0x8D, 0xBE, 0x8C, 0x06, 0x00, 0x00, 0x57, 0xE8};
 #else
-#error This is possibly different on Linux too, have a look!
+#warning This is possibly different on Linux too, have a look!
+{-1, -1, -1, -1, -1, -1};
 #endif
 	if (!memcmp(insns, bytes, sizeof(bytes))) {
 		ssize off = mem_loadoffset(insns + sizeof(bytes));

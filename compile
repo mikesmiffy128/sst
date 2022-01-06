@@ -21,7 +21,8 @@ cc() {
 }
 
 ld() {
-	clang -m32 -shared -O2 -flto -fpic -s -fuse-ld=lld -L.build -ldl -o sst.so$objs
+	clang -m32 -shared -O2 -flto -fpic -s -fuse-ld=lld -L.build -ldl -ltier0 \
+		-lvstdlib -o sst.so$objs
 }
 
 src="\
@@ -45,7 +46,8 @@ clang -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/mkgamedata \
 .build/codegen `for s in $src; do echo "src/$s"; done`
 .build/mkgamedata gamedata/gamelib.kv gamedata/engine.kv
 for s in $src; do cc "$s"; done
-clang -m32 -shared -fpic -fuse-ld=lld -O0 -w -o .build/libtier0.so src/tier0stub.c
+clang -m32 -shared -fpic -fuse-ld=lld -O0 -w -o .build/libtier0.so src/stubs/tier0.c
+clang -m32 -shared -fpic -fuse-ld=lld -O0 -w -o .build/libvstdlib.so src/stubs/vstdlib.c
 ld
 
 clang -fuse-ld=lld -O2 -g3 -include test/test.h -o .build/bitbuf.test test/bitbuf.test.c
@@ -53,7 +55,7 @@ clang -fuse-ld=lld -O2 -g3 -include test/test.h -o .build/bitbuf.test test/bitbu
 # skipping this test on linux for now, since inline hooks aren't compiled in
 #clang -m32 -fuse-ld=lld -O2 -g3 -include test/test.h -o .build/hook.test test/hook.test.c
 #.build/hook.test
-clang -fuse-ld=lld -O2 -g3 -include test/test.h -o .build/kv test/kv.test.c
+clang -fuse-ld=lld -O2 -g3 -include test/test.h -o .build/kv.test test/kv.test.c
 .build/kv.test
 
 # vi: sw=4 tw=4 noet tw=80 cc=80

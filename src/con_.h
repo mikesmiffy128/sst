@@ -127,7 +127,7 @@ struct con_cmd { // ConCommand in engine
 
 // con_var will be a bit different on linux; see offset_to_top etc.
 #ifdef __linux__
-#error FIXME: redo multi-vtable crap for itanium ABI!
+#warning FIXME: redo multi-vtable crap for itanium ABI!
 #endif
 
 struct con_var { // ConVar in engine

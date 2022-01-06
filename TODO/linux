@@ -4,3 +4,6 @@ Early prototype code was written with both Linux and Windows in mind, but since
 then most of the development happens to have happened on Windows, which has left
 some gaps. We want to eventually add back support for Linux once all the
 important Windows stuff is out of the way.
+
+As of writing the code does sort of compile on Linux, but decidedly does not
+actually work.

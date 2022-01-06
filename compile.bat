@@ -34,7 +34,8 @@ clang -E -xc src/dll.rc>.build\dll.pp.rc || exit /b
 llvm-rc /FO .build\dll.res .build\dll.pp.rc || exit /b
 :: might as well remove the temp file afterwards
 del .build\dll.pp.rc
-clang -m32 -shared -fuse-ld=lld -O0 -w -o .build/tier0.dll src/tier0stub.c
+clang -m32 -shared -fuse-ld=lld -O0 -w -o .build/tier0.dll src/stubs/tier0.c
+clang -m32 -shared -fuse-ld=lld -O0 -w -o .build/vstdlib.dll src/stubs/vstdlib.c
 call :cc src/autojump.c || exit /b
 call :cc src/con_.c || exit /b
 call :cc src/demorec.c || exit /b
@@ -48,7 +49,7 @@ call :cc src/kv.c || exit /b
 call :cc src/sst.c || exit /b
 call :cc src/udis86.c || exit /b
 clang -m32 -shared -O2 -flto -fuse-ld=lld -Wl,/implib:.build/sst.lib,/Brepro ^
--L.build -ladvapi32 -ltier0 -lshlwapi -o sst.dll%objs% .build/dll.res || exit /b
+-L.build -ladvapi32 -lshlwapi -ltier0 -lvstdlib -o sst.dll%objs% .build/dll.res || exit /b
 :: get rid of another useless file (can we just not create this???)
 del .build\sst.lib
 

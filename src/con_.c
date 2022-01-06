@@ -16,6 +16,7 @@
  */
 
 #include <stdbool.h>
+#include <stddef.h> // should be implied by stdlib but glibc is dumb (offsetof)
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -294,7 +295,7 @@ static void VCALLCONV Create_var(void *thisoff, const char *name,
 void *_con_vtab_cmd[14 + NVDTOR] = {
 	(void *)&dtor,
 #ifndef _WIN32
-	(void *)&dtor2,
+	(void *)&dtor,
 #endif
 	(void *)&IsCommand_cmd,
 	(void *)&IsFlagSet_cmd,
@@ -312,10 +313,11 @@ void *_con_realvtab_var[20] = {
 	&varrtti,
 #else
 	// this, among many other things, will be totally different on linux
+#warning FIX THIS TOO!
 #endif
 	(void *)&dtor,
 #ifndef _WIN32
-	(void *)&dtor2,
+	(void *)&dtor,
 #endif
 	(void *)&IsCommand_var,
 	(void *)&IsFlagSet_var,

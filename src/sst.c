@@ -84,6 +84,9 @@ static const char *VCALLCONV GetStringForSymbol_hook(void *this, int s) {
 	return ret;
 }
 
+// vstdlib symbol, only currently used in l4d2 but exists everywhere so oh well
+IMPORT void *KeyValuesSystem(void);
+
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	factory_engine = enginef; factory_server = serverf;
 #ifndef __linux__
@@ -133,31 +136,15 @@ nc:	gamedata_init();
 	// NOTE: this is technically redundant for early versions but I CBA writing
 	// a version check; it's easier to just do this unilaterally.
 	if (GAMETYPE_MATCHES(L4D2)) {
-#ifdef _WIN32
-		// XXX: not sure if vstdlib should be done dynamically like this or just
-		// another stub like tier0?
-		void *vstdlib = GetModuleHandleW(L"vstdlib.dll");
-		if (!vstdlib) {
-			con_warn("sst: warning: couldn't get vstdlib, won't be able to "
-					"prevent nag message\n");
+		void *kvs = KeyValuesSystem();
+		kvsvt = *(void ***)kvs;
+		if (!os_mprot(kvsvt + 4, sizeof(void *), PAGE_READWRITE)) {
+			con_warn("sst: warning: couldn't unprotect KeyValuesSystem "
+					"vtable; won't be able to prevent nag message\n");
 			goto e;
 		}
-		void *(*KeyValuesSystem)(void) = (void *(*)(void))os_dlsym(vstdlib,
-				"KeyValuesSystem");
-		if (KeyValuesSystem) {
-			void *kvs = KeyValuesSystem();
-			kvsvt = *(void ***)kvs;
-			if (!os_mprot(kvsvt + 4, sizeof(void *), PAGE_READWRITE)) {
-				con_warn("sst: warning: couldn't unprotect KeyValuesSystem "
-						"vtable; won't be able to prevent nag message\n");
-				goto e;
-			}
-			orig_GetStringForSymbol = (GetStringForSymbol_func)hook_vtable(
-					kvsvt, 4, (void *)GetStringForSymbol_hook);
-		}
-#else
-#warning TODO(linux) suitably abstract this stuff to Linux!
-#endif
+		orig_GetStringForSymbol = (GetStringForSymbol_func)hook_vtable(kvsvt,
+				4, (void *)GetStringForSymbol_hook);
 	}
 
 e:	con_colourmsg(RGBA(64, 255, 64, 255),

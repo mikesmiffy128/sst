@@ -15,7 +15,6 @@
  */
 
 #include <ctype.h>
-#include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
 #ifdef _WIN32
@@ -49,9 +48,9 @@ const os_char *gameinfo_serverlib = _gameinfo_serverlib;
 
 // magical argc/argv grabber so we don't have to go through procfs
 #ifdef __linux__
-static const char *prog_argv;
+static const char *const *prog_argv;
 static int storeargs(int argc, char *argv[]) {
-	prog_argv = argv;
+	prog_argv = (const char *const *)argv;
 	return 0;
 }
 __attribute__((used, section(".init_array")))
@@ -116,7 +115,7 @@ static inline void do_gamelib_search(const char *p, uint len, bool isgamebin) {
 		api_needs_null_term[len] = L'\0';
 		if (!PathIsRelativeA(api_needs_null_term))
 #else
-		if (*p == "/") // so much easier :')
+		if (*p == '/') // so much easier :')
 #endif
 	{
 		// the mod path is absolute, so we're not sticking anything else in
@@ -313,7 +312,7 @@ bool gameinfo_init(void) {
 	// also do the executable name check just for portal2_linux
 	if (!strcmp(exename, "portal2_linux")) modname = "portal2";
 	// ah, the sane, straightforward world of unix command line arguments :)
-	for (char **pp = prog_argv + 1; *pp; ++pp) {
+	for (const char *const *pp = prog_argv + 1; *pp; ++pp) {
 		if (!strcmp(*pp, "-game")) {
 			if (!*++pp) break;
 			modname = *pp;

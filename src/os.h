@@ -25,6 +25,7 @@
  * between Windows and not-Windows under the rug.
  */
 
+#include <errno.h>
 #include <fcntl.h>
 #ifdef _WIN32
 #define NOMINMAX
