@@ -25,7 +25,7 @@
 #include "os.h"
 #include "vcall.h"
 
-DEF_CVAR(sst_autojump, "Jump upon hitting the group while holding space", 0,
+DEF_CVAR(sst_autojump, "Jump upon hitting the ground while holding space", 0,
 		CON_REPLICATE | CON_DEMO | CON_HIDDEN)
 
 struct vec3f { float x, y, z; };
