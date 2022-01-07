@@ -56,21 +56,24 @@ void fixes_apply(void) {
 	// this out. Good meme 8/10.
 	unhide("sv_hosting_lobby");
 
-	// L4D2 resets mat_queue_mode to -1 (multicore rendering off) all the time
-	// if gpu_level is 0 (low shader detail), causing lag that can only be fixed
-	// by manually fixing the setting in video settings. Make mat_queue_mode
-	// public so it can be set on a bind or something to work around this bug,
-	// *but* constrain it so people don't use the other two modes, which aren't
-	// available otherwise. Unlike other fixes, make this one only fire for L4D2
-	// since we don't know what video modes should be available for every other
-	// Source game.
+	// Older versions of L4D2 reset mat_queue_mode to -1 (multicore rendering
+	// off) all the time if gpu_level is 0 (low shader detail), causing lag that
+	// can only be fixed by manually fixing the setting in video settings. Newer
+	// versions work around this by marking it as ARCHIVE, *breaking* the code
+	// that's supposed to link it to the other settings with a warning in the
+	// console. This two-wrongs-make-a-right spaghetti hack fix is so stupid
+	// that we can reimplement it ourselves for older versions even with our
+	// limited intelligence. We also make it public for convenience, but
+	// constrain it so we don't enable a configuration that isn't already
+	// possible on these earlier versions (who knows if that breaks
+	// something...).
 	if (GAMETYPE_MATCHES(L4D2)) {
-		// TODO(compat): *technically* this should also check for newer
-		// versions since they don't have the bug but whatever that's a nitpick
 		struct con_var *v = con_findvar("mat_queue_mode");
-		if (v) v->parent->base.flags &= ~(CON_DEVONLY | CON_HIDDEN);
-		v->parent->hasmax = true; v->parent->maxval = 0;
-		unhide("mat_queue_mode");
+		if (v && (v->parent->base.flags & CON_ARCHIVE)) {
+			v->parent->base.flags = v->parent->base.flags
+					& ~(CON_DEVONLY | CON_HIDDEN) | CON_ARCHIVE;
+			v->parent->hasmax = true; v->parent->maxval = 0;
+		}
 	}
 }
 
