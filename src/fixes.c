@@ -20,9 +20,13 @@
 #include "con_.h"
 #include "gametype.h"
 
-static void unhide(const char *name) {
+static void chflags(const char *name, int unset, int set) {
 	struct con_var *v = con_findvar(name);
-	if (v) v->parent->base.flags &= ~(CON_DEVONLY | CON_HIDDEN);
+	if (v) v->parent->base.flags = v->parent->base.flags & ~unset | set;
+}
+
+static void unhide(const char *name) {
+	chflags(name, CON_HIDDEN | CON_DEVONLY, 0);
 }
 
 void fixes_apply(void) {
@@ -38,16 +42,26 @@ void fixes_apply(void) {
 	unhide("demo_pauseatservertick");
 	unhide("demo_quitafterplayback");
 
-	unhide("director_afk_timeout");
-	unhide("mp_restartgame");
-
 	// handy console stuff
 	unhide("con_filter_enable");
 	unhide("con_filter_text");
 	unhide("con_filter_text_out");
 
-	// also, let people just do this lol. why not
-	unhide("developer");
+	// things that could conceivably cause issues with speedrun verification
+	// and/or pedantic following of rules; throw on cheat flag. this could be
+	// relaxed with the Eventual Fancy Demo Verification Stuff.
+	chflags("director_afk_timeout", CON_HIDDEN | CON_DEVONLY, CON_CHEAT);
+	chflags("mp_restartgame", CON_HIDDEN | CON_DEVONLY, CON_CHEAT);
+
+	// also, ensure the initial state of sv_cheats goes into demos so you can't
+	// start a demo with cheats already on and then do something subtle
+	chflags("sv_cheats", 0, CON_DEMO);
+
+	// also, let people use developer, it's pretty handy. ensure it goes in the
+	// demo though. even though it's obvious looking at a video, maybe some day
+	// a game will want to require demos only (probably not till demos are more
+	// robust anyway... whatever)
+	chflags("developer", CON_HIDDEN | CON_DEVONLY, CON_DEMO);
 
 	// L4D2 doesn't let you set sv_cheats in lobbies, but turns out it skips all
 	// the lobby checks if this random command is developer-only, presumably
