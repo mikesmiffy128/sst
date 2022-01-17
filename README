@@ -40,10 +40,10 @@ plugin can be shared between multiple games. That said, it's a little more
 annoying to do and a little less self contained.
 
 IMPORTANT: If your game supports multiplayer, always launch with -insecure as a
-launch option before loading this plugin! In theory, plugins shouldn't be able
-to load without this, or it should at least be impossible to connect to a VAC-
-enabled server with the plugin loaded, but -insecure is the safest way to ensure
-VAC is completely disabled, otherwise you use the plugin AT YOUR OWN RISK OF
+launch option before loading this plugin! Newer Source builds shouldn't let you
+connect to a server with plugins loaded or even let you load plugins without
+insecure mode at all, but older ones do, at which point you might still get VAC
+banned. ALWAYS launch with -insecure or load the plugin AT YOUR OWN RISK OF
 BEING BANNED!
 
 Note: some very old (and very new) Source builds don't have a plugin_load
