@@ -371,7 +371,7 @@ static void fillvts(void) {
 	*pv++ = (void *)&InternalSetValue;
 	*pv++ = (void *)&InternalSetFloatValue;
 	*pv++ = (void *)&InternalSetIntValue;
-	if (GAMETYPE_MATCHES(L4D2) || GAMETYPE_MATCHES(Portal2)) { // ugh, annoying
+	if (GAMETYPE_MATCHES(L4D2x) || GAMETYPE_MATCHES(Portal2)) { // ugh, annoying
 		// This is InternalSetColorValue, but that's basically the same thing,
 		// when you think about it.
 		*pv++ = (void *)&InternalSetIntValue;
@@ -379,7 +379,7 @@ static void fillvts(void) {
 	*pv++ = (void *)&ClampValue;;
 	*pv++ = (void *)&ChangeStringValue;
 	*pv++ = (void *)&Create_var;
-	if (GAMETYPE_MATCHES(L4D2) || GAMETYPE_MATCHES(Portal2)) {
+	if (GAMETYPE_MATCHES(L4D2x) || GAMETYPE_MATCHES(Portal2)) {
 		*pi++ = (void *)&SetValue_colour_thunk;
 	}
 #ifdef _WIN32
@@ -416,7 +416,18 @@ bool con_init(void *(*f)(const char *, int *), int plugin_ver) {
 		if (VCALL(_con_iface, FindCommand, "l4d2_snd_adrenaline")) {
 			_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf_l4d);
 			dllid = VCALL0(_con_iface, AllocateDLLIdentifier);
-			_gametype_tag |= _gametype_tag_L4D2;
+			// while we're here, also distinguish Survivors, the stupid Japanese
+			// arcade game a few people seem to care about for some reason
+			// (which for some other reason also has some vtable changes)
+			if (VCALL(_con_iface, FindVar, "avatarbasemodel")) {
+				_gametype_tag |= _gametype_tag_L4DS;
+				// stupid hack: gameinfo.txt still just says Left 4 Dead 2 but
+				// this is _not_ Left 4 Dead 2, dammit
+				gameinfo_title = "Left 4 Dead: Survivors";
+			}
+			else {
+				_gametype_tag |= _gametype_tag_L4D2;
+			}
 			fillvts();
 			regcmds(VFUNC(_con_iface, RegisterConCommand));
 			return true;

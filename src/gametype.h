@@ -25,11 +25,15 @@ extern u32 _gametype_tag;
 #define _gametype_tag_OrangeBox	2
 #define _gametype_tag_L4D1		4
 #define _gametype_tag_L4D2		8
-#define _gametype_tag_Portal2	16
-#define _gametype_tag_2013		32
+#define _gametype_tag_L4DS		16
+#define _gametype_tag_Portal2	32
+#define _gametype_tag_2013		64
 
-#define _gametype_tag_L4D		(_gametype_tag_L4D1	| _gametype_tag_L4D2)
-#define _gametype_tag_L4Dbased	(_gametype_tag_L4D	| _gametype_tag_Portal2)
+#define _gametype_tag_L4D		(_gametype_tag_L4D1 | _gametype_tag_L4D2)
+// XXX: *stupid* naming, refactor later (damn Survivors ruining everything)
+#define _gametype_tag_L4D2x		(_gametype_tag_L4D2 | _gametype_tag_L4DS)
+#define _gametype_tag_L4Dbased \
+	(_gametype_tag_L4D1 | _gametype_tag_L4D2x | _gametype_tag_Portal2)
 
 #define GAMETYPE_MATCHES(x) !!(_gametype_tag & (_gametype_tag_##x))
 

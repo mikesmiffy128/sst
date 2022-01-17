@@ -81,7 +81,7 @@ void fixes_apply(void) {
 	// constrain it so we don't enable a configuration that isn't already
 	// possible on these earlier versions (who knows if that breaks
 	// something...).
-	if (GAMETYPE_MATCHES(L4D2)) {
+	if (GAMETYPE_MATCHES(L4D2x)) {
 		struct con_var *v = con_findvar("mat_queue_mode");
 		if (v && (v->parent->base.flags & CON_ARCHIVE)) {
 			v->parent->base.flags = v->parent->base.flags
