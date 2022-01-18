@@ -96,7 +96,7 @@ static inline void initval(struct con_var *v) {
 // right next to each other.
 static int vtidx_InternalSetValue;
 
-// implementatiosn of virtual functions for our vars and commands below...
+// implementation of virtual functions for our vars and commands below...
 
 static void VCALLCONV dtor(void *_) {} // we don't use constructors/destructors
 
@@ -305,16 +305,16 @@ void *_con_vtab_cmd[14 + NVDTOR] = {
 // the engine does dynamic_casts on ConVar at some points so we have to fill out
 // bare minimum rtti to prevent crashes. oh goody.
 #ifdef _WIN32
-DEF_MSVC_BASIC_RTTI(static, varrtti, _con_realvtab_var, "sst_ConVar")
+DEF_MSVC_BASIC_RTTI(static, varrtti, _con_vtab_var, "sst_ConVar")
+#else
+DEF_ITANIUM_BASIC_RTTI(static, varrtti, "sst_ConVar")
 #endif
 
-void *_con_realvtab_var[20] = {
-#ifdef _WIN32
-	&varrtti,
-#else
-	// this, among many other things, will be totally different on linux
-#warning FIX THIS TOO!
+struct _con_vtab_var_wrap _con_vtab_var_wrap = {
+#ifndef _WIN32
+	0, // this *is* the top, no offset needed :)
 #endif
+	&varrtti,
 	(void *)&dtor,
 #ifndef _WIN32
 	(void *)&dtor,

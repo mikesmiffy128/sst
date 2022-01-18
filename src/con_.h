@@ -211,10 +211,19 @@ extern int con_cmdclient;
 
 // internal detail, used by DEF_* macros below
 extern void *_con_vtab_cmd[];
-// msvc rtti tables are offset negatively from the vtable pointer. to make this
-// a constant expression we have to use a macro
-#define _con_vtab_var (_con_realvtab_var + 1)
-extern void *_con_realvtab_var[];
+// rtti pointers are offset negatively from the vtable pointer. to make this
+// a constant expression we have to use a macro.
+extern struct _con_vtab_var_wrap {
+#ifdef _WIN32
+	struct msvc_rtti_locator *rtti;
+#else
+	// itanium ABI also has the top offset/"whole object" offset in libstdc++
+	ssize topoffset;
+	struct itanium_type_info *rtti;
+#endif
+	void *vtable[19];
+} _con_vtab_var_wrap;
+#define _con_vtab_var (_con_vtab_var_wrap.vtable)
 extern void *_con_vtab_iconvar[];
 
 #define _DEF_CVAR(name_, desc, value, hasmin_, min, hasmax_, max, flags_) \

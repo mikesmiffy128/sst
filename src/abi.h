@@ -74,7 +74,7 @@ struct msvc_rtti_locator {
 // I mean seriously look at this crap!
 #define DEF_MSVC_BASIC_RTTI(mod, name, vtab, typestr) \
 mod struct msvc_rtti_locator name; \
-static struct msvc_rtti_descriptor _desc_##name = {(vtab) + 1, 0, typestr}; \
+static struct msvc_rtti_descriptor _desc_##name = {(vtab), 0, typestr}; \
 static struct msvc_basedesc _basedesc_##name = {&_desc_##name, 0, {0, 0, 0}, 0}; \
 mod struct msvc_rtti_locator name = { \
 	0, 0, 0, \
@@ -83,6 +83,28 @@ mod struct msvc_rtti_locator name = { \
 		0, 1 /* per engine */, 1, (struct msvc_basedesc *[]){&_basedesc_##name} \
 	} \
 };
+
+#else
+
+#warning FIXME! More stuff needs to be implemented/fixed here!
+
+struct itanium_type_info {
+	struct itanium_type_info_vtable {
+		void *dtor1, *dtor2; // ???
+		// there's some more functions here in libstdc++: is_pointer,
+		// is_function, do_catch, etc. however they're not specified in itanium
+		// abi doc. hoping to do without them, but we'll see I guess
+	} *vtable;
+	const char *name;
+};
+
+#define DEF_ITANIUM_BASIC_RTTI(mod, name, typestr) \
+	mod struct itanium_type_info name = { \
+		&(struct itanium_type_info_vtable){ \
+			0, 0 /* FIXME/TEMP: definitely need real functions here! */ \
+		}, \
+		typestr \
+	};
 
 #endif
 
