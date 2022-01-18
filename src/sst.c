@@ -135,7 +135,7 @@ nc:	gamedata_init();
 
 	// NOTE: this is technically redundant for early versions but I CBA writing
 	// a version check; it's easier to just do this unilaterally.
-	if (GAMETYPE_MATCHES(L4D2)) {
+	if (GAMETYPE_MATCHES(L4D2x)) {
 		void *kvs = KeyValuesSystem();
 		kvsvt = *(void ***)kvs;
 		if (!os_mprot(kvsvt + 4, sizeof(void *), PAGE_READWRITE)) {
