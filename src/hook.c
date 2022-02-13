@@ -1,5 +1,6 @@
 /*
  * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2022 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -58,10 +59,11 @@ void *hook_inline(void *func_, void *target) {
 		len += ud_insn_len(&udis);
 	}
 	// for simplicity, just bump alloc the trampoline. no need to free anyway
-	if (nexttrampoline - trampolines > len + 6) goto nospc;
+	if (nexttrampoline - trampolines > sizeof(trampolines) - len - 6) goto nospc;
 	uchar *trampoline = (uchar *)InterlockedExchangeAdd(
 			(volatile long *)&nexttrampoline, len + 6);
-	if (trampoline - trampolines > len + 6) { // avoid TOCTOU
+	// avoid TOCTOU
+	if (trampoline - trampolines > sizeof(trampolines) - len - 6) {
 nospc:	con_warn("hook_inline: out of trampoline space\n");
 		return 0;
 	}
