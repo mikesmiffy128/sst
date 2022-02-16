@@ -1,5 +1,6 @@
 /*
  * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2022 Hayden K <imaciidz@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -41,6 +42,7 @@ void fixes_apply(void) {
 	unhide("demo_legacy_rollback");
 	unhide("demo_pauseatservertick");
 	unhide("demo_quitafterplayback");
+	unhide("demo_interpolateview");
 
 	// handy console stuff
 	unhide("con_filter_enable");
@@ -88,6 +90,15 @@ void fixes_apply(void) {
 					& ~(CON_DEVONLY | CON_HIDDEN) | CON_ARCHIVE;
 			v->parent->hasmax = true; v->parent->maxval = 0;
 		}
+	}
+
+	// For some reason, L4D1 v1.0 hides mat_monitorgamma and doesn't archive it.
+	// This means on every startup it's necessary to manually set non-default
+	// values via the menu. This change here brings it in line with newest Steam
+	// L4D1, all versions of L4D2, and probably all other Source games for
+	// convenience.
+	if (GAMETYPE_MATCHES(L4D1)) {
+		chflags("mat_monitorgamma", CON_HIDDEN | CON_DEVONLY, CON_ARCHIVE);
 	}
 }
 
