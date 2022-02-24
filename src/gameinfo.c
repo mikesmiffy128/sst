@@ -1,5 +1,5 @@
 /*
- * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -228,6 +228,10 @@ static void kv_cb(enum kv_token type, const char *p, uint len, void *_ctxt) {
 			break;
 		case KV_NEST_END:
 			if (ctxt->dontcarelvl) --ctxt->dontcarelvl; else --ctxt->nestlvl;
+			break;
+		case KV_COND_PREFIX: case KV_COND_SUFFIX:
+			con_warn("gameinfo: warning: just ignoring conditional \"%.*s\"",
+					len, p);
 	}
 	#undef MATCH
 }
@@ -353,11 +357,9 @@ bool gameinfo_init(void) {
 					strerror(errno));
 			goto e;
 		}
-		kv_parser_feed(&kvp, buf, nread, &kv_cb, &ctxt);
-		if (kvp.state == KV_PARSER_ERROR) goto ep;
+		if (!kv_parser_feed(&kvp, buf, nread, &kv_cb, &ctxt)) goto ep;
 	}
-	kv_parser_done(&kvp);
-	if (kvp.state == KV_PARSER_ERROR) goto ep;
+	if (!kv_parser_done(&kvp)) goto ep;
 
 	close(fd);
 	return true;

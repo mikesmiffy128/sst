@@ -1,5 +1,5 @@
 /*
- * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,10 +18,22 @@
 
 #include "intdefs.h"
 #include "kv.h"
+#include "unreachable.h"
 
 #define EOF -1
 
-void kv_parser_feed(struct kv_parser *this, const char *in, uint sz,
+// parser states, implemented by STATE() macros in kv_parser_feed() below.
+// needs to be kept in sync!
+enum {
+	ok, ok_slash,
+	ident, ident_slash, identq,
+	sep, sep_slash, condsep, condsep_slash,
+	cond_prefix,
+	val, val_slash, valq, afterval, afterval_slash,
+	cond_suffix
+};
+
+bool kv_parser_feed(struct kv_parser *this, const char *in, uint sz,
 		kv_parser_cb cb, void *ctxt) {
 	const char *p = in;
 	short c;
@@ -34,9 +46,8 @@ void kv_parser_feed(struct kv_parser *this, const char *in, uint sz,
 	#define INCCOL() (*p == '\n' ? (++this->line, this->col = 0) : ++this->col)
 	#define READ() (p == in + sz ? EOF : (INCCOL(), *p++))
 	#define ERROR(s) do { \
-		this->state = KV_PARSER_ERROR; \
 		this->errmsg = s; \
-		return; \
+		return false; \
 	} while (0)
 	#define OUT(c) do { \
 		if (this->outp - this->tokbuf == KV_TOKEN_MAX) { \
@@ -48,7 +59,7 @@ void kv_parser_feed(struct kv_parser *this, const char *in, uint sz,
 	// note: multi-eval
 	#define IS_WS(c) ((c) == ' ' || (c) == '\t' || (c) == '\n' || (c) == '\r')
 	#define STATE(s) case s: s
-	#define HANDLE_EOF() do { case EOF: return; } while (0)
+	#define HANDLE_EOF() do { case EOF: return true; } while (0)
 	#define SKIP_COMMENT(next) do { \
 		this->state = next; \
 		this->incomment = true; \
@@ -59,29 +70,31 @@ void kv_parser_feed(struct kv_parser *this, const char *in, uint sz,
 		cb(type, this->tokbuf, this->outp - this->tokbuf, ctxt); \
 		this->outp = this->tokbuf; \
 	} while (0)
-
-	// parser states, implemented by STATE() macros below
-	enum {
-		ok,
-		ok_slash,
-		ident,
-		ident_slash,
-		identq,
-		sep,
-		sep_slash,
-		val,
-		val_slash,
-		valq
-	};
+	// prefix and suffix conditions are more or less the same, just in different
+	// contexts, because very good syntax yes.
+	#define CONDSTATE(name, type, next) do { \
+		STATE(name): \
+			switch (c = READ()) { \
+				HANDLE_EOF(); \
+				CASE_WS: ERROR("unexpected whitespace in conditional"); \
+				case '[': ERROR("unexpected opening bracket in conditional"); \
+				case '{': case '}': ERROR("unexpected brace in conditional"); \
+				case '/': ERROR("unexpected slash in conditional"); \
+				case ']': CB(type); GOTO(next); \
+				default: OUT(c); goto name; \
+			} \
+	} while (0)
 
 start: // special spaghetti so we don't have a million different comment states
-	if (this->incomment) while ((c = READ()) != '\n') if (c == EOF) return;
+	if (this->incomment) while ((c = READ()) != '\n') if (c == EOF) return true;
 	this->incomment = false;
 
 switch (this->state) {
 
 STATE(ok):
-	switch (c = READ()) {
+	c = READ();
+ident_postread:
+	switch (c) {
 		HANDLE_EOF();
 		CASE_WS: goto ok;
 		case '#': ERROR("kv macros not supported");
@@ -94,6 +107,7 @@ STATE(ok):
 			goto ok;
 		case '"': GOTO(identq);
 		case '/': GOTO(ok_slash);
+		case '[': case ']': ERROR("unexpected conditional bracket");
 		default: GOTO(ident);
 	}
 
@@ -101,7 +115,7 @@ STATE(ok_slash):
 	switch (c = READ()) {
 		HANDLE_EOF();
 		case '/': SKIP_COMMENT(ok);
-		default: OUT('/'); GOTO(ident);
+		default: GOTO(ident);
 	}
 
 ident:
@@ -115,10 +129,12 @@ case ident: // continue here
 			char c_ = c;
 			cb(KV_NEST_START, &c_, 1, ctxt);
 			GOTO(ok);
-		case '}': case '"': ERROR("unexpected control character");
-		CASE_WS:
-			CB(KV_IDENT);
-			GOTO(sep);
+		// XXX: assuming [ is a token break; haven't checked Valve's code
+		case '[': CB(KV_IDENT); GOTO(cond_prefix);
+		case '}': ERROR("unexpected closing brace");
+		case ']': ERROR("unexpected closing bracket");
+		case '"': ERROR("unexpected quote mark");
+		CASE_WS: CB(KV_IDENT); GOTO(sep);
 		case '/': GOTO(ident_slash);
 		default: goto ident;
 	}
@@ -126,18 +142,14 @@ case ident: // continue here
 STATE(ident_slash):
 	switch (c = READ()) {
 		HANDLE_EOF();
-		case '/':
-			CB(KV_IDENT);
-			SKIP_COMMENT(sep);
-		default: OUT('/'); GOTO(ident);
+		case '/': CB(KV_IDENT); SKIP_COMMENT(sep);
+		default: GOTO(ident);
 	}
 
 STATE(identq):
 	switch (c = READ()) {
 		HANDLE_EOF();
-		case '"':
-			CB(KV_IDENT_QUOTED);
-			GOTO(sep);
+		case '"': CB(KV_IDENT_QUOTED); GOTO(sep);
 		default: OUT(c); goto identq;
 	}
 
@@ -145,14 +157,15 @@ STATE(sep):
 	do c = READ(); while (IS_WS(c));
 	switch (c) {
 		HANDLE_EOF();
-		case '[': ERROR("conditionals not supported");
 		case '{':;
 			char c_ = c;
 			++this->nestlvl;
 			cb(KV_NEST_START, &c_, 1, ctxt);
 			GOTO(ok);
+		case '[': GOTO(cond_prefix);
 		case '"': GOTO(valq);
-		case '}': ERROR("unexpected control character");
+		case '}': ERROR("unexpected closing brace");
+		case ']': ERROR("unexpected closing bracket");
 		case '/': GOTO(sep_slash);
 		default: GOTO(val);
 	}
@@ -161,7 +174,33 @@ STATE(sep_slash):
 	switch (c = READ()) {
 		HANDLE_EOF();
 		case '/': SKIP_COMMENT(sep);
-		default: OUT('/'); GOTO(val);
+		default: GOTO(val);
+	}
+
+CONDSTATE(cond_prefix, KV_COND_PREFIX, condsep);
+
+STATE(condsep):
+	do c = READ(); while (IS_WS(c));
+	switch (c) {
+		HANDLE_EOF();
+		case '{':;
+			char c_ = c;
+			++this->nestlvl;
+			cb(KV_NEST_START, &c_, 1, ctxt);
+			GOTO(ok);
+		case '}': ERROR("unexpected closing brace");
+		case '[': ERROR("unexpected opening bracket");
+		case ']': ERROR("unexpected closing bracket");
+		case '/': GOTO(condsep_slash);
+		// these conditions only go before braces because very good syntax
+		default: ERROR("unexpected string value after prefix condition");
+	}
+
+STATE(condsep_slash):
+	switch (c = READ()) {
+		HANDLE_EOF();
+		case '/': SKIP_COMMENT(condsep);
+		default: ERROR("unexpected string value after prefix condition");
 	}
 
 val:
@@ -169,17 +208,18 @@ val:
 case val: // continue here
 	switch (c = READ()) {
 		HANDLE_EOF();
-		case '{': case '"': ERROR("unexpected control character");
-		// might get } with no whitespace
+		case '{': ERROR("unexpected opening brace");
+		case ']': ERROR("unexpected closing bracket");
+		case '"': ERROR("unexpected quotation mark");
+		// might get [ or } with no whitespace
 		case '}':
 			CB(KV_VAL);
 			--this->nestlvl;
 			char c_ = c;
 			cb(KV_NEST_END, &c_, 1, ctxt);
-			GOTO(ok);
-		CASE_WS:
-			CB(KV_VAL);
-			GOTO(ok);
+			GOTO(afterval);
+		case '[': CB(KV_VAL); GOTO(cond_suffix);
+		CASE_WS: CB(KV_VAL); GOTO(afterval);
 		case '/': GOTO(val_slash);
 		default: goto val;
 	}
@@ -187,23 +227,41 @@ case val: // continue here
 STATE(val_slash):
 	switch (c = READ()) {
 		HANDLE_EOF();
-		case '/':
-			CB(KV_VAL);
-			SKIP_COMMENT(ok);
-		default: OUT('/'); GOTO(val);
+		case '/': CB(KV_VAL); SKIP_COMMENT(afterval);
+		default: GOTO(val);
 	}
 
 STATE(valq):
 	switch (c = READ()) {
 		HANDLE_EOF();
-		case '"':
-			CB(KV_VAL_QUOTED);
-			GOTO(ok);
+		case '"': CB(KV_VAL_QUOTED); GOTO(afterval);
 		default: OUT(c); goto valq;
 	}
 
+STATE(afterval):
+	switch (c = READ()) {
+		HANDLE_EOF();
+		CASE_WS: goto afterval;
+		case '[': GOTO(cond_suffix);
+		case '/': GOTO(afterval_slash);
+		// mildly dumb hack: if no conditional, we can just use the regular
+		// starting state handler to get next transition correct - just avoid
+		// double-reading the character
+		default: goto ident_postread;
+	}
+
+STATE(afterval_slash):
+	switch (c = READ()) {
+		HANDLE_EOF();
+		case '/': SKIP_COMMENT(afterval);
+		default: GOTO(ident);
+	}
+
+CONDSTATE(cond_suffix, KV_COND_SUFFIX, ok);
+
 }
 
+	#undef CONDSTATE
 	#undef CB
 	#undef GOTO
 	#undef SKIP_COMMENT
@@ -215,17 +273,20 @@ STATE(valq):
 	#undef ERROR
 	#undef READ
 	#undef INCCOL
+
+	unreachable; // pretty sure!
 }
 
-void kv_parser_done(struct kv_parser *this) {
-	if (this->state > 0) {
-		this->state = -1;
+bool kv_parser_done(struct kv_parser *this) {
+	if (this->state != ok && this->state != afterval) {
 		this->errmsg = "unexpected end of input";
+		return false;
 	}
-	else if (this->state == 0 && this->nestlvl != 0) {
-		this->state = -1;
+	if (this->nestlvl != 0) {
 		this->errmsg = "unterminated object (unbalanced braces)";
+		return false;
 	}
+	return true;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -144,6 +144,9 @@ static void kv_cb(enum kv_token type, const char *p, uint len, void *ctxt) {
 				*ents_tail = e;
 				ents_tail = &e->next;
 			}
+			break;
+		case KV_COND_PREFIX: case KV_COND_SUFFIX:
+			badparse(state, "unexpected conditional");
 	}
 }
 
@@ -165,11 +168,9 @@ int OS_MAIN(int argc, os_char *argv[]) {
 		int nread;
 		while (nread = read(fd, buf, sizeof(buf))) {
 			if (nread == -1) die("couldn't read file");
-			kv_parser_feed(&kv, buf, nread, &kv_cb, &state);
-			if (kv.state == KV_PARSER_ERROR) goto ep;
+			if (!kv_parser_feed(&kv, buf, nread, &kv_cb, &state)) goto ep;
 		}
-		kv_parser_done(&kv);
-		if (kv.state == KV_PARSER_ERROR) {
+		if (!kv_parser_done(&kv)) {
 ep:			fprintf(stderr, "mkgamedata: %" fS ":%d:%d: bad syntax: %s\n",
 					*argv, kv.line, kv.col, kv.errmsg);
 			exit(1);

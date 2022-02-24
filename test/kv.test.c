@@ -23,8 +23,14 @@ static void tokcb(enum kv_token type, const char *p, uint len,
 }
 
 static const char data[] =
-"KeyValues {\n\tKey/1\tVal1! \tKey2\nVal2// comment\n\"String Key\"// also comment\nVal3 Key4{ Key5 \"Value Five\" } // one more\n\t\n}"
-;
+"KeyValues {\n\
+	Key/1	Val1![conditional]\n\
+	Key2\n\
+Val2// comment\n\
+	\"String Key\"  // also comment\n\
+	Val3  Key4 [conditional!]{ Key5 \"Value Five\" } // one more\n\
+} \n\
+";
 static const int sz = sizeof(data) - 1;
 
 TEST("parsing should work with any buffer size", 0) {
@@ -36,12 +42,12 @@ TEST("parsing should work with any buffer size", 0) {
 			if (chunk * chunksz + thischunk > sz) {
 				thischunk = sz - chunk * chunksz;
 			}
-			kv_parser_feed(&kvp, data + chunk * chunksz, thischunk,
-					tokcb, 0);
-			if (kvp.state == KV_PARSER_ERROR) die(&kvp);
+			if (!kv_parser_feed(&kvp, data + chunk * chunksz, thischunk,
+					tokcb, 0)) {
+				die(&kvp);
+			}
 		}
-		kv_parser_done(&kvp);
-		if (kvp.state == KV_PARSER_ERROR) die(&kvp);
+		if (!kv_parser_done(&kvp)) die(&kvp);
 	}
 	return true;
 }
