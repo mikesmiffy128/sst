@@ -1,52 +1,56 @@
 Hey! This README is for those looking to work on the code. For actual plugin
-documentation, you'll want to look at the website, which currently exists in a
-semi-temporary state at https://mikes.software.sst - or or ask for help in a
+documentation, you’ll want to look at the website, which currently exists in a
+semi-temporary state at https://mikes.software/sst — or ask for help in a
 relevant speedrunning community.
 
 NOTE: Please read and understand LICENCE before redistributing this software!
 
-== Compiling ==
+════ Compiling ════
 
 Windows:
- - Install the Windows 10 SDK via the Visual Studio Installer.
- - Install native Clang from https://clang.llvm.org (NOT MinGW/MSYS2 Clang!).
- - Run compile.bat (in lieu of a better build tool, to be figured out later).
+ • Install the Windows 10 SDK and MSVC toolset via the Visual Studio Installer
+   (if you don’t care what else gets installed, installing the C++ Desktop
+   workload should be fine).
+ • Install native Clang from https://clang.llvm.org (NOT MinGW/MSYS2 Clang!).
+ • Run compile.bat (in lieu of a better build tool, to be added later).
 
 Linux:
- - Install Clang (and LLD) via your system package manager. Technically, GCC
+ • Install Clang (and LLD) via your system package manager. Technically, GCC
    might be able to compile this too, but Clang is heavily preferred in the name
-   of consistency and using GCC will require a decent amount of fiddling. It's
-   also not tested and might break and I probably won't care that much.
- - Install 32-bit C libraries and the C library headers if they're not already
+   of consistency and using GCC will require a decent amount of fiddling. It’s
+   also not tested and might break and I probably won’t care that much.
+ • Install 32-bit C libraries and the C library headers if they're not already
    installed.
- - Run ./compile (in lieu of a better build tool, to be figured out later).
+ • Run ./compile (in lieu of a better build tool, to be added later).
 
-* NOTE: Linux builds currently produce a binary that most definitely does not
-  work, along with a whole host of warnings; there's a bunch of code that needs
-  to be written. See also TODO/linux.
+NOTE: Linux builds currently produce a binary that most definitely does not
+work, along with a whole host of warnings; there’s a bunch of code that needs to
+be written. See also TODO/linux.
 
-== How and where to install ==
-
-Very old Source builds load plugins from the top-level bin/ folder, while
-relatively modern builds load them from the mod-specific directory, e.g.
-left4dead2/, hl2/. Since this plugin is designed to be universal, the
-recommended practice is to put it in bin/ regardless and then use the command
-`plugin_load ../bin/sst`. The way the paths work out, that ends up always
-working no matter what, and allows the plugin to be shared between different
-mods in the same engine installation where relevant. It's also possible to just
-back out of the game installation with ../ and load from whatever directory you
-want, as long as it's not on a different Windows drive letter. In that case, the
-plugin can be shared between multiple games. That said, it's a little more
-annoying to do and a little less self contained.
+════ How and where to install ════
 
 IMPORTANT: If your game supports multiplayer, always launch with -insecure as a
-launch option before loading this plugin! Newer Source builds shouldn't let you
+launch option before loading this plugin! Newer Source builds shouldn’t let you
 connect to a server with plugins loaded or even let you load plugins without
 insecure mode at all, but older ones do, at which point you might still get VAC
 banned. ALWAYS launch with -insecure or load the plugin AT YOUR OWN RISK OF
 BEING BANNED!
 
-Note: some very old (and very new) Source builds don't have a plugin_load
-command. It may be possible (although questionably necessary) to support these
-games with an injector to forcibly load the library into the game. For the time
-being, however, these versions are unsupported.
+Very old Source builds load plugins from the top-level bin/ folder, while
+relatively modern builds load them from the mod-specific directory, e.g.
+left4dead2/, hl2/. Left 4 Dead and later branches *ALSO* try to load from the
+top-level game directory where the EXE is, if other paths don’t work.
+
+Since this plugin is designed to be universal, a reasonable recommendation is to
+always put it in bin/ and then use the command `plugin_load ../bin/sst`. The way
+the paths work out, that always works no matter what, thus taking all the
+thought out of it. It’s also a sensible way to share the plugin between multiple
+mods in an engine installation, where relevant.
+
+It’s additionally possible to back out of the game installation with `../../`
+etcetera and load from anywhere you want, as long as it’s not on a different
+Windows drive letter. This is especially handy if you're building from source
+and don't want to copy it over every time.
+
+Note: some very old (and very new) Source builds don’t have a plugin_load
+command. For the time being, these versions are unsupported.

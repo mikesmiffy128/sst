@@ -1,20 +1,20 @@
 Except where otherwise noted, the following terms apply:
-================================================================================
-Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+════════════════════════════════════════════════════════════════════════════════
+Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
 Copyright © 2021 Willian Henrique <wsimanbrazil@yahoo.com.br>
 
 Permission to use, copy, modify, and/or distribute this software for any purpose
 with or without fee is hereby granted, provided that the above copyright notice
 and this permission notice appear in all copies.
 
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+THE SOFTWARE IS PROVIDED “AS IS” AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
 REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
 FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
 INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
 OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
-================================================================================
+════════════════════════════════════════════════════════════════════════════════
 Parts of this software distribution are released into the public domain. Check
 the copyright notices in individual files for full details.
 
@@ -22,7 +22,7 @@ The README file is also in the public domain.
 
 Files under src/3p/ are written and licensed by third parties. See the copyright
 notices in and alongside those files for details of authorship and relevant
-redistribution rights. Some - but not all - of this third party code is
+redistribution rights. Some — but not all — of this third party code is
 incorporated into binary builds (sst.dll or sst.so). Please take care when
 redistributing binaries to respect all the relevant copyright notices. Also note
 that the LICENCE.windows and LICENCE.linux files under dist/ are used for
