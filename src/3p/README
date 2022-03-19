@@ -2,8 +2,6 @@ These are imported 3rd party library sources, wrangled for ease of plonking into
 the build (e.g. relative #includes, etc.).
 
 Used in SST itself:
-  - libmpack
-  - monocypher
   - udis86
 
 Used at build time:
