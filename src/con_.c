@@ -396,6 +396,15 @@ static void fillvts(void) {
 	*pi++ = (void *)&GetSplitScreenPlayerSlot;
 }
 
+void con_reg(void *cmd_or_var) {
+	if (GAMETYPE_MATCHES(Portal2)) {
+		VCALL(_con_iface, RegisterConCommand_p2, cmd_or_var);
+	}
+	else {
+		VCALL(_con_iface, RegisterConCommand, cmd_or_var);
+	}
+}
+
 bool con_init(void *(*f)(const char *, int *), int plugin_ver) {
 	int ifacever; // for error messages
 	if (_con_iface = f("VEngineCvar007", 0)) {
@@ -409,11 +418,8 @@ bool con_init(void *(*f)(const char *, int *), int plugin_ver) {
 			_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf_p2);
 			dllid = VCALL0(_con_iface, AllocateDLLIdentifier_p2);
 			_gametype_tag |= _gametype_tag_Portal2;
-			fillvts();
-			regcmds(VFUNC(_con_iface, RegisterConCommand_p2));
-			return true;
 		}
-		if (VCALL(_con_iface, FindCommand, "l4d2_snd_adrenaline")) {
+		else if (VCALL(_con_iface, FindCommand, "l4d2_snd_adrenaline")) {
 			_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf_l4d);
 			dllid = VCALL0(_con_iface, AllocateDLLIdentifier);
 			// while we're here, also distinguish Survivors, the stupid Japanese
@@ -428,22 +434,21 @@ bool con_init(void *(*f)(const char *, int *), int plugin_ver) {
 			else {
 				_gametype_tag |= _gametype_tag_L4D2;
 			}
-			fillvts();
-			regcmds(VFUNC(_con_iface, RegisterConCommand));
-			return true;
 		}
-		if (VCALL(_con_iface, FindVar, "z_difficulty")) {
+		else if (VCALL(_con_iface, FindVar, "z_difficulty")) {
 			_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf_l4d);
 			dllid = VCALL0(_con_iface, AllocateDLLIdentifier);
 			_gametype_tag |= _gametype_tag_L4D1;
-			fillvts(); // XXX: is this all kinda dupey? maybe rearrange one day.
-			regcmds(VFUNC(_con_iface, RegisterConCommand));
-			return true;
 		}
-		con_warn("sst: error: game \"%s\" is unsupported (using "
-					"VEngineCvar007)\n", gameinfo_title);
-		ifacever = 7;
-		goto e;
+		else {
+			con_warn("sst: error: game \"%s\" is unsupported (using "
+						"VEngineCvar007)\n", gameinfo_title);
+			ifacever = 7;
+			goto e;
+		}
+		fillvts();
+		regcmds();
+		return true;
 	}
 	if (_con_iface = f("VEngineCvar004", 0)) {
 		// TODO(compat): are there any cases where 004 is incompatible? could
@@ -455,7 +460,7 @@ bool con_init(void *(*f)(const char *, int *), int plugin_ver) {
 		if (plugin_ver == 3) _gametype_tag |= _gametype_tag_2013;
 		else _gametype_tag |= _gametype_tag_OrangeBox;
 		fillvts();
-		regcmds(VFUNC(_con_iface, RegisterConCommand));
+		regcmds();
 		return true;
 	}
 	if (f("VEngineCvar003", 0)) {

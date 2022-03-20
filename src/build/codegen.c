@@ -21,26 +21,30 @@
 #include "../os.h"
 #include "cmeta.h"
 
-static const char *cmdnames[4096]; // arbitrary limit!
-static int ncmdnames = 0;
-static const char *varnames[4096]; // arbitrary limit!
-static int nvarnames = 0;
+#define MAXENT 65536 // arbitrary limit!
+static struct ent {
+	const char *name;
+	bool unreg;
+	bool isvar; // false for cmd
+} ents[MAXENT];
+static int nents;
 
 static void die(const char *s) {
 	fprintf(stderr, "codegen: %s\n", s);
 	exit(100);
 }
 
-#define PUT(array, ent) do { \
-	if (n##array == sizeof(array) / sizeof(*array)) { \
-		fprintf(stderr, "codegen: out of space; make " #array " bigger!\n"); \
+#define PUT(name_, isvar_, unreg_) do { \
+	if (nents == sizeof(ents) / sizeof(*ents)) { \
+		fprintf(stderr, "codegen: out of space; make ents bigger!\n"); \
 		exit(1); \
 	} \
-	array[n##array++] = ent; \
+	ents[nents].name = name_; \
+	ents[nents].isvar = isvar_; ents[nents++].unreg = unreg_; \
 } while (0)
 
-static void oncondef(const char *name, bool isvar) {
-	if (isvar) PUT(varnames, name); else PUT(cmdnames, name);
+static void oncondef(const char *name, bool isvar, bool unreg) {
+	PUT(name, isvar, unreg);
 }
 
 #define _(x) \
@@ -60,31 +64,26 @@ int OS_MAIN(int argc, os_char *argv[]) {
 	FILE *out = fopen(".build/include/cmdinit.gen.h", "wb");
 	if (!out) die("couldn't open cmdinit.gen.h");
 	H();
-	for (const char *const *pp = cmdnames;
-			pp - cmdnames < ncmdnames; ++pp) {
-F( "extern struct con_cmd *%s;", *pp)
-	}
-	for (const char *const *pp = varnames;
-			pp - varnames < nvarnames; ++pp) {
-F( "extern struct con_var *%s;", *pp)
+	for (const struct ent *p = ents; p - ents < nents; ++p) {
+F( "extern struct con_%s *%s;", p->isvar ? "var" : "cmd", p->name)
 	}
 _( "")
-_( "static void regcmds(void (*VCALLCONV f)(void *, void *)) {")
-	for (const char *const *pp = cmdnames;
-			pp - cmdnames < ncmdnames; ++pp) {
-F( "	f(_con_iface, %s);", *pp)
-	}
-	for (const char *const *pp = varnames;
-			pp - varnames < nvarnames; ++pp) {
-F( "	initval(%s);", *pp)
-F( "	f(_con_iface, %s);", *pp)
+_( "static void regcmds(void) {")
+	for (const struct ent *p = ents; p - ents < nents; ++p) {
+		if (p->isvar) {
+F( "	initval(%s);", p->name)
+		}
+		if (!p->unreg) {
+F( "	con_reg(%s);", p->name)
+		}
 	}
 _( "}")
 _( "")
 _( "static void freevars(void) {")
-	for (const char *const *pp = varnames;
-			pp - varnames < nvarnames; ++pp) {
-F( "	extfree(%s->strval);", *pp)
+	for (const struct ent *p = ents; p - ents < nents; ++p) {
+		if (p->isvar) {
+F( "	extfree(%s->strval);", p->name);
+		}
 	}
 _( "}")
 	if (fflush(out) == EOF) die("couldn't fully write cmdinit.gen.h");

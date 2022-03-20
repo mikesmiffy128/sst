@@ -37,7 +37,7 @@ void cmeta_includes(const struct cmeta *cm,
  * con_.h, passing each one in turn to the callback cb.
  */
 void cmeta_conmacros(const struct cmeta *cm,
-		void (*cb)(const char *name, bool isvar));
+		void (*cb)(const char *name, bool isvar, bool unreg));
 
 #endif
 

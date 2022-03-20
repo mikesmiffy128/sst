@@ -204,15 +204,36 @@ void cmeta_includes(const struct cmeta *cm,
 // AGAIN, NOTE: this doesn't *perfectly* match top level decls only in the event
 // that someone writes something weird, but we just don't really care because
 // we're not writing something weird. Don't write something weird!
-void cmeta_conmacros(const struct cmeta *cm, void (*cb)(const char *, bool)) {
+void cmeta_conmacros(const struct cmeta *cm,
+		void (*cb)(const char *, bool, bool)) {
 	Token *tp = (Token *)cm;
 	if (!tp || !tp->next || !tp->next->next) return; // DEF_xyz, (, name
 	while (tp) {
 		bool isplusminus = false, isvar = false;
-		if (equal(tp, "DEF_CCMD_PLUSMINUS")) isplusminus = true;
+		bool unreg = false;
+		// this is like the worst thing ever, but oh well it's just build time
+		// XXX: tidy this up some day, though, probably
+		if (equal(tp, "DEF_CCMD_PLUSMINUS")) {
+			isplusminus = true;
+		}
+		else if (equal(tp, "DEF_CCMD_PLUSMINUS_UNREG")) {
+			isplusminus = true;
+			unreg = true;
+		}
 		else if (equal(tp, "DEF_CVAR") || equal(tp, "DEF_CVAR_MIN") ||
 				equal(tp, "DEF_CVAR_MAX") || equal(tp, "DEF_CVAR_MINMAX")) {
 			isvar = true;
+		}
+		else if (equal(tp, "DEF_CVAR_UNREG") ||
+				equal(tp, "DEF_CVAR_MIN_UNREG") ||
+				equal(tp, "DEF_CVAR_MAX_UNREG") ||
+				equal(tp, "DEF_CVAR_MINMAX_UNREG")) {
+			isvar = true;
+			unreg = true;
+		}
+		else if (equal(tp, "DEF_CCMD_UNREG") ||
+				equal(tp, "DEF_CCMD_HERE_UNREG")) {
+			unreg = true;
 		}
 		else if (!equal(tp, "DEF_CCMD") && !equal(tp, "DEF_CCMD_HERE")) {
 			tp = tp->next; continue;
@@ -226,20 +247,20 @@ void cmeta_conmacros(const struct cmeta *cm, void (*cb)(const char *, bool)) {
 			memcpy(plusname, "PLUS_", 5);
 			memcpy(plusname + sizeof("PLUS_") - 1, tp->loc, tp->len);
 			plusname[sizeof("PLUS_") - 1 + tp->len] = '\0';
-			cb(plusname, false);
+			cb(plusname, false, unreg);
 			char *minusname = malloc(sizeof("MINUS_") + tp->len);
 			if (!minusname) die1("couldn't allocate memory");
 			memcpy(minusname, "MINUS_", 5);
 			memcpy(minusname + sizeof("MINUS_") - 1, tp->loc, tp->len);
 			minusname[sizeof("MINUS_") - 1 + tp->len] = '\0';
-			cb(minusname, false);
+			cb(minusname, false, unreg);
 		}
 		else {
 			char *name = malloc(tp->len + 1);
 			if (!name) die1("couldn't allocate memory");
 			memcpy(name, tp->loc, tp->len);
 			name[tp->len] = '\0';
-			cb(name, isvar);
+			cb(name, isvar, unreg);
 		}
 		tp = tp->next;
 	}

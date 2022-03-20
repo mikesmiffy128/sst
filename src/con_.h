@@ -293,6 +293,24 @@ extern void *_con_vtab_iconvar[];
 	static void _cmdf_##name(const struct con_cmdargs *cmd) \
 	/* { body here } */
 
+/*
+ * These are exactly the same as the above macros, but they don't cause the
+ * commands or variables to be registered on plugin load.
+ */
+#define DEF_CVAR_UNREG DEF_CVAR
+#define DEF_CVAR_MIN_UNREG DEF_CVAR_MIN
+#define DEF_CVAR_MAX_UNREG DEF_CVAR_MAX
+#define DEF_CVAR_MINMAX_UNREG DEF_CVAR_MINMAX
+#define DEF_CCMD_UNREG DEF_CCMD
+#define DEF_CCMD_HERE_UNREG DEF_CCMD_HERE
+#define DEF_CCMD_PLUSMINUS_UNREG DEF_CCMD_PLUSMINUS
+
+/*
+ * Registers a command or variable defined with the _UNREG variants of the above
+ * macros. Can be used to conditionally register things.
+ */
+void con_reg(void *cmd_or_var);
+
 #endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
