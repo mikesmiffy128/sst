@@ -38,7 +38,7 @@
 #define USAGEPAGE_MOUSE 1
 #define USAGE_MOUSE 2
 
-static volatile long dx = 0, dy = 0;
+static long dx = 0, dy = 0;
 static void *inwin;
 
 DEF_CVAR_UNREG(m_rawinput, "Use Raw Input for mouse input (SST reimplementation)",
@@ -53,14 +53,8 @@ static ssize __stdcall inproc(void *wnd, uint msg, ssize wp, ssize lp) {
 					sizeof(RAWINPUTHEADER)) != -1) {
 				RAWINPUT *ri = (RAWINPUT *)buf;
 				if (ri->header.dwType == RIM_TYPEMOUSE) {
-					// NOTE: I can't tell if RInput has been really slightly
-					// wrong for years or if there's actually a really subtle
-					// reason why an atomic/memory-fenced add is unnecessary for
-					// synchronisation but I'd rather err on the side of being
-					// really pedantic and careful for totally accurate mouse
-					// input, at *presumably* no noticeable performance cost.
-					InterlockedAdd(&dx, ri->data.mouse.lLastX);
-					InterlockedAdd(&dy, ri->data.mouse.lLastY);
+					dx += ri->data.mouse.lLastX;
+					dy += ri->data.mouse.lLastY;
 				}
 			}
 			return 0;
@@ -69,14 +63,6 @@ static ssize __stdcall inproc(void *wnd, uint msg, ssize wp, ssize lp) {
 			return 0;
 	}
 	return DefWindowProc(wnd, msg, wp, lp);
-}
-
-static ulong __stdcall threadmain(void *unused) {
-	MSG m;
-	// XXX: ignoring errors, in theory could spin? in practice rinput does this
-	// too and it's probably fine lol
-	while (GetMessageW(&m, inwin, 0, 0)) DispatchMessage(&m);
-	return 0;
 }
 
 typedef int (*__stdcall GetCursorPos_func)(POINT *p);
@@ -131,7 +117,6 @@ bool rinput_init(void) {
 		con_warn(ERR "couldn't hook SetCursorPos\n");
 		goto e1;
 	}
-
 	inwin = CreateWindowExW(0, L"RInput", L"RInput", 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	if (!inwin) {
 		con_warn(ERR " couldn't create input window\n");
@@ -146,16 +131,10 @@ bool rinput_init(void) {
 		con_warn(ERR " couldn't create raw mouse device\n");
 		goto e3;
 	}
-	if (!CreateThread(0, 8192, &threadmain, 0, 0, 0)) {
-		con_warn(ERR " couldn't create thread\n");
-		goto e4;
-	}
 
 	m_rawinput->base.flags &= ~CON_HIDDEN;
 	return true;
 
-e4:	rd.dwFlags |= RIDEV_REMOVE; rd.hwndTarget = 0;
-	RegisterRawInputDevices(&rd, 1, sizeof(rd));
 e3:	DestroyWindow(inwin);
 e2:	unhook_inline((void *)orig_SetCursorPos);
 e1:	unhook_inline((void *)orig_GetCursorPos);
