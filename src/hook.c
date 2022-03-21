@@ -43,6 +43,10 @@ static void setrwx(void) {
 
 void *hook_inline(void *func_, void *target) {
 	uchar *func = func_;
+	// dumb hack: rather than correcting jmp offsets and having to painstakingly
+	// track them all, just look for the underlying thing being jmp-ed to and
+	// hook _that_.
+	while (*func == RELJMP) func += mem_loadoffset(func + 1) + 5;
 	if (!os_mprot(func, 5, PAGE_EXECUTE_READWRITE)) return false;
 	struct ud udis;
 	ud_init(&udis);
@@ -50,14 +54,19 @@ void *hook_inline(void *func_, void *target) {
 	// max insn length is 15, we overwrite 5, so max to copy is 4 + 15 = 19
 	ud_set_input_buffer(&udis, func, 19);
 	int len = 0;
-	while (ud_disassemble(&udis) && len < 5) {
+	do {
+		ud_disassemble(&udis); // assume we don't run out of bytes
+		// TODO(opt): this check should probably be gone, keeping it to make dev
+		// life easier/less crashy. Really, we should just refrain from hooking
+		// things that immediately call or branch (als, immediate jump is
+		// already handled above).
 		if (ud_insn_mnemonic(&udis) == UD_Ijmp ||
 				ud_insn_mnemonic(&udis) == UD_Icall) {
-			con_warn("hook_inline: jmp adjustment NYI\n");
+			con_warn("hook_inline: jmp/call adjustment NYI\n");
 			return 0;
 		}
 		len += ud_insn_len(&udis);
-	}
+	} while (len < 5);
 	// for simplicity, just bump alloc the trampoline. no need to free anyway
 	if (nexttrampoline - trampolines > sizeof(trampolines) - len - 6) goto nospc;
 	uchar *trampoline = (uchar *)InterlockedExchangeAdd(
@@ -86,7 +95,7 @@ nospc:	con_warn("hook_inline: out of trampoline space\n");
 void unhook_inline(void *orig) {
 	uchar *p = (uchar *)orig;
 	int len = p[-1];
-	uint off = mem_load32(p + len + 1);
+	int off = mem_load32(p + len + 1);
 	uchar *q = p + off + 5;
 	memcpy(q, p, 5); // XXX not atomic atm! (does any of it even need to be?)
 	FlushInstructionCache(GetCurrentProcess(), q, 5);
