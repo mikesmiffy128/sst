@@ -27,6 +27,7 @@
 #include "gametype.h"
 #include "hook.h"
 #include "os.h"
+#include "rinput.h"
 #include "vcall.h"
 #include "version.h"
 
@@ -65,10 +66,13 @@ ifacefactory factory_client = 0, factory_server = 0, factory_engine = 0;
 // TODO(featgen): I wanted some nice fancy automatic feature system that
 // figures out the dependencies at build time and generates all the init glue
 // but we want to actually release the plugin this decade so for now I'm just
-// plonking ~~some bools~~ one bool here and worrying about it later. :^)
+// plonking some bools here and worrying about it later. :^)
 static bool has_autojump = false;
 static bool has_demorec = false;
 static bool has_demorec_custom = false;
+#ifdef _WIN32
+static bool has_rinput = false;
+#endif
 
 // HACK: later versions of L4D2 show an annoying dialog on every plugin_load.
 // We can suppress this by catching the message string that's passed from
@@ -130,6 +134,9 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 nc:	gamedata_init();
 	has_autojump = autojump_init();
 	has_demorec = demorec_init();
+#ifdef _WIN32
+	has_rinput = rinput_init();
+#endif
 	if (has_demorec) has_demorec_custom = demorec_custom_init();
 	fixes_apply();
 
@@ -157,6 +164,9 @@ e:	con_colourmsg(RGBA(64, 255, 64, 255),
 static void do_unload(void) {
 	if (has_autojump) autojump_end();
 	if (has_demorec) demorec_end();
+#ifdef _WIN32
+	if (has_rinput) rinput_end();
+#endif
 
 #ifdef __linux__
 	//if (serverlib) dlclose(serverlib);
