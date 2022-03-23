@@ -39,6 +39,7 @@ static int plugin_ver;
 // this is where we start dynamically adding virtual functions, see vtable[]
 // array below
 static const void **vtable_firstdiff;
+static const void *const *const plugin_obj;
 
 // most plugin callbacks are unused - define dummy functions for each signature
 static void VCALLCONV nop_v_v(void *this) {}
@@ -90,6 +91,56 @@ static const char *VCALLCONV GetStringForSymbol_hook(void *this, int s) {
 
 // vstdlib symbol, only currently used in l4d2 but exists everywhere so oh well
 IMPORT void *KeyValuesSystem(void);
+
+// XXX: not sure if all this stuff should, like, go somewhere?
+
+struct CUtlMemory {
+	void *mem;
+	int alloccnt;
+	int growsz;
+};
+
+struct CUtlVector {
+	struct CUtlMemory m;
+	int sz;
+	void *mem_again_for_some_reason;
+};
+
+struct CServerPlugin /* : IServerPluginHelpers */ {
+	void **vtable;
+	struct CUtlVector plugins;
+	/*IPluginHelpersCheck*/ void *pluginhlpchk;
+};
+
+struct CPlugin {
+	char description[128];
+	bool paused;
+	void *theplugin; // our own "this" pointer (or whichever other plugin it is)
+	int ifacever;
+	// should be the plugin library, but in old Source branches it's just null,
+	// because CServerPlugin::Load() erroneously shadows this field with a local
+	void *module;
+};
+
+#ifdef _WIN32
+extern long __ImageBase; // this is actually the PE header struct but don't care
+#define ownhandle() ((void *)&__ImageBase)
+#else
+// sigh, _GNU_SOURCE crap. define here instead >:(
+typedef struct {
+	const char *dli_fname;
+	void *dli_fbase;
+	const char *dli_sname;
+	void *dli_saddr;
+} Dl_info;
+int dladdr1(const void *addr, Dl_info *info, void **extra_info, int flags);
+static inline void *ownhandle(void) {
+	Dl_info dontcare;
+	void *dl;
+	dladdr1((void *)&ownhandle, &dontcare, &dl, /*RTLD_DL_LINKMAP*/ 2);
+	return dl;
+}
+#endif
 
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	factory_engine = enginef; factory_server = serverf;
@@ -162,6 +213,24 @@ e:	con_colourmsg(RGBA(64, 255, 64, 255),
 }
 
 static void do_unload(void) {
+	struct CServerPlugin *pluginhandler =
+			factory_engine("ISERVERPLUGINHELPERS001", 0);
+	if (pluginhandler) { // if not, oh well too bad we tried :^)
+		struct CPlugin **plugins = pluginhandler->plugins.m.mem;
+		int n = pluginhandler->plugins.sz;
+		for (struct CPlugin **pp = plugins; pp - plugins < n; ++pp) {
+			if ((*pp)->theplugin = (void *)&plugin_obj) {
+				// see comment in CPlugin above. setting this to the real handle
+				// right before the engine tries to unload us allows it to
+				// actually unload us instead of just doing nothing.
+				// in newer branches that don't have this bug, this is still
+				// correct anyway so no need to bother checking.
+				(*pp)->module = ownhandle();
+				break;
+			}
+		}
+	}
+
 	if (has_autojump) autojump_end();
 	if (has_demorec) demorec_end();
 #ifdef _WIN32
@@ -196,7 +265,7 @@ static bool VCALLCONV Load(void *this, ifacefactory enginef,
 	return already_loaded;
 }
 
-static void Unload(void *this) {
+static void VCALLCONV Unload(void *this) {
 	// the game tries to unload on a failed load, for some reason
 	if (skip_unload) {
 		skip_unload = false;

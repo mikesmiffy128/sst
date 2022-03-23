@@ -49,7 +49,7 @@ call :cc src/kv.c || exit /b
 call :cc src/rinput.c || exit /b
 call :cc src/sst.c || exit /b
 call :cc src/udis86.c || exit /b
-clang -m32 -shared -O2 -flto -fuse-ld=lld -Wl,/implib:.build/sst.lib,/Brepro ^
+clang -m32 -fuse-ld=lld -shared -O2 -flto -Wl,/IMPLIB:.build/sst.lib,/Brepro ^
 -L.build -luser32 -ladvapi32 -lshlwapi -ltier0 -lvstdlib -o sst.dll%objs% .build/dll.res || exit /b
 :: get rid of another useless file (can we just not create this???)
 del .build\sst.lib
