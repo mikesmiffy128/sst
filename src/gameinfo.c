@@ -22,40 +22,41 @@
 #endif
 
 #include "con_.h"
+#include "gametype.h"
 #include "intdefs.h"
 #include "kv.h"
 #include "os.h"
+#include "vcall.h"
 
-// Formatting for os_char * -> char * (or vice versa) - needed for con_warn()s
-// with file paths, etc
 #ifdef _WIN32
 #define fS "S" // os string (wide string) to regular string
 #define Fs L"S" // regular string to os string (wide string)
+#define PATHSEP L"\\" // for joining. could just be / but \ is more consistent
 #else
 // everything is just a regular string already
 #define fS "s"
 #define Fs "s"
+#define PATHSEP "/"
 #endif
 
-static os_char exedir[PATH_MAX];
-static os_char gamedir[PATH_MAX];
-static char _gameinfo_title[64] = {0};
-const char *gameinfo_title = _gameinfo_title;
-static os_char _gameinfo_clientlib[PATH_MAX] = {0};
-const os_char *gameinfo_clientlib = _gameinfo_clientlib;
-static os_char _gameinfo_serverlib[PATH_MAX] = {0};
-const os_char *gameinfo_serverlib = _gameinfo_serverlib;
+// TODO(opt): get rid of the rest of the snprintf and strcpy, some day
 
-// magical argc/argv grabber so we don't have to go through procfs
-#ifdef __linux__
-static const char *const *prog_argv;
-static int storeargs(int argc, char *argv[]) {
-	prog_argv = (const char *const *)argv;
-	return 0;
-}
-__attribute__((used, section(".init_array")))
-static void *pstoreargs = (void *)&storeargs;
+static os_char bindir[PATH_MAX] = {0};
+#ifdef _WIN32
+static os_char gamedir[PATH_MAX] = {0};
 #endif
+static os_char clientlib[PATH_MAX] = {0};
+static os_char serverlib[PATH_MAX] = {0};
+static char title[64] = {0};
+
+const os_char *gameinfo_bindir = bindir;
+const os_char *gameinfo_gamedir
+#ifdef _WIN32
+	= gamedir; // on linux, the pointer gets directly set in gameinfo_init()
+#endif
+const os_char *gameinfo_clientlib = clientlib;
+const os_char *gameinfo_serverlib = serverlib;
+const char *gameinfo_title = title;
 
 // case insensitive substring match, expects s2 to be lowercase already!
 // note: in theory this shouldn't need to be case sensitive, but I've seen mods
@@ -65,7 +66,7 @@ static bool matchtok(const char *s1, const char *s2, usize sz) {
 	return true;
 }
 
-static void try_gamelib(const os_char *path, os_char *outpath) {
+static void trygamelib(const os_char *path, os_char *outpath) {
 	// _technically_ this is toctou, but I don't think that matters here
 	if (os_access(path, F_OK) != -1) {
 		os_strcpy(outpath, path);
@@ -77,13 +78,14 @@ static void try_gamelib(const os_char *path, os_char *outpath) {
 }
 
 // note: p and len are a non-null-terminated string
-static inline void do_gamelib_search(const char *p, uint len, bool isgamebin) {
+static inline void dolibsearch(const char *p, uint len, bool isgamebin,
+		const os_char *cwd) {
 	// sanity check: don't do a bunch of work for no reason
 	if (len >= PATH_MAX - 1 - (sizeof("client" OS_DLSUFFIX) - 1)) goto toobig;
 	os_char bindir[PATH_MAX];
 	os_char *outp = bindir;
 	// this should really be an snprintf, meh whatever
-	os_strcpy(bindir, exedir);
+	os_strcpy(bindir, cwd);
 	outp = bindir + os_strlen(bindir);
 	// quick note about windows encoding conversion: this MIGHT clobber the
 	// encoding of non-ascii mod names, but it's unclear if/how source handles
@@ -136,17 +138,18 @@ toobig: con_warn("gameinfo: skipping an overly long search path\n");
 	outp += ret;
 	if (!*gameinfo_clientlib) {
 		os_strcpy(outp, OS_LIT("client" OS_DLSUFFIX));
-		try_gamelib(bindir, _gameinfo_clientlib);
+		trygamelib(bindir, clientlib);
 	}
 	if (!*gameinfo_serverlib) {
 		os_strcpy(outp, OS_LIT("server" OS_DLSUFFIX));
-		try_gamelib(bindir, _gameinfo_serverlib);
+		trygamelib(bindir, serverlib);
 	}
 }
 
-// state for the callback below to keep it somewhat reentrant-ish (except where
-// it isn't because I got lazy and wrote some spaghetti)
+// state for the callback below to keep it somewhat reentrant (except where
+// it's not because I got lazy and wrote some spaghetti)
 struct kv_parsestate {
+	const os_char *cwd;
 	// after parsing a key we *don't* care about, how many nested subkeys have
 	// we come across?
 	short dontcarelvl;
@@ -208,21 +211,21 @@ static void kv_cb(enum kv_token type, const char *p, uint len, void *_ctxt) {
 			break;
 		case KV_VAL: case KV_VAL_QUOTED:
 			if (ctxt->dontcarelvl) break;
-			if (ctxt->matchtype == mt_title) {
+			// dumb hack: ignore Survivors title (they left it set to "Left 4
+			// Dead 2" but it clearly isn't Left 4 Dead 2)
+			if (ctxt->matchtype == mt_title && !GAMETYPE_MATCHES(L4DS)) {
 				// title really shouldn't get this long, but truncate just to
 				// avoid any trouble...
 				// also note: leaving 1 byte of space for null termination (the
 				// buffer is already zeroed initially)
-				if (len > sizeof(_gameinfo_title) - 1) {
-					len = sizeof(_gameinfo_title) - 1;
-				}
-				memcpy(_gameinfo_title, p, len);
+				if (len > sizeof(title) - 1) len = sizeof(title) - 1;
+				memcpy(title, p, len);
 			}
 			else if (ctxt->matchtype == mt_game ||
 					ctxt->matchtype == mt_gamebin) {
 				// if we already have everything, we can just stop!
 				if (*gameinfo_clientlib && *gameinfo_serverlib) break;
-				do_gamelib_search(p, len, ctxt->matchtype == mt_gamebin);
+				dolibsearch(p, len, ctxt->matchtype == mt_gamebin, ctxt->cwd);
 			}
 			ctxt->matchtype = mt_none;
 			break;
@@ -236,112 +239,67 @@ static void kv_cb(enum kv_token type, const char *p, uint len, void *_ctxt) {
 	#undef MATCH
 }
 
-bool gameinfo_init(void) {
-	const os_char *modname = OS_LIT("hl2");
-#ifdef _WIN32
-	int len = GetModuleFileNameW(0, exedir, PATH_MAX);
-	if (!len) {
-		char err[128];
-		OS_WINDOWS_ERROR(err);
-		con_warn("gameinfo: couldn't get EXE path: %s\n", err);
-		return false;
+bool gameinfo_init(void *(*ifacef)(const char *, int *)) {
+	typedef char *(*VCALLCONV GetGameDirectory_func)(void *this);
+	GetGameDirectory_func **engclient;
+	int off;
+	if (engclient = ifacef("VEngineClient014", 0)) { // bms, l4d2 2000
+		off = 36;
 	}
-	// if the buffer is full and has no null, it's truncated
-	if (len == PATH_MAX && exedir[len - 1] != L'\0') {
-		con_warn("gameinfo: EXE path is too long!\n");
-		return false;
+	else if (engclient = ifacef("VEngineClient013", 0)) { // ...most things?
+		if (GAMETYPE_MATCHES(L4D2)) off = 36; // they changed it BACK?!?
+		else off = 35;
 	}
-#else
-	int len = readlink("/proc/self/exe", exedir, PATH_MAX);
-	if (len == -1) {
-		con_warn("gameinfo: couldn't get program path: %s\n", strerror(errno));
-		return false;
-	}
-	// if the buffer is full at all, it's truncated (readlink never writes \0)
-	if (len == PATH_MAX) {
-		con_warn("gameinfo: program path is too long!\n");
-		return false;
+	else if (engclient = ifacef("VEngineClient012", 0)) { // dmomm, ep1, ...
+		off = 37;
 	}
 	else {
-		exedir[len] = '\0';
+		con_warn("gameinfo: unsupported VEngineClient interface\n");
+		return false;
 	}
-#endif
-	// find the last slash
-	os_char *p;
-	for (p = exedir + len - 1; *p != OS_LIT('/')
-#ifdef _WIN32
-			&& *p != L'\\'
-#endif
-	;		--p);
-	// ... and split on it
-	*p = 0;
-	const os_char *exename = p + 1;
-#ifdef _WIN32
-	// try and infer the default mod name (when -game isn't given) from the exe
-	// name for a few known games
-	if (!_wcsicmp(exename, L"left4dead2.exe")) modname = L"left4dead2";
-	else if (!_wcsicmp(exename, L"left4dead.exe")) modname = L"left4dead";
-	else if (!_wcsicmp(exename, L"portal2.exe")) modname = L"portal2";
+	GetGameDirectory_func GetGameDirectory = (*engclient)[off];
 
-	const ushort *args = GetCommandLineW();
-	const ushort *argp = args;
-	ushort modbuf[PATH_MAX];
-	// have to take the _last_ occurence of -game because sourcemods get the
-	// flag twice, for some reason
-	while (argp = wcsstr(argp, L" -game ")) {
-		argp += 7;
-		while (*argp == L' ') ++argp;
-		ushort sep = L' ';
-		// WARNING: not handling escaped quotes and such nonsense, since you
-		// can't have quotes in filepaths anyway outside of UNC and I'm just
-		// assuming there's no way Source could even be started with such an
-		// insanely named mod. We'll see how this assumption holds up!
-		if (*argp == L'"') {
-			++argp;
-			sep = L'"';
-		}
-		ushort *bufp = modbuf;
-		for (; *argp != L'\0' && *argp != sep; ++argp, ++bufp) {
-			if (bufp - modbuf == PATH_MAX - 1) {
-				con_warn("gameinfo: mod name parameter is too long\n");
-				return false;
-			}
-			*bufp = *argp;
-		}
-		*bufp = L'\0';
-		modname = modbuf;
+	// engine always calls chdir() with its own base path on startup, so engine
+	// base dir is just cwd
+	os_char cwd[PATH_MAX];
+	if (!os_getcwd(cwd, sizeof(cwd) / sizeof(*cwd))) {
+		con_warn("gameinfo: couldn't get working directory: %s\n",
+				strerror(errno));
+		return false;
 	}
-	bool isrelative = PathIsRelativeW(modname);
-#else
-	// also do the executable name check just for portal2_linux
-	if (!strcmp(exename, "portal2_linux")) modname = "portal2";
-	// ah, the sane, straightforward world of unix command line arguments :)
-	for (const char *const *pp = prog_argv + 1; *pp; ++pp) {
-		if (!strcmp(*pp, "-game")) {
-			if (!*++pp) break;
-			modname = *pp;
-		}
+	int len = os_strlen(cwd);
+	if (len + sizeof("/bin") > sizeof(bindir) / sizeof(*bindir)) {
+		con_warn("gameinfo: working directory path is too long!\n");
+		return false;
 	}
-	// ah, the sane, straightforward world of unix paths :)
-	bool isrelative = modname[0] != '/';
-#endif
+	memcpy(bindir, cwd, len * sizeof(*cwd));
+	memcpy(bindir + len, PATHSEP OS_LIT("bin"), 5 * sizeof(os_char));
 
-	int ret = isrelative ?
-		os_snprintf(gamedir, PATH_MAX, OS_LIT("%s/%s"), exedir, modname) :
-		// mod name might actually be an absolute (if installed in steam
-		// sourcemods for example)
-		os_snprintf(gamedir, PATH_MAX, OS_LIT("%s"), modname);
-	if (ret >= PATH_MAX) {
+#ifdef _WIN32
+	int gamedirlen = _snwprintf(gamedir, sizeof(gamedir) / sizeof(*gamedir),
+				L"%S", GetGameDirectory(engclient));
+	if (gamedirlen < 0) { // encoding error??? ugh...
+		con_warn("gameinfo: invalid game directory path!\n");
+		return false;
+	}
+	// immediately bounds check /gameinfo as we cat that into an equal sized
+	// buffer down below :^)
+	if (gamedirlen + sizeof("/gameinfo.txt") > sizeof(gamedir) /
+			sizeof(*gamedir)) {
 		con_warn("gameinfo: game directory path is too long!\n");
 		return false;
 	}
-	os_char gameinfopath[PATH_MAX];
-	if (os_snprintf(gameinfopath, PATH_MAX, OS_LIT("%s/gameinfo.txt"),
-			gamedir) >= PATH_MAX) {
-		con_warn("gameinfo: gameinfo.txt path is too long!\n");
-		return false;
-	}
+#else
+	// no need to munge charset, use the string pointer directly
+	gameinfo_gamedir = GetGameDirectory(engclient);
+	int gamedirlen = strlen(gameinfo_gamedir);
+#endif
 
+	os_char gameinfopath[PATH_MAX];
+	memcpy(gameinfopath, gameinfo_gamedir, gamedirlen *
+			sizeof(*gameinfo_gamedir));
+	memcpy(gameinfopath + gamedirlen, PATHSEP OS_LIT("gameinfo.txt"),
+			14 * sizeof(os_char));
 	int fd = os_open(gameinfopath, O_RDONLY);
 	if (fd == -1) {
 		con_warn("gameinfo: couldn't open gameinfo.txt: %s\n", strerror(errno));
@@ -349,7 +307,7 @@ bool gameinfo_init(void) {
 	}
 	char buf[1024];
 	struct kv_parser kvp = {0};
-	struct kv_parsestate ctxt = {0};
+	struct kv_parsestate ctxt = {.cwd = cwd};
 	int nread;
 	while (nread = read(fd, buf, sizeof(buf))) {
 		if (nread == -1) {
@@ -360,8 +318,10 @@ bool gameinfo_init(void) {
 		if (!kv_parser_feed(&kvp, buf, nread, &kv_cb, &ctxt)) goto ep;
 	}
 	if (!kv_parser_done(&kvp)) goto ep;
-
 	close(fd);
+
+	// dumb hack pt2, see also kv callback above
+	if (GAMETYPE_MATCHES(L4DS)) gameinfo_title = "Left 4 Dead: Survivors";
 	return true;
 
 ep:	con_warn("gameinfo: couldn't parse gameinfo.txt (%d:%d): %s\n",

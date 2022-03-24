@@ -35,12 +35,23 @@ typedef char os_char;
 #define os_access access
 #define os_stat stat
 #define os_getenv getenv
+#define os_getcwd getcwd
 
 #define OS_DLSUFFIX ".so"
 
 #define OS_MAIN main
 
 #define os_dlsym dlsym
+
+static inline bool os_dlfile(void *m, char *buf, int sz) {
+	// NOTE: this might be linux/glibc-specific (I haven't checked every
+	// implementation). this is fine as we don't use it in any build-time code,
+	// only in the plugin itself. just keep it in mind!
+	struct link_map *lm = m;
+	ssz len = strlen(lm->l_name) + 1;
+	if (ssz > sz) { errno = ENAMETOOLONG; return false; }
+	memcpy(buf, lm->l_name, ssz); return true;
+}
 
 // unix mprot flags are much nicer but cannot be defined in terms of the windows
 // ones, so we use the windows ones and define them in terms of the unix ones.

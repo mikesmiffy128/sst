@@ -35,7 +35,7 @@
 
 u32 _gametype_tag = 0; // spaghetti: no point making a .c file for 1 variable
 
-static int plugin_ver;
+static int ifacever;
 // this is where we start dynamically adding virtual functions, see vtable[]
 // array below
 static const void **vtable_firstdiff;
@@ -74,6 +74,11 @@ static bool has_demorec_custom = false;
 #ifdef _WIN32
 static bool has_rinput = false;
 #endif
+
+// since this is static/global, it only becomes false again when the plugin SO
+// is unloaded/reloaded
+static bool already_loaded = false;
+static bool skip_unload = false;
 
 // HACK: later versions of L4D2 show an annoying dialog on every plugin_load.
 // We can suppress this by catching the message string that's passed from
@@ -147,7 +152,8 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 #ifndef __linux__
 	void *clientlib = 0;
 #endif
-	if (!gameinfo_init() || !con_init(enginef, plugin_ver)) return false;
+	if (!con_init(enginef, ifacever)) return false;
+	if (!gameinfo_init(enginef)) { con_disconnect(); return false; }
 	const void **p = vtable_firstdiff;
 	if (GAMETYPE_MATCHES(Portal2)) *p++ = (void *)&nop_p_v; // ClientFullyConnect
 	*p++ = (void *)&nop_p_v;		  // ClientDisconnect
@@ -155,9 +161,9 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	*p++ = (void *)&SetCommandClient; // SetCommandClient
 	*p++ = (void *)&nop_p_v;		  // ClientSettingsChanged
 	*p++ = (void *)&nop_5pi_i;		  // ClientConnect
-	*p++ = plugin_ver > 1 ? (void *)&nop_pp_i : (void *)&nop_p_i; // ClientCommand
-	*p++ = (void *)&nop_pp_i;		  // NetworkIDValidated
+	*p++ = ifacever > 1 ? (void *)&nop_pp_i : (void *)&nop_p_i; // ClientCommand
 	// remaining stuff here is backwards compatible, so added unconditionally
+	*p++ = (void *)&nop_pp_i;		  // NetworkIDValidated
 	*p++ = (void *)&nop_ipipp_v;	  // OnQueryCvarValueFinished (002+)
 	*p++ = (void *)&nop_p_v;		  // OnEdictAllocated
 	*p   = (void *)&nop_p_v;		  // OnEdictFreed
@@ -248,11 +254,6 @@ static void do_unload(void) {
 	}
 }
 
-// since this is static/global, it only becomes false again when the plugin SO
-// is unloaded/reloaded
-static bool already_loaded = false;
-static bool skip_unload = false;
-
 static bool VCALLCONV Load(void *this, ifacefactory enginef,
 		ifacefactory serverf) {
 	if (already_loaded) {
@@ -316,7 +317,7 @@ EXPORT const void *CreateInterface(const char *name, int *ret) {
 	if (!strncmp(name, "ISERVERPLUGINCALLBACKS00", 24)) {
 		if ((name[24] >= '1' || name[24] <= '3') && name[25] == '\0') {
 			if (ret) *ret = 0;
-			plugin_ver = name[24] - '0';
+			ifacever = name[24] - '0';
 			return &plugin_obj;
 		}
 	}

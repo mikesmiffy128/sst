@@ -41,6 +41,7 @@ typedef unsigned short os_char;
 #define _stat64(path, buf) _wstat64(path, buf)
 #define os_stat _stat64
 #define os_getenv _wgetenv
+#define os_getcwd _wgetcwd
 
 #define OS_DLSUFFIX ".dll"
 
@@ -48,6 +49,18 @@ typedef unsigned short os_char;
 
 static inline void *os_dlsym(void *m, const char *s) {
 	return (void *)GetProcAddress(m, s);
+}
+
+static inline bool os_dlfile(void *m, unsigned short *buf, int sz) {
+	unsigned int n = GetModuleFileNameW(m, buf, sz);
+	if (n == 0 || n == sz) return false;
+	// get the canonical capitalisation, as for some reason GetModuleFileName()
+	// returns all lowercase. this doesn't really matter except it looks nicer
+	GetLongPathNameW(buf, buf, n + 1);
+	// the drive letter will also be lower case, if it is an actual drive letter
+	// of course. it should be; I'm not gonna lose sleep over UNC paths and such
+	if (buf[0] >= L'a' && buf[0] <= L'z' && buf[1] == L':') buf[0] &= ~32u;
+	return true;
 }
 
 static inline bool os_mprot(void *addr, int len, int fl) {

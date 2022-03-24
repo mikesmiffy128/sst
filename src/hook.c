@@ -1,5 +1,5 @@
 /*
- * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2022 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -97,7 +97,7 @@ void unhook_inline(void *orig) {
 	int len = p[-1];
 	int off = mem_load32(p + len + 1);
 	uchar *q = p + off + 5;
-	memcpy(q, p, 5); // XXX not atomic atm! (does any of it even need to be?)
+	memcpy(q, p, 5); // XXX: not atomic atm! (does any of it even need to be?)
 	FlushInstructionCache(GetCurrentProcess(), q, 5);
 }
 

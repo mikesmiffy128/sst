@@ -22,18 +22,23 @@
 extern u32 _gametype_tag;
 
 #define _gametype_tag_OE		1
-#define _gametype_tag_OrangeBox	2
-#define _gametype_tag_L4D1		4
-#define _gametype_tag_L4D2		8
-#define _gametype_tag_L4DS		16
-#define _gametype_tag_Portal2	32
-#define _gametype_tag_2013		64
+// TODO(compat): detect in con_init, even if just to fail (VEngineServer broke)
+// TODO(compat): buy dmomm in a steam sale to implement and test the above, lol
+#define _gametype_tag_DMoMM		2
+#define _gametype_tag_OrangeBox	4
+#define _gametype_tag_L4D1		8
+#define _gametype_tag_L4D2		16
+#define _gametype_tag_L4DS		32
+#define _gametype_tag_Portal2	64
+#define _gametype_tag_2013		128
 
 #define _gametype_tag_L4D		(_gametype_tag_L4D1 | _gametype_tag_L4D2)
 // XXX: *stupid* naming, refactor later (damn Survivors ruining everything)
 #define _gametype_tag_L4D2x		(_gametype_tag_L4D2 | _gametype_tag_L4DS)
 #define _gametype_tag_L4Dbased \
 	(_gametype_tag_L4D1 | _gametype_tag_L4D2x | _gametype_tag_Portal2)
+#define _gametype_tag_OrangeBoxbased \
+	(_gametype_tag_OrangeBox | _gametype_tag_2013)
 
 #define GAMETYPE_MATCHES(x) !!(_gametype_tag & (_gametype_tag_##x))
 

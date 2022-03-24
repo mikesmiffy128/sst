@@ -23,7 +23,6 @@
 #include "abi.h"
 #include "con_.h"
 #include "extmalloc.h"
-#include "gameinfo.h"
 #include "gametype.h"
 #include "mem.h"
 #include "os.h"
@@ -427,9 +426,6 @@ bool con_init(void *(*f)(const char *, int *), int plugin_ver) {
 			// (which for some other reason also has some vtable changes)
 			if (VCALL(_con_iface, FindVar, "avatarbasemodel")) {
 				_gametype_tag |= _gametype_tag_L4DS;
-				// stupid hack: gameinfo.txt still just says Left 4 Dead 2 but
-				// this is _not_ Left 4 Dead 2, dammit
-				gameinfo_title = "Left 4 Dead: Survivors";
 			}
 			else {
 				_gametype_tag |= _gametype_tag_L4D2;
@@ -441,8 +437,7 @@ bool con_init(void *(*f)(const char *, int *), int plugin_ver) {
 			_gametype_tag |= _gametype_tag_L4D1;
 		}
 		else {
-			con_warn("sst: error: game \"%s\" is unsupported (using "
-						"VEngineCvar007)\n", gameinfo_title);
+			con_warn("sst: error: game is unsupported (using VEngineCvar007)\n");
 			ifacever = 7;
 			goto e;
 		}
@@ -478,7 +473,6 @@ warnoe:	con_warn("sst: error: old engine console support is not implemented\n");
 e:	con_msg("\n\n");
 	con_msg("-- Please include ALL of the following if asking for help:\n");
 	con_msg("--   plugin:     " LONGNAME " v" VERSION "\n");
-	con_msg("--   game:       %s\n", gameinfo_title);
 	con_msg("--   interfaces: %d/%d\n", plugin_ver, ifacever);
 	con_msg("\n\n");
 	return false;
