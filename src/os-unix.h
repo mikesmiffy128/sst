@@ -34,6 +34,8 @@ typedef char os_char;
 #define os_open open
 #define os_access access
 #define os_stat stat
+#define os_mkdir(f) mkdir(f, 0755) // use real mkdir(2) if the mode matters
+#define os_unlink unlink
 #define os_getenv getenv
 #define os_getcwd getcwd
 

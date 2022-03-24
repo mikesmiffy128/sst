@@ -40,6 +40,8 @@ typedef unsigned short os_char;
 // ucrt defines __stat64 to _stat64. we want _wstat64 to be the actual function
 #define _stat64(path, buf) _wstat64(path, buf)
 #define os_stat _stat64
+#define os_mkdir _wmkdir
+#define os_unlink _wunlink
 #define os_getenv _wgetenv
 #define os_getcwd _wgetcwd
 

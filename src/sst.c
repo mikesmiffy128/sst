@@ -17,6 +17,10 @@
 #include <stdbool.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <shlwapi.h>
+#endif
+
 #include "autojump.h"
 #include "con_.h"
 #include "demorec.h"
@@ -30,6 +34,12 @@
 #include "rinput.h"
 #include "vcall.h"
 #include "version.h"
+
+#ifdef _WIN32
+#define fS "S"
+#else
+#define fS "s"
+#endif
 
 #define RGBA(r, g, b, a) (&(struct con_colour){(r), (g), (b), (a)})
 
@@ -146,6 +156,77 @@ static inline void *ownhandle(void) {
 	return dl;
 }
 #endif
+
+#define VDFBASENAME "SourceSpeedrunTools"
+
+DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
+	// note: gamedir doesn't account for if the dll is in a base mod's
+	// directory, although it will yield a valid/working relative path anyway.
+	const os_char *searchdir = ifacever == 3 ?
+			gameinfo_gamedir : gameinfo_bindir;
+	os_char path[PATH_MAX];
+	if (!os_dlfile(ownhandle(), path, sizeof(path) / sizeof(*path))) {
+		// hopefully by this point this won't happen, but, like, never know
+		con_warn("error: failed to get path to plugin\n");
+		return;
+	}
+	os_char relpath[PATH_MAX];
+#ifdef _WIN32
+	if (!PathRelativePathToW(relpath, searchdir, FILE_ATTRIBUTE_DIRECTORY,
+			path, 0)) {
+		con_warn("error: couldn't compute a relative path for some reason\n");
+		return;
+	}
+	// arbitrary aesthetic judgement
+	for (os_char *p = relpath; *p; ++p) if (*p == L'\\') *p = L'/'; 
+#else
+#error TODO(linux): implement this, it's late right now and I can't be bothered
+#endif
+	int len = os_strlen(gameinfo_gamedir);
+	if (len + sizeof("/addons/" VDFBASENAME ".vdf") >
+			sizeof(path) / sizeof(*path)) {
+		con_warn("error: path to VDF is too long\n");
+		return;
+	}
+	memcpy(path, gameinfo_gamedir, len * sizeof(*gameinfo_gamedir));
+	memcpy(path + len, OS_LIT("/addons"), 8 * sizeof(os_char));
+	if (os_mkdir(path) == -1 && errno != EEXIST) {
+		con_warn("error: couldn't create %" fS ": %s\n", path, strerror(errno));
+		return;
+	}
+	memcpy(path + len + sizeof("/addons") - 1,
+			OS_LIT("/") OS_LIT(VDFBASENAME) OS_LIT(".vdf"),
+			sizeof("/" VDFBASENAME ".vdf") * sizeof(os_char));
+	FILE *f = os_fopen(path, OS_LIT("wb"));
+	if (!f) {
+		con_warn("error: couldn't open %" fS ": %s", path, strerror(errno));
+		return;
+	}
+	// XXX: oh, crap, we're clobbering unicode again. welp, let's hope the
+	// theory that the engine is just as bad if not worse is true so that it
+	// doesn't matter.
+	if (fprintf(f, "Plugin { file \"%" fS "\" }\n", relpath) < 0) {
+		con_warn("error: couldn't write to %" fS ": %s", path, strerror(errno));
+		// XXX: ?????? now what
+	}
+	fclose(f);
+}
+
+DEF_CCMD_HERE(sst_autoload_disable, "Stop loading SST on game startup", 0) {
+	os_char path[PATH_MAX];
+	int len = os_strlen(gameinfo_gamedir);
+	if (len + sizeof("/addons/" VDFBASENAME ".vdf") >
+			sizeof(path) / sizeof(*path)) {
+		con_warn("error: path to VDF is too long\n");
+		return;
+	}
+	memcpy(path, gameinfo_gamedir, len * sizeof(*gameinfo_gamedir));
+	memcpy(path + len, OS_LIT("/addons/") OS_LIT(VDFBASENAME) OS_LIT(".vdf"),
+			sizeof("/addons/" VDFBASENAME ".vdf") * sizeof(os_char));
+	if (os_unlink(path) == -1 && errno != ENOENT) {
+		con_warn("warning: couldn't delete %" fS ":%s\n", path, strerror(errno));
+	}
+}
 
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	factory_engine = enginef; factory_server = serverf;
