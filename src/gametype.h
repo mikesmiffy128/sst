@@ -35,6 +35,7 @@ extern u32 _gametype_tag;
 #define _gametype_tag_L4D		(_gametype_tag_L4D1 | _gametype_tag_L4D2)
 // XXX: *stupid* naming, refactor later (damn Survivors ruining everything)
 #define _gametype_tag_L4D2x		(_gametype_tag_L4D2 | _gametype_tag_L4DS)
+#define _gametype_tag_L4Dx		(_gametype_tag_L4D1 | _gametype_tag_L4D2x)
 #define _gametype_tag_L4Dbased \
 	(_gametype_tag_L4D1 | _gametype_tag_L4D2x | _gametype_tag_Portal2)
 #define _gametype_tag_OrangeBoxbased \

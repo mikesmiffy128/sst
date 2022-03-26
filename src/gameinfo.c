@@ -243,11 +243,14 @@ bool gameinfo_init(void *(*ifacef)(const char *, int *)) {
 	typedef char *(*VCALLCONV GetGameDirectory_func)(void *this);
 	GetGameDirectory_func **engclient;
 	int off;
-	if (engclient = ifacef("VEngineClient014", 0)) { // bms, l4d2 2000
+	if (engclient = ifacef("VEngineClient015", 0)) { // portal 2
+		off = 35;
+	}
+	else if (engclient = ifacef("VEngineClient014", 0)) { // bms, l4d2 2000
 		off = 36;
 	}
 	else if (engclient = ifacef("VEngineClient013", 0)) { // ...most things?
-		if (GAMETYPE_MATCHES(L4D2)) off = 36; // they changed it BACK?!?
+		if (GAMETYPE_MATCHES(L4Dx)) off = 36; // l4d2 changed it BACK?!?
 		else off = 35;
 	}
 	else if (engclient = ifacef("VEngineClient012", 0)) { // dmomm, ep1, ...
