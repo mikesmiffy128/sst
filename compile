@@ -10,52 +10,64 @@ esac
 
 mkdir -p .build/include
 
+: "${CC:=clang --target=-i686-pc-linux-gnu -fuse-ld=lld}"
+: "${HOSTCC:=clang -fuse-ld=lld}"
+
 warnings="-Wall -pedantic -Wno-parentheses -Wno-missing-braces"
+
+dbg=0
+if [ "$dbg" = 1 ]; then
+	cflags="-Og -g3"
+	ldflags="-Og -g3"
+else
+	cflags="-O2"
+	ldflags="-O2 -s"
+fi
 
 objs=
 cc() {
 	objs="$objs .build/${1%%.c}.o"
-	clang -m32 -c -O2 -flto -fpic $warnings -I.build/include \
+	$CC -m32 -c -flto -fpic $cflags $warnings -I.build/include \
 		-D_FILE_OFFSET_BITS=64 -DFILE_BASENAME="${1%%.c}" \
 		-o ".build/${1%%.c}.o" "src/$1"
 }
 
 ld() {
-	clang -m32 -shared -O2 -flto -fpic -s -fuse-ld=lld -L.build -ldl -ltier0 \
-		-lvstdlib -o sst.so$objs
+	$CC -m32 -shared -flto -fpic -fno-ident -fuse-ld=lld $ldflags \
+		-L.build -ldl -ltier0 -lvstdlib -o sst.so$objs
 }
 
 src="\
-	autojump.c \
-	con_.c \
-	demorec.c \
-	dbg.c \
-	extmalloc.c \
-	fixes.c \
-	gamedata.c \
-	gameinfo.c \
-	hook.c \
-	kv.c \
-	sst.c \
+	autojump.c
+	con_.c
+	dbg.c 
+	demorec.c
+	extmalloc.c
+	fixes.c
+	gamedata.c
+	gameinfo.c
+	hook.c
+	kv.c
+	sst.c
 	udis86.c"
 
-clang -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/codegen \
+$HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/codegen \
 		src/build/codegen.c src/build/cmeta.c
-clang -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/mkgamedata \
+$HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/mkgamedata \
 		src/build/mkgamedata.c src/kv.c
 .build/codegen `for s in $src; do echo "src/$s"; done`
 .build/mkgamedata gamedata/gamelib.kv gamedata/engine.kv
 for s in $src; do cc "$s"; done
-clang -m32 -shared -fpic -fuse-ld=lld -O0 -w -o .build/libtier0.so src/stubs/tier0.c
-clang -m32 -shared -fpic -fuse-ld=lld -O0 -w -o .build/libvstdlib.so src/stubs/vstdlib.c
+$CC -shared -fpic -fuse-ld=lld -O0 -w -o .build/libtier0.so src/stubs/tier0.c
+$CC -shared -fpic -fuse-ld=lld -O0 -w -o .build/libvstdlib.so src/stubs/vstdlib.c
 ld
 
-clang -fuse-ld=lld -O2 -g3 -include test/test.h -o .build/bitbuf.test test/bitbuf.test.c
+$HOSTCC -O2 -g3 -include test/test.h -o .build/bitbuf.test test/bitbuf.test.c
 .build/bitbuf.test
 # skipping this test on linux for now, since inline hooks aren't compiled in
-#clang -m32 -fuse-ld=lld -O2 -g3 -include test/test.h -o .build/hook.test test/hook.test.c
+#$HOSTCC -m32 -O2 -g3 -include test/test.h -o .build/hook.test test/hook.test.c
 #.build/hook.test
-clang -fuse-ld=lld -O2 -g3 -include test/test.h -o .build/kv.test test/kv.test.c
+$HOSTCC -O2 -g3 -include test/test.h -o .build/kv.test test/kv.test.c
 .build/kv.test
 
 # vi: sw=4 tw=4 noet tw=80 cc=80
