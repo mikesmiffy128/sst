@@ -85,9 +85,9 @@ void fixes_apply(void) {
 	// something...).
 	if (GAMETYPE_MATCHES(L4D2x)) {
 		struct con_var *v = con_findvar("mat_queue_mode");
-		if (v && (v->parent->base.flags & CON_ARCHIVE)) {
+		if (v && !(v->parent->base.flags & CON_ARCHIVE)) { // not already fixed
 			v->parent->base.flags = v->parent->base.flags
-					& ~(CON_DEVONLY | CON_HIDDEN) | CON_ARCHIVE;
+					& ~(CON_HIDDEN | CON_DEVONLY) | CON_ARCHIVE;
 			v->parent->hasmax = true; v->parent->maxval = 0;
 		}
 	}

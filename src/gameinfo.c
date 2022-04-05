@@ -52,8 +52,9 @@ static char title[64] = {0};
 const os_char *gameinfo_bindir = bindir;
 const os_char *gameinfo_gamedir
 #ifdef _WIN32
-	= gamedir; // on linux, the pointer gets directly set in gameinfo_init()
+	= gamedir // on linux, the pointer gets directly set in gameinfo_init()
 #endif
+;
 const os_char *gameinfo_clientlib = clientlib;
 const os_char *gameinfo_serverlib = serverlib;
 const char *gameinfo_title = title;

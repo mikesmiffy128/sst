@@ -306,7 +306,7 @@ static void do_unload(void) {
 		struct CPlugin **plugins = pluginhandler->plugins.m.mem;
 		int n = pluginhandler->plugins.sz;
 		for (struct CPlugin **pp = plugins; pp - plugins < n; ++pp) {
-			if ((*pp)->theplugin = (void *)&plugin_obj) {
+			if ((*pp)->theplugin == (void *)&plugin_obj) {
 				// see comment in CPlugin above. setting this to the real handle
 				// right before the engine tries to unload us allows it to
 				// actually unload us instead of just doing nothing.
