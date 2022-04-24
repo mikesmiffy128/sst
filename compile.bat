@@ -30,7 +30,7 @@ goto :main
 :cc
 for /F %%b in ("%1") do set basename=%%~nb
 set objs=%objs% .build/%basename%.o
-%CC% -m32 -c -flto %cflags% %warnings% -I.build/include -D_CRT_SECURE_NO_WARNINGS ^
+%CC% -m32 -c -flto %cflags% %warnings% -I.build/include -D_CRT_SECURE_NO_WARNINGS -D_DLL ^
 -DFILE_BASENAME=%basename% -o .build/%basename%.o %1 || exit /b
 goto :eof
 
@@ -61,8 +61,14 @@ if "%dbg%"=="1" (
 	call :cc src/dbg.c || exit /b
 	call :cc src/udis86.c || exit /b
 )
-%CC% -shared -flto %ldflags% -Wl,/IMPLIB:.build/sst.lib,/Brepro ^
--L.build -luser32 -ladvapi32 -lshlwapi -ltier0 -lvstdlib -o sst.dll%objs% .build/dll.res || exit /b
+if "%dbg%"=="1" (
+	:: ugh, microsoft.
+	set clibs=-lmsvcrtd -lvcruntimed -lucrtd
+) else (
+	set clibs=-lmsvcrt -lvcruntime -lucrt
+)
+%CC% -shared -flto %ldflags% -Wl,/IMPLIB:.build/sst.lib,/Brepro,/nodefaultlib:libcmt ^
+-L.build %clibs% -luser32 -ladvapi32 -lshlwapi -ltier0 -lvstdlib -o sst.dll%objs% .build/dll.res || exit /b
 :: get rid of another useless file (can we just not create this???)
 del .build\sst.lib
 
