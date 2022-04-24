@@ -33,7 +33,7 @@ Val2// comment\n\
 ";
 static const int sz = sizeof(data) - 1;
 
-TEST("parsing should work with any buffer size", 0) {
+TEST("parsing should work with any buffer size") {
 	for (int chunksz = 3; chunksz <= sz; ++chunksz) {
 		struct kv_parser kvp = {0};
 		// sending data in chunks to test reentrancy

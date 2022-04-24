@@ -1,5 +1,5 @@
 /*
- * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -17,11 +17,22 @@
 #ifndef INC_DBG_H
 #define INC_DBG_H
 
-/* prints out a basic hexadecimal listing of a byte range */
+/*
+ * These functions can all be used for development and debugging but aren't
+ * available to release builds; this header shouldn't even be #included in real
+ * code that's committed to a repo.
+ */
+
+/* Prints out a basic hexadecimal listing of a byte range. */
 void dbg_hexdump(char *name, const void *p, int len);
 
-/* prints out a disassembly of some instructions in memory */
+/* Prints out a disassembly of some instructions in memory. */
 void dbg_asmdump(char *name, const void *p, int len);
+
+#ifdef _WIN32 // at least for now
+/* Returns a function's Ghidra address, assuming default project offsets. */
+void *dbg_toghidra(void *addr);
+#endif
 
 #endif
 

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -13,6 +13,12 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <Windows.h>
+#endif
 
 #include "con_.h"
 #include "intdefs.h"
@@ -45,5 +51,18 @@ void dbg_asmdump(char *name, const void *p, int len) {
 		con_colourmsg(&nice_colour, "  %s\n", ud_insn_asm(&udis));
 	}
 }
+
+#ifdef _WIN32
+usize dbg_toghidra(void *addr) {
+	void *mod;
+	if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+			GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (ushort *)addr,
+			(HMODULE *)&mod/*please leave me alone*/)) {
+		con_warn("dbg_toghidra: couldn't get base address\n");
+		return 0;
+	}
+	return (char *)addr - (char *)mod + 0x10000000;
+}
+#endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

@@ -1,6 +1,6 @@
 /*
  * Copyright © 2021 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -27,8 +27,9 @@
 #include "intdefs.h"
 #include "mem.h"
 #include "os.h"
-#include "udis86.h"
+#include "ppmagic.h"
 #include "vcall.h"
+#include "x86.h"
 
 #define SIGNONSTATE_SPAWN 5 // ready to receive entity packets
 #define SIGNONSTATE_FULL 6 // fully connected, first non-delta packet received
@@ -95,7 +96,6 @@ static void hook_stop_callback(const struct con_cmdargs *args) {
 	orig_stop_callback(args);
 }
 
-
 // The engine allows usermessages up to 255 bytes, we add 2 bytes of overhead,
 // and then there's the leading bits before that too (see create_message)
 static char bb_buf[DEMOREC_CUSTOM_MSG_MAX + 4];
@@ -139,75 +139,59 @@ void demorec_writecustom(void *buf, int len) {
 	bitbuf_reset(&bb);
 }
 
+// XXX: probably want some general foreach-instruction macro once we start doing
+// this kind of hackery in multiple different places
+#define NEXT_INSN(p) do { \
+	int _len = x86_len(p); \
+	if (_len == -1) { \
+		con_warn("demorec: %s: unknown or invalid instruction\n", __func__); \
+		return false; \
+	} \
+	(p) += _len; \
+} while (0)
 
 // This finds the "demorecorder" global variable (the engine-wide CDemoRecorder
 // instance).
-static inline void *find_demorecorder(struct con_cmd *cmd_stop) {
-	// The "stop" command calls the virtual function demorecorder.IsRecording(),
-	// so just look for the load of the "this" pointer
-	struct ud udis;
-	ud_init(&udis);
-	ud_set_mode(&udis, 32);
-	ud_set_input_buffer(&udis, (uchar *)con_getcmdcb(cmd_stop), 32);
-	while (ud_disassemble(&udis)) {
+static inline bool find_demorecorder(struct con_cmd *cmd_stop) {
 #ifdef _WIN32
-		if (ud_insn_mnemonic(&udis) == UD_Imov) {
-			const struct ud_operand *dest = ud_insn_opr(&udis, 0);
-			const struct ud_operand *src = ud_insn_opr(&udis, 1);
-			// looking for a mov from an address into ECX, as per thiscall
-			if (dest->type == UD_OP_REG && dest->base == UD_R_ECX &&
-					src->type == UD_OP_MEM) {
-				return *(void **)src->lval.udword;
-			}
+	uchar *stopcb = (uchar *)con_getcmdcb(cmd_stop);
+	// The "stop" command calls the virtual function demorecorder.IsRecording(),
+	// so just look for the load of the "this" pointer into ECX
+	for (uchar *p = stopcb; p - stopcb < 32;) {
+		if (p[0] == X86_MOVRMW && p[1] == X86_MODRM(0, 1, 5)) {
+			void **indirect = mem_loadptr(p + 2);
+			demorecorder = *indirect;
+			return true;
 		}
+		NEXT_INSN(p);
+	}
 #else
 #warning TODO(linux): implement linux equivalent (cdecl!)
-		return 0;
 #endif
-	}
-	return 0;
+	return false;
 }
 
 // This finds "m_bRecording" and "m_nDemoNumber" using the pointer to the
 // original "StopRecording" demorecorder function.
-static inline bool find_recmembers(void *stop_recording_func) {
-	struct ud udis;
-	ud_init(&udis);
-	ud_set_mode(&udis, 32);
-	// TODO(opt): consider the below: is it really needed? does it matter?
-	// way overshooting the size of the function in bytes to make sure it
-	// accomodates for possible differences in different games. we make sure
-	// to stop early if we find a RET so should be fine
-	ud_set_input_buffer(&udis, (uchar *)stop_recording_func, 200);
-	while (ud_disassemble(&udis)) {
+static inline bool find_recmembers(void *stoprecording) {
 #ifdef _WIN32
-		enum ud_mnemonic_code code = ud_insn_mnemonic(&udis);
-		if (code == UD_Imov) {
-			const struct ud_operand *dest = ud_insn_opr(&udis, 0);
-			const struct ud_operand *src = ud_insn_opr(&udis, 1);
-			// m_nDemoNumber and m_bRecording are both set to 0
-			// looking for movs with immediates equal to 0
-			// the byte immediate refers to m_bRecording
-			if (src->type == UD_OP_IMM && src->lval.ubyte == 0) {
-				if (src->size == 8) {
-					recording = (bool *)mem_offset(demorecorder,
-							dest->lval.udword);
-				}
-				else {
-					demonum = (int *)mem_offset(demorecorder,
-							dest->lval.udword);
-				}
-				if (recording && demonum) return true; // blegh
-			}
+	for (uchar *p = (uchar *)stoprecording; p - (uchar *)stoprecording < 128;) {
+		// m_nDemoNumber = 0 -> mov dword ptr [<reg> + off], 0
+		// XXX: might end up wanting constants for the MRM field masks?
+		if (p[0] == X86_MOVMIW && (p[1] & 0xC0) == 0x80 &&
+				mem_load32(p + 6) == 0) {
+			demonum = mem_offset(demorecorder, mem_load32(p + 2));
 		}
-		else if (code == UD_Iret) {
-			return false;
+		// m_bRecording = false -> mov byte ptr [<reg> + off], 0
+		else if (p[0] == X86_MOVMI8 && (p[1] & 0xC0) == 0x80 && p[6] == 0) {
+			recording = mem_offset(demorecorder, mem_load32(p + 2));
 		}
-#else // linux is probably different here idk
-#warning TODO(linux): implement linux equivalent
-		return false;
-#endif
+		if (recording && demonum) return true; // blegh
+		NEXT_INSN(p);
 	}
+#else // linux is probably different here idk
+#warning TODO(linux): implement linux equivalent (???)
+#endif
 	return false;
 }
 
@@ -215,6 +199,7 @@ static inline bool find_recmembers(void *stop_recording_func) {
 // network packet, wraps it up in the appropriate demo framing format and writes
 // it out to the demo file being recorded.
 static bool find_WriteMessages(void) {
+	// TODO(compat): probably rewrite this to just scan for a call instruction!
 	const uchar *insns = (*(uchar ***)demorecorder)[gamedata_vtidx_RecordPacket];
 	// RecordPacket calls WriteMessages pretty much right away:
 	// 56           push  esi
@@ -228,10 +213,10 @@ static bool find_WriteMessages(void) {
 	// So we just double check the byte pattern...
 	static const uchar bytes[] =
 #ifdef _WIN32
-{0x56, 0x57, 0x8B, 0xF1, 0x8D, 0xBE, 0x8C, 0x06, 0x00, 0x00, 0x57, 0xE8};
+		HEXBYTES(56, 57, 8B, F1, 8D, BE, 8C, 06, 00, 00, 57, E8);
 #else
 #warning This is possibly different on Linux too, have a look!
-{-1, -1, -1, -1, -1, -1};
+		{-1, -1, -1, -1, -1, -1};
 #endif
 	if (!memcmp(insns, bytes, sizeof(bytes))) {
 		ssize off = mem_loadoffset(insns + sizeof(bytes));
@@ -249,21 +234,17 @@ bool demorec_init(void) {
 		con_warn("demorec: missing gamedata entries for this engine\n");
 		return false;
 	}
-
 	cmd_stop = con_findcmd("stop");
 	if (!cmd_stop) { // can *this* even happen? I hope not!
 		con_warn("demorec: couldn't find \"stop\" command\n");
 		return false;
 	}
-
-	demorecorder = find_demorecorder(cmd_stop);
-	if (!demorecorder) {
+	if (!find_demorecorder(cmd_stop)) {
 		con_warn("demorec: couldn't find demo recorder instance\n");
 		return false;
 	}
 
 	void **vtable = *(void ***)demorecorder;
-
 	// XXX: 16 is totally arbitrary here! figure out proper bounds later
 	if (!os_mprot(vtable, 16 * sizeof(void *), PAGE_EXECUTE_READWRITE)) {
 #ifdef _WIN32
@@ -276,7 +257,7 @@ bool demorec_init(void) {
 		return false;
 	}
 
-	if (!find_recmembers(vtable[7])) {
+	if (!find_recmembers(vtable[7])) { // XXX: stop hardcoding this!?
 		con_warn("demorec: couldn't find m_bRecording and m_nDemoNumber\n");
 		return false;
 	}
@@ -299,11 +280,6 @@ bool demorec_custom_init(void) {
 	if (!gamedata_has_vtidx_GetEngineBuildNumber ||
 			!gamedata_has_vtidx_RecordPacket) {
 		con_warn("demorec: custom: missing gamedata entries for this engine\n");
-		return false;
-	}
-	// TODO(featgen): auto-check this factory
-	if (!factory_engine) {
-		con_warn("demorec: missing required interfaces\n");
 		return false;
 	}
 

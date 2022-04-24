@@ -14,7 +14,7 @@ static union {
 } bb_buf;
 static struct bitbuf bb = {bb_buf.buf, 512, 512 * 8, 0, false, false, "test"};
 
-TEST("The possible UB in bitbuf_appendbuf shouldn't trigger horrible bugs", 0) {
+TEST("The possible UB in bitbuf_appendbuf shouldn't trigger horrible bugs") {
 	char unalign[3] = {'X', 'X', 'X'};
 	char _buf[32 + sizeof(bitbuf_cell)];
 	char *buf = _buf;

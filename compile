@@ -40,7 +40,6 @@ ld() {
 src="\
 	autojump.c
 	con_.c
-	dbg.c 
 	demorec.c
 	extmalloc.c
 	fixes.c
@@ -49,7 +48,11 @@ src="\
 	hook.c
 	kv.c
 	sst.c
+	x86.c"
+if [ "$dbg" = 1 ]; then src="$src \
+	dbg.c
 	udis86.c"
+fi
 
 $HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/codegen \
 		src/build/codegen.c src/build/cmeta.c

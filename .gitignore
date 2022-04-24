@@ -3,6 +3,7 @@
 /sst.pdb
 /sst.so
 /compile_commands.json
+/compile_flags.txt
 
 # a place to plonk crap you don't wanna commit yet
 /junk/

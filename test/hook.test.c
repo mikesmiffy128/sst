@@ -4,7 +4,7 @@
 
 #ifdef _WIN32
 
-#include "../src/udis86.c"
+#include "../src/x86.c"
 #include "../src/hook.c"
 
 #include <stdarg.h>
@@ -32,20 +32,20 @@ static int other_hook(int a, int b) {
 	return orig_other_function(a, b) + 5;
 }
 
-TEST("Inline hooks should be able to wrap the original function", 0) {
+TEST("Inline hooks should be able to wrap the original function") {
 	orig_some_function = hook_inline(&some_function, &some_hook);
 	if (!orig_some_function) return false;
 	return some_function(5, 5) == 15;
 }
 
-TEST("Inline hooks should be removable again", 0) {
+TEST("Inline hooks should be removable again") {
 	orig_some_function = hook_inline(&some_function, &some_hook);
 	if (!orig_some_function) return false;
 	unhook_inline(orig_some_function);
 	return some_function(5, 5) == 10;
 }
 
-TEST("Multiple functions should be able to be inline hooked at once", 0) {
+TEST("Multiple functions should be able to be inline hooked at once") {
 	orig_some_function = hook_inline(&some_function, &some_hook);
 	if (!orig_some_function) return false;
 

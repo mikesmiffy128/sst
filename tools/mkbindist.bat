@@ -20,8 +20,11 @@ set name=sst-v%major%.%minor%-BETA-win32
 md TEMP-%name% || exit /B
 copy sst.dll TEMP-%name%\sst.dll || exit /B
 copy dist\LICENCE.windows TEMP-%name%\LICENCE || exit /B
+:: arbitrary dates to make zip deterministic! consider changing on next actual release date!
+powershell (Get-Item TEMP-%name%\sst.dll).LastWriteTime = new-object DateTime 2022, 1, 1, 0, 0, 0
+powershell (Get-Item TEMP-%name%\LICENCE).LastWriteTime = new-object DateTime 2022, 1, 1, 0, 0, 0
 pushd TEMP-%name%
-"%SEVENZIP%" a %name%.zip sst.dll LICENCE || exit /B
+"%SEVENZIP%" a -mtc=off %name%.zip sst.dll LICENCE || exit /B
 move %name%.zip ..\release\%name%.zip
 popd
 rd /s /q TEMP-%name%\ || exit /B

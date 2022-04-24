@@ -39,15 +39,14 @@ goto :eof
 -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c || exit /b
 %HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -ladvapi32 ^
 -o .build/mkgamedata.exe src/build/mkgamedata.c src/kv.c || exit /b
-.build\codegen.exe src/autojump.c src/con_.c src/dbg.c src/demorec.c src/extmalloc.c ^
-src/fixes.c src/gamedata.c src/gameinfo.c src/hook.c src/kv.c src/rinput.c src/sst.c src/udis86.c || exit /b
+.build\codegen.exe src/autojump.c src/con_.c src/demorec.c src/extmalloc.c src/fixes.c ^
+src/gamedata.c src/gameinfo.c src/hook.c src/kv.c src/rinput.c src/sst.c src/x86.c || exit /b
 .build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv || exit /b
 llvm-rc /FO .build\dll.res src\dll.rc || exit /b
 %CC% -shared -O0 -w -o .build/tier0.dll src/stubs/tier0.c
 %CC% -shared -O0 -w -o .build/vstdlib.dll src/stubs/vstdlib.c
 call :cc src/autojump.c || exit /b
 call :cc src/con_.c || exit /b
-call :cc src/dbg.c || exit /b
 call :cc src/demorec.c || exit /b
 call :cc src/extmalloc.c || exit /b
 call :cc src/fixes.c || exit /b
@@ -57,7 +56,11 @@ call :cc src/hook.c || exit /b
 call :cc src/kv.c || exit /b
 call :cc src/rinput.c || exit /b
 call :cc src/sst.c || exit /b
-call :cc src/udis86.c || exit /b
+call :cc src/x86.c || exit /b
+if "%dbg%"=="1" (
+	call :cc src/dbg.c || exit /b
+	call :cc src/udis86.c || exit /b
+)
 %CC% -shared -flto %ldflags% -Wl,/IMPLIB:.build/sst.lib,/Brepro ^
 -L.build -luser32 -ladvapi32 -lshlwapi -ltier0 -lvstdlib -o sst.dll%objs% .build/dll.res || exit /b
 :: get rid of another useless file (can we just not create this???)

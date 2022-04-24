@@ -21,7 +21,7 @@
 #include "intdefs.h"
 #include "mem.h"
 #include "os.h"
-#include "udis86.h"
+#include "x86.h"
 
 // Warning: half-arsed hacky implementation (because that's all we really need)
 // Almost certainly breaks in some weird cases. Oh well! Most of the time,
@@ -39,50 +39,47 @@ static void setrwx(void) {
 	os_mprot(trampolines, sizeof(trampolines), PAGE_EXECUTE_READWRITE);
 }
 
-#define RELJMP 0xE9 // the first byte of a 5-byte jmp
-
 void *hook_inline(void *func_, void *target) {
 	uchar *func = func_;
 	// dumb hack: rather than correcting jmp offsets and having to painstakingly
 	// track them all, just look for the underlying thing being jmp-ed to and
 	// hook _that_.
-	while (*func == RELJMP) func += mem_loadoffset(func + 1) + 5;
+	while (*func == X86_JMPIW) func += mem_loadoffset(func + 1) + 5;
 	if (!os_mprot(func, 5, PAGE_EXECUTE_READWRITE)) return false;
-	struct ud udis;
-	ud_init(&udis);
-	ud_set_mode(&udis, 32);
-	// max insn length is 15, we overwrite 5, so max to copy is 4 + 15 = 19
-	ud_set_input_buffer(&udis, func, 19);
 	int len = 0;
-	do {
-		ud_disassemble(&udis); // assume we don't run out of bytes
-		// TODO(opt): this check should probably be gone, keeping it to make dev
-		// life easier/less crashy. Really, we should just refrain from hooking
-		// things that immediately call or branch (als, immediate jump is
-		// already handled above).
-		if (ud_insn_mnemonic(&udis) == UD_Ijmp ||
-				ud_insn_mnemonic(&udis) == UD_Icall) {
-			con_warn("hook_inline: jmp/call adjustment NYI\n");
-			return 0;
+	for (;;) {
+		if (func[len] == X86_CALL) {
+			con_warn("hook_inline: can't trampoline call instructions\n");
+			return false;
 		}
-		len += ud_insn_len(&udis);
-	} while (len < 5);
+		int ilen = x86_len(func + len);
+		if (ilen == -1) {
+			con_warn("hook_inline: unknown or invalid instruction\n");
+			return false;
+		}
+		len += ilen;
+		if (len >= 5) break;
+		if (func[len] == X86_JMPIW) {
+			con_warn("hook_inline: can't trampoline jmp instructions\n");
+			return false;
+		}
+	}
 	// for simplicity, just bump alloc the trampoline. no need to free anyway
-	if (nexttrampoline - trampolines > sizeof(trampolines) - len - 6) goto nospc;
+	if (nexttrampoline - trampolines > sizeof(trampolines) - len - 6) goto nosp;
 	uchar *trampoline = (uchar *)InterlockedExchangeAdd(
 			(volatile long *)&nexttrampoline, len + 6);
 	// avoid TOCTOU
 	if (trampoline - trampolines > sizeof(trampolines) - len - 6) {
-nospc:	con_warn("hook_inline: out of trampoline space\n");
+nosp:	con_warn("hook_inline: out of trampoline space\n");
 		return 0;
 	}
 	*trampoline++ = len; // stick length in front for quicker unhooking
 	memcpy(trampoline, func, len);
-	trampoline[len] = RELJMP;
+	trampoline[len] = X86_JMPIW;
 	uint diff = func - (trampoline + 5); // goto the continuation
 	memcpy(trampoline + len + 1, &diff, 4);
 	uchar jmp[8];
-	jmp[0] = RELJMP;
+	jmp[0] = X86_JMPIW;
 	diff = (uchar *)target - (func + 5); // goto the hook target
 	memcpy(jmp + 1, &diff, 4);
 	// pad with original bytes so we can do an 8-byte atomic write

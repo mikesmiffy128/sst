@@ -1,4 +1,4 @@
-/* XXX: THIS FILE SHOULD BE CALLED `con.h` BUT WINDOWS IS STUPID */
+/* THIS FILE SHOULD BE CALLED `con.h` BUT WINDOWS IS STUPID */
 /*
  * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
  *
@@ -40,7 +40,7 @@ struct con_cmdargs {
 	const char *argv[CON_CMD_MAX_ARGC];
 };
 
-/* an ARGB colour, passed to con_colourmsg */
+/* an RGBA colour, passed to con_colourmsg */
 struct con_colour {
 	union {
 		struct { u8 r, g, b, a; };
@@ -236,7 +236,11 @@ extern void *_con_vtab_iconvar[];
 		.parent = &_cvar_##name_, /* bizarre, but how the engine does it */ \
 		.defaultval = _Generic(value, char *: value, int: #value, \
 				float: #value), \
-		.strlen = _Generic(value, char *: sizeof(value), \
+		/* N.B. the NOLINT comment below isn't for you, the reader, it's for the
+		   computer, because clangd decided the only way to turn off a bogus
+		   warning is to write a bogus comment. Also note, this comment you're
+		   reading now isn't very useful either, I'm just angry. */ \
+		.strlen = _Generic(value, char *: sizeof(value), /*NOLINT*/ \
 				default: sizeof(#value)), \
 		.fval = _Generic(value, char *: 0, int: value, float: value), \
 		.ival = _Generic(value, char *: 0, int: value, float: (int)value), \

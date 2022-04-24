@@ -45,6 +45,7 @@ typedef char os_char;
 
 #define os_dlsym dlsym
 
+#ifdef __linux__
 static inline bool os_dlfile(void *m, char *buf, int sz) {
 	// NOTE: this might be linux/glibc-specific (I haven't checked every
 	// implementation). this is fine as we don't use it in any build-time code,
@@ -54,6 +55,7 @@ static inline bool os_dlfile(void *m, char *buf, int sz) {
 	if (ssz > sz) { errno = ENAMETOOLONG; return false; }
 	memcpy(buf, lm->l_name, ssz); return true;
 }
+#endif
 
 // unix mprot flags are much nicer but cannot be defined in terms of the windows
 // ones, so we use the windows ones and define them in terms of the unix ones.

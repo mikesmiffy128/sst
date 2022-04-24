@@ -1,4 +1,4 @@
-/* XXX: THIS FILE SHOULD BE CALLED `con.c` BUT WINDOWS IS STUPID */
+/* THIS FILE SHOULD BE CALLED `con.c` BUT WINDOWS IS STUPID */
 /*
  * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
  *

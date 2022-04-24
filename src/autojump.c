@@ -1,5 +1,5 @@
 /*
- * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -30,29 +30,18 @@ DEF_CVAR(sst_autojump, "Jump upon hitting the ground while holding space", 0,
 
 struct vec3f { float x, y, z; };
 struct CMoveData {
-	bool firstrun : 1;
-	bool gamecodemoved : 1;
+	bool firstrun : 1, gamecodemoved : 1;
 	ulong playerhandle;
 	int impulse;
-	struct vec3f viewangles;
-	struct vec3f absviewangles;
-	int buttons;
-	int oldbuttons;
-	float mv_forward;
-	float mv_side;
-	float mv_up;
-	float maxspeed;
-	float clientmaxspeed;
-	struct vec3f vel;
-	struct vec3f angles;
-	struct vec3f oldangles;
+	struct vec3f viewangles, absviewangles;
+	int buttons, oldbuttons;
+	float mv_forward, mv_side, mv_up;
+	float maxspeed, clmaxspeed;
+	struct vec3f vel, angles, oldangles;
 	float out_stepheight;
-	struct vec3f out_wishvel;
-	struct vec3f out_jumpvel;
-	struct vec3f constraint_center;
-	float constraint_radius;
-	float constraint_width;
-	float constraint_speedfactor;
+	struct vec3f out_wishvel, out_jumpvel;
+	struct vec3f constraint_centre;
+	float constraint_radius, constraint_width, constraint_speedfactor;
 	struct vec3f origin;
 };
 
