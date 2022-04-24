@@ -18,7 +18,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <d3d9.h>
+#endif
+
 #include "con_.h"
+#include "factory.h"
 #include "gametype.h"
 
 static void chflags(const char *name, int unset, int set) {
@@ -91,6 +96,28 @@ void fixes_apply(void) {
 			v->parent->hasmax = true; v->parent->maxval = 0;
 		}
 	}
+
+#ifdef _WIN32
+	// L4D2 has broken (dark) rendering on Intel iGPUs unless
+	// mat_tonemapping_occlusion_use_stencil is enabled. Supposedly Valve used
+	// to detect device IDs to enable it on, but new devices are still broken,
+	// so just blanket enable it if the primary adapter is Intel, since it
+	// doesn't seem to break anything else anyway.
+	if (GAMETYPE_MATCHES(L4D2x)) {
+		struct con_var *v = con_findvar("mat_tonemapping_occlusion_use_stencil");
+		if (!v || con_getvari(v)) goto e;
+		// considered getting d3d9 object from actual game, but it's way easier
+		// to just create another one
+		IDirect3D9 *d3d9 = Direct3DCreate9(D3D_SDK_VERSION);
+		if (!d3d9) goto e;
+		D3DADAPTER_IDENTIFIER9 ident;
+		if (IDirect3D9_GetAdapterIdentifier(d3d9, 0, 0, &ident) == D3D_OK &&
+				ident.VendorId == 0x8086) { // neat vendor id, btw!
+			con_setvari(v, 1);
+		}
+		IDirect3D9_Release(d3d9);
+e:;	}
+#endif
 
 	// For some reason, L4D1 hides mat_monitorgamma and doesn't archive it.
 	// This means on every startup it's necessary to manually set non-default
