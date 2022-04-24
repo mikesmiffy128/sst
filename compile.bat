@@ -31,7 +31,7 @@ goto :main
 for /F %%b in ("%1") do set basename=%%~nb
 set objs=%objs% .build/%basename%.o
 %CC% -m32 -c -flto %cflags% %warnings% -I.build/include -D_CRT_SECURE_NO_WARNINGS -D_DLL ^
--DFILE_BASENAME=%basename% -o .build/%basename%.o %1 || exit /b
+-DWIN32_LEAN_AND_MEAN -DNOMINMAX -DFILE_BASENAME=%basename% -o .build/%basename%.o %1 || exit /b
 goto :eof
 
 :main

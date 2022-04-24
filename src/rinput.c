@@ -17,8 +17,6 @@
 // NOTE: compiled on Windows only. All Linux Source releases are new enough to
 // have raw input already.
 
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
 #include <stdbool.h>
 #include <Windows.h>
 
