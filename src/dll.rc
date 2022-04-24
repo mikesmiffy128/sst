@@ -19,7 +19,7 @@ BEGIN
 			VALUE "FileDescription", LONGNAME
 			VALUE "FileVersion", VERSION
 			VALUE "InternalName", NAME
-			VALUE "LegalCopyright", "Copyright (C) 2021 Michael Smith and others. All rights reserved."
+			VALUE "LegalCopyright", "Copyright (C) 2022 multiple authors. Refer to the included LICENCE file."
 			VALUE "ProductName", LONGNAME
 			VALUE "ProductVersion", VERSION
 		END
