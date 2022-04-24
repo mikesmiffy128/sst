@@ -24,6 +24,7 @@
 #include "hook.h"
 #include "factory.h"
 #include "gamedata.h"
+#include "gameinfo.h"
 #include "intdefs.h"
 #include "mem.h"
 #include "os.h"
@@ -31,112 +32,101 @@
 #include "vcall.h"
 #include "x86.h"
 
-#define SIGNONSTATE_SPAWN 5 // ready to receive entity packets
-#define SIGNONSTATE_FULL 6 // fully connected, first non-delta packet received
-
-typedef void (*VCALLCONV f_StopRecording)(void *);
-typedef void (*VCALLCONV f_SetSignonState)(void *, int);
-
-static void *demorecorder;
-static struct con_cmd *cmd_stop;
-static bool *recording;
-static int *demonum;
-static f_SetSignonState orig_SetSignonState;
-static f_StopRecording orig_StopRecording;
-static con_cmdcb orig_stop_callback;
-static int nbits_msgtype;
-static int nbits_datalen;
-
-static int auto_demonum = 1;
-static bool auto_recording = false;
-
-DEF_CVAR(sst_autorecord, "Continue recording demos through map changes", 1,
+DEF_CVAR(sst_autorecord, "Continue recording demos after server disconnects", 1,
 		CON_ARCHIVE | CON_HIDDEN)
 
-static void VCALLCONV hook_StopRecording(void *this) {
-	// This hook will get called twice per loaded save (in most games/versions,
-	// at least, according to SAR people): first with m_bLoadgame set to false
-	// and then with it set to true. This will set m_nDemoNumber to 0 and
-	// m_bRecording to false
-	orig_StopRecording(this);
+static void *demorecorder;
+static int *demonum;
+static bool *recording;
+static bool wantstop = false;
 
-	if (auto_recording && con_getvari(sst_autorecord)) {
-		*demonum = auto_demonum;
-		*recording = true;
-	}
-	else {
-		auto_demonum = 1;
-		auto_recording = false;
-	}
-}
+#define SIGNONSTATE_NEW 3
+#define SIGNONSTATE_SPAWN 5
+#define SIGNONSTATE_FULL 6
 
-static void VCALLCONV hook_SetSignonState(void *this, int state) {
-	// SIGNONSTATE_FULL *may* happen twice per load, depending on the game, so
-	// use SIGNONSTATE_SPAWN for demo number increase
-	if (state == SIGNONSTATE_SPAWN && auto_recording) auto_demonum++;
-	// Starting a demo recording will call this function with SIGNONSTATE_FULL
-	// After a load, the engine's demo recorder will only start recording when
-	// it reaches this state, so this is a good time to set the flag if needed
-	else if (state == SIGNONSTATE_FULL) {
-		// Changing sessions may unset the recording flag (or so says NeKzor),
-		// so if we want to be recording, we want to tell the engine to record.
-		// But also, if the engine is already recording, we want our state to
-		// reflect *that*. IOW, if either thing is set, also set the other one.
-		auto_recording |= *recording; *recording = auto_recording;
-
-		// FIXME: this will override demonum incorrectly if the plugin is
-		// loaded while demos are already being recorded
-		if (auto_recording) *demonum = auto_demonum;
+typedef void (*VCALLCONV SetSignonState_func)(void *, int);
+static SetSignonState_func orig_SetSignonState;
+static void VCALLCONV hook_SetSignonState(void *this_, int state) {
+	struct CDemoRecorder *this = this_;
+	// apparently NEW only *sometimes* bumps the demo num - prevent this!
+	if (state == SIGNONSTATE_NEW) {
+		int oldnum = *demonum;
+		orig_SetSignonState(this, state);
+		*demonum = oldnum;
+		return;
 	}
+	// SPAWN always fires once every load, so use that to bump demonum instead
+	if (state == SIGNONSTATE_SPAWN) ++*demonum;
+	// dumb hack: game actually creates the demo file on FULL. we set demonum to
+	// 0 in the record command hook so that it gets incremented to 1 on SPAWN.
+	// if it's still 0 here, bump it up to 1 real quick!
+	else if (state == SIGNONSTATE_FULL && *demonum == 0) *demonum = 1;
 	orig_SetSignonState(this, state);
 }
 
-static void hook_stop_callback(const struct con_cmdargs *args) {
-	auto_recording = false;
-	orig_stop_callback(args);
+typedef void (*VCALLCONV StopRecording_func)(void *);
+static StopRecording_func orig_StopRecording;
+static void VCALLCONV hook_StopRecording(void *this) {
+	// This can be called any number of times in a row, generally twice per load
+	// and once per explicit disconnect. Each time the engine sets demonum to 0
+	// and recording to false.
+	bool wasrecording = *recording;
+	int lastnum = *demonum;
+	orig_StopRecording(this);
+	// If the user didn't specifically request the stop, tell the engine to
+	// start recording again as soon as it can.
+	if (wasrecording && !wantstop && con_getvari(sst_autorecord)) {
+		*recording = true;
+		*demonum = lastnum;
+	}
 }
 
-// The engine allows usermessages up to 255 bytes, we add 2 bytes of overhead,
-// and then there's the leading bits before that too (see create_message)
-static char bb_buf[DEMOREC_CUSTOM_MSG_MAX + 4];
-static struct bitbuf bb = {
-	bb_buf, sizeof(bb_buf), sizeof(bb_buf) * 8, 0, false, false, "SST"
-};
+static struct con_cmd *cmd_record, *cmd_stop;
+static con_cmdcb orig_record_cb, orig_stop_cb;
 
-static void create_message(struct bitbuf *msg, const void *buf, int len) {
-	// The way we pack our custom demo data is via a user message packet with
-	// type "HudText" - this causes the client to do a text lookup which will
-	// simply silently fail on invalid keys. By making the first byte null
-	// (creating an empty string), we get the rest of the packet to stick in
-	// whatever other data we want.
-	//
-	// Notes from Uncrafted:
-	// > But yeah the data you want to append is as follows:
-	// > - 6 bits (5 bits in older versions) for the message type - should be 23
-	// >   for user message
-	bitbuf_appendbits(msg, 23, nbits_msgtype);
-	// > - 1 byte for the user message type - should be 2 for HudText
-	bitbuf_appendbyte(msg, 2);
-	// > - ~~an int~~ 11 or 12 bits for the length of your data in bits,
-	// NOTE: this assumes len <= 254
-	bitbuf_appendbits(msg, len * 8, nbits_datalen);
-	// > - your data
-	// [first the aforementioned null byte, plus an arbitrary marker byte to
-	// avoid confusion when parsing the demo later...
-	bitbuf_appendbyte(msg, 0);
-	bitbuf_appendbyte(msg, 0xAC);
-	// ... and then just the data itself]
-	bitbuf_appendbuf(msg, buf, len);
-	// Thanks Uncrafted, very cool!
+static void hook_record_cb(const struct con_cmdargs *args) {
+	bool was = *recording;
+	if (!was && args->argc == 2 || args->argc == 3) {
+		// safety check: make sure a directory exists, otherwise recording
+		// silently fails
+		const char *arg = args->argv[1];
+		const char *lastslash = 0;
+		for (const char *p = arg; *p; ++p) {
+#ifdef _WIN32
+			if (*p == '/' || *p == '\\') lastslash = p;
+#else
+			if (*p == '/') lastslash = p;
+#endif
+		}
+		if (lastslash) {
+			int argdirlen = lastslash - arg;
+			int gdlen = os_strlen(gameinfo_gamedir);
+			if (gdlen + 1 + argdirlen < PATH_MAX) { // if not, too bad
+				os_char dir[PATH_MAX], *q = dir;
+				memcpy(q, gameinfo_gamedir, gdlen * sizeof(gameinfo_gamedir));
+				q += gdlen;
+				*q++ = OS_LIT('/');
+				// ascii->wtf16 (probably turns into memcpy() on linux)
+				for (const char *p = arg; p - arg < argdirlen; ++p, ++q) {
+					*q = (uchar)*p;
+				}
+				q[argdirlen] = OS_LIT('\0');
+				if (os_access(dir, X_OK) == -1) {
+					con_warn("ERROR: can't record demo: subdirectory %.*s "
+							"doesn't exist\n", argdirlen, arg);
+					return;
+				}
+			}
+		}
+	}
+	orig_record_cb(args);
+	if (!was && *recording) *demonum = 0; // see SetSignonState comment above
 }
 
-typedef void (*VCALLCONV WriteMessages_func)(void *this, struct bitbuf *msg);
-static WriteMessages_func WriteMessages = 0;
-
-void demorec_writecustom(void *buf, int len) {
-	create_message(&bb, buf, len);
-	WriteMessages(demorecorder, &bb);
-	bitbuf_reset(&bb);
+static void hook_stop_cb(const struct con_cmdargs *args) {
+	wantstop = true;
+	orig_stop_cb(args);
+	wantstop = false;
 }
 
 // XXX: probably want some general foreach-instruction macro once we start doing
@@ -154,10 +144,9 @@ void demorec_writecustom(void *buf, int len) {
 // instance).
 static inline bool find_demorecorder(struct con_cmd *cmd_stop) {
 #ifdef _WIN32
-	uchar *stopcb = (uchar *)con_getcmdcb(cmd_stop);
 	// The "stop" command calls the virtual function demorecorder.IsRecording(),
 	// so just look for the load of the "this" pointer into ECX
-	for (uchar *p = stopcb; p - stopcb < 32;) {
+	for (uchar *p = (uchar *)orig_stop_cb; p - (uchar *)orig_stop_cb < 32;) {
 		if (p[0] == X86_MOVRMW && p[1] == X86_MODRM(0, 1, 5)) {
 			void **indirect = mem_loadptr(p + 2);
 			demorecorder = *indirect;
@@ -195,6 +184,117 @@ static inline bool find_recmembers(void *stoprecording) {
 	return false;
 }
 
+bool demorec_init(void) {
+	if (!gamedata_has_vtidx_StopRecording) {
+		con_warn("demorec: missing gamedata entries for this engine\n");
+		return false;
+	}
+	cmd_record = con_findcmd("record");
+	if (!cmd_record) { // can *this* even happen? I hope not!
+		con_warn("demorec: couldn't find \"record\" command\n");
+		return false;
+	}
+	orig_record_cb = con_getcmdcb(cmd_record);
+	cmd_stop = con_findcmd("stop");
+	if (!cmd_stop) {
+		con_warn("demorec: couldn't find \"stop\" command\n");
+		return false;
+	}
+	orig_stop_cb = con_getcmdcb(cmd_stop);
+	if (!find_demorecorder(cmd_stop)) {
+		con_warn("demorec: couldn't find demo recorder instance\n");
+		return false;
+	}
+
+	void **vtable = *(void ***)demorecorder;
+	// XXX: 16 is totally arbitrary here! figure out proper bounds later
+	if (!os_mprot(vtable, 16 * sizeof(void *), PAGE_EXECUTE_READWRITE)) {
+#ifdef _WIN32
+		char err[128];
+		OS_WINDOWS_ERROR(err);
+#else
+		const char *err = strerror(errno);
+#endif
+		con_warn("demorec: couldn't unprotect CDemoRecorder vtable: %s\n", err);
+		return false;
+	}
+	if (!find_recmembers(vtable[gamedata_vtidx_StopRecording])) {
+		con_warn("demorec: couldn't find m_bRecording and m_nDemoNumber\n");
+		return false;
+	}
+
+	orig_SetSignonState = (SetSignonState_func)hook_vtable(vtable,
+			gamedata_vtidx_SetSignonState, (void *)&hook_SetSignonState);
+	orig_StopRecording = (StopRecording_func)hook_vtable(vtable,
+			gamedata_vtidx_StopRecording, (void *)&hook_StopRecording);
+
+	orig_record_cb = cmd_record->cb; cmd_record->cb = &hook_record_cb;
+	orig_stop_cb = cmd_stop->cb; cmd_stop->cb = &hook_stop_cb;
+
+	sst_autorecord->base.flags &= ~CON_HIDDEN;
+	return true;
+}
+
+void demorec_end(void) {
+	// avoid dumb edge case if someone somehow records and immediately unloads
+	if (*recording && *demonum == 0) *demonum = 1;
+	void **vtable = *(void ***)demorecorder;
+	unhook_vtable(vtable, gamedata_vtidx_SetSignonState,
+			(void *)orig_SetSignonState);
+	unhook_vtable(vtable, gamedata_vtidx_StopRecording,
+			(void *)orig_StopRecording);
+	cmd_record->cb = orig_record_cb;
+	cmd_stop->cb = orig_stop_cb;
+}
+
+// custom data writing stuff is a separate feature, defined below. it we can't
+// find WriteMessage, we can still probably do the auto recording stuff above
+
+static int nbits_msgtype;
+static int nbits_datalen;
+
+// The engine allows usermessages up to 255 bytes, we add 2 bytes of overhead,
+// and then there's the leading bits before that too (see create_message)
+static char bb_buf[DEMOREC_CUSTOM_MSG_MAX + 4];
+static struct bitbuf bb = {
+	bb_buf, sizeof(bb_buf), sizeof(bb_buf) * 8, 0, false, false, "SST"
+};
+
+static void create_message(struct bitbuf *msg, const void *buf, int len) {
+	// The way we pack our custom demo data is via a user message packet with
+	// type "HudText" - this causes the client to do a text lookup which will
+	// simply silently fail on invalid keys. By making the first byte null
+	// (creating an empty string), we get the rest of the packet to stick in
+	// whatever other data we want.
+	//
+	// Notes from Uncrafted:
+	// > But yeah the data you want to append is as follows:
+	// > - 6 bits (5 bits in older versions) for the message type - should be 23
+	// >   for user message
+	bitbuf_appendbits(msg, 23, nbits_msgtype);
+	// > - 1 byte for the user message type - should be 2 for HudText
+	bitbuf_appendbyte(msg, 2);
+	// > - ~~an int~~ 11 or 12 bits for the length of your data in bits,
+	bitbuf_appendbits(msg, len * 8, nbits_datalen); // NOTE: assuming len <= 254
+	// > - your data
+	// [first the aforementioned null byte, plus an arbitrary marker byte to
+	// avoid confusion when parsing the demo later...
+	bitbuf_appendbyte(msg, 0);
+	bitbuf_appendbyte(msg, 0xAC);
+	// ... and then just the data itself]
+	bitbuf_appendbuf(msg, buf, len);
+	// Thanks Uncrafted, very cool!
+}
+
+typedef void (*VCALLCONV WriteMessages_func)(void *this, struct bitbuf *msg);
+static WriteMessages_func WriteMessages = 0;
+
+void demorec_writecustom(void *buf, int len) {
+	create_message(&bb, buf, len);
+	WriteMessages(demorecorder, &bb);
+	bitbuf_reset(&bb);
+}
+
 // This finds the CDemoRecorder::WriteMessages() function, which takes a raw
 // network packet, wraps it up in the appropriate demo framing format and writes
 // it out to the demo file being recorded.
@@ -228,54 +328,6 @@ static bool find_WriteMessages(void) {
 	return false;
 }
 
-bool demorec_init(void) {
-	if (!gamedata_has_vtidx_SetSignonState ||
-			!gamedata_has_vtidx_StopRecording) {
-		con_warn("demorec: missing gamedata entries for this engine\n");
-		return false;
-	}
-	cmd_stop = con_findcmd("stop");
-	if (!cmd_stop) { // can *this* even happen? I hope not!
-		con_warn("demorec: couldn't find \"stop\" command\n");
-		return false;
-	}
-	if (!find_demorecorder(cmd_stop)) {
-		con_warn("demorec: couldn't find demo recorder instance\n");
-		return false;
-	}
-
-	void **vtable = *(void ***)demorecorder;
-	// XXX: 16 is totally arbitrary here! figure out proper bounds later
-	if (!os_mprot(vtable, 16 * sizeof(void *), PAGE_EXECUTE_READWRITE)) {
-#ifdef _WIN32
-		char err[128];
-		OS_WINDOWS_ERROR(err);
-#else
-		const char *err = strerror(errno);
-#endif
-		con_warn("demorec: couldn't unprotect CDemoRecorder vtable: %s\n", err);
-		return false;
-	}
-
-	if (!find_recmembers(vtable[7])) { // XXX: stop hardcoding this!?
-		con_warn("demorec: couldn't find m_bRecording and m_nDemoNumber\n");
-		return false;
-	}
-
-	orig_SetSignonState = (f_SetSignonState)hook_vtable(vtable,
-			gamedata_vtidx_SetSignonState, (void *)&hook_SetSignonState);
-	orig_StopRecording = (f_StopRecording)hook_vtable(vtable,
-			gamedata_vtidx_StopRecording, (void *)&hook_StopRecording);
-
-	orig_stop_callback = cmd_stop->cb;
-	cmd_stop->cb = &hook_stop_callback;
-
-	sst_autorecord->base.flags &= ~CON_HIDDEN;
-	return true;
-}
-
-// make custom data a separate feature so we don't lose autorecording if we
-// can't find the WriteMessage stuff
 bool demorec_custom_init(void) { 
 	if (!gamedata_has_vtidx_GetEngineBuildNumber ||
 			!gamedata_has_vtidx_RecordPacket) {
@@ -317,15 +369,6 @@ bool demorec_custom_init(void) {
 	// }
 	
 	return find_WriteMessages();
-}
-
-void demorec_end(void) {
-	void **vtable = *(void ***)demorecorder;
-	unhook_vtable(vtable, gamedata_vtidx_SetSignonState,
-			(void *)orig_SetSignonState);
-	unhook_vtable(vtable, gamedata_vtidx_StopRecording,
-			(void *)orig_StopRecording);
-	cmd_stop->cb = orig_stop_callback;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
