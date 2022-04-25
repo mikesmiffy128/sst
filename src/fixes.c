@@ -125,6 +125,13 @@ static void l4d1specific(void) {
 	// values via the menu. This change here brings it in line with pretty much
 	// all other Source games for convenience.
 	chflags("mat_monitorgamma", CON_HIDDEN | CON_DEVONLY, CON_ARCHIVE);
+
+	// Very early versions of L4D1 have a bunch of useless console spam. Setting
+	// these hidden variables to 0 gets rid of it.
+	struct con_var *v = con_findvar("ui_l4d_debug");
+	if (v) con_setvari(v, 0);
+	v = con_findvar("mm_l4d_debug");
+	if (v) con_setvari(v, 0);
 }
 
 void fixes_apply(void) {
