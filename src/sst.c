@@ -30,6 +30,7 @@
 #include "gameinfo.h"
 #include "gametype.h"
 #include "hook.h"
+#include "nosleep.h"
 #include "os.h"
 #include "rinput.h"
 #include "vcall.h"
@@ -72,7 +73,8 @@ static void *clientlib = 0;
 // more source spaghetti wow!
 static void VCALLCONV SetCommandClient(void *this, int i) { con_cmdclient = i; }
 
-ifacefactory factory_client = 0, factory_server = 0, factory_engine = 0;
+ifacefactory factory_client = 0, factory_server = 0, factory_engine = 0,
+		factory_inputsystem = 0;
 
 // TODO(featgen): I wanted some nice fancy automatic feature system that
 // figures out the dependencies at build time and generates all the init glue
@@ -81,6 +83,7 @@ ifacefactory factory_client = 0, factory_server = 0, factory_engine = 0;
 static bool has_autojump = false;
 static bool has_demorec = false;
 static bool has_demorec_custom = false;
+static bool has_nosleep = false;
 #ifdef _WIN32
 static bool has_rinput = false;
 #endif
@@ -205,9 +208,9 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 	// XXX: oh, crap, we're clobbering unicode again. welp, let's hope the
 	// theory that the engine is just as bad if not worse is true so that it
 	// doesn't matter.
-	if (fprintf(f, "Plugin { file \"%" fS "\" }\n", relpath) < 0) {
+	if (fprintf(f, "Plugin { file \"%" fS "\" }\n", relpath) < 0 ||
+			fflush(f) == -1) {
 		con_warn("error: couldn't write to %" fS ": %s", path, strerror(errno));
-		// XXX: ?????? now what
 	}
 	fclose(f);
 }
@@ -230,9 +233,6 @@ DEF_CCMD_HERE(sst_autoload_disable, "Stop loading SST on game startup", 0) {
 
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	factory_engine = enginef; factory_server = serverf;
-#ifndef __linux__
-	void *clientlib = 0;
-#endif
 	if (!con_init(enginef, ifacever)) return false;
 	if (!gameinfo_init(enginef)) { con_disconnect(); return false; }
 	const void **p = vtable_firstdiff;
@@ -250,28 +250,43 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	*p   = (void *)&nop_p_v;		  // OnEdictFreed
 
 #ifdef _WIN32
-	//if (gameinfo_serverlib) serverlib = GetModuleHandleW(gameinfo_serverlib);
-	if (gameinfo_clientlib) clientlib = GetModuleHandleW(gameinfo_clientlib);
+	//serverlib = GetModuleHandleW(gameinfo_serverlib);
+	void *clientlib = GetModuleHandleW(gameinfo_clientlib);
 #else
 	// Linux Source load order seems to be different to the point where if we
 	// +plugin_load or use a vdf then RTLD_NOLOAD won't actually find these, so
 	// we have to just dlopen them normally - and then remember to decrement the
 	// refcount again later in do_unload() so nothing gets leaked
-	//if (gameinfo_serverlib) serverlib = dlopen(gameinfo_serverlib, 0);
-	if (gameinfo_clientlib) clientlib = dlopen(gameinfo_clientlib, 0);
+	//serverlib = dlopen(gameinfo_serverlib, RTLD_NOW);
+	clientlib = dlopen(gameinfo_clientlib, RTLD_NOW);
 #endif
 	if (!clientlib) {
 		con_warn("sst: warning: couldn't get the game's client library\n");
-		goto nc;
 	}
-	factory_client = (ifacefactory)os_dlsym(clientlib, "CreateInterface");
-	if (!factory_client) {
+	else if (!(factory_client = (ifacefactory)os_dlsym(clientlib,
+			"CreateInterface"))) {
 		con_warn("sst: warning: couldn't get client's CreateInterface\n");
 	}
+#ifdef _WIN32
+	void *inputsystemlib = GetModuleHandleW(L"inputsystem.dll");
+#else
+	// TODO(linux): assuming the above doesn't apply to this; check if it does!
+	void *inputsystemlib = dlopen("bin/libinputsystem.so",
+			RTLD_NOW | RLTD_NOLOAD);
+	if (inputsystemlib) dlclose(inputsystemlib); // blegh
+#endif
+	if (!inputsystemlib) {
+		con_warn("sst: warning: couldn't get the input system library\n");
+	}
+	else if (!(factory_inputsystem = (ifacefactory)os_dlsym(inputsystemlib,
+			"CreateInterface"))) {
+		con_warn("sst: warning: couldn't get input system's CreateInterface\n");
+	}
 
-nc:	gamedata_init();
+	gamedata_init();
 	has_autojump = autojump_init();
 	has_demorec = demorec_init();
+	has_nosleep = nosleep_init();
 #ifdef _WIN32
 	has_rinput = rinput_init();
 #endif
@@ -320,6 +335,7 @@ static void do_unload(void) {
 
 	if (has_autojump) autojump_end();
 	if (has_demorec) demorec_end();
+	if (has_nosleep) nosleep_end();
 #ifdef _WIN32
 	if (has_rinput) rinput_end();
 #endif

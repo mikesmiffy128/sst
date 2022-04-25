@@ -47,6 +47,7 @@ src="\
 	gameinfo.c
 	hook.c
 	kv.c
+	nosleep.c
 	sst.c
 	x86.c"
 if [ "$dbg" = 1 ]; then src="$src \
@@ -59,7 +60,7 @@ $HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/codegen \
 $HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/mkgamedata \
 		src/build/mkgamedata.c src/kv.c
 .build/codegen `for s in $src; do echo "src/$s"; done`
-.build/mkgamedata gamedata/gamelib.kv gamedata/engine.kv
+.build/mkgamedata gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv
 for s in $src; do cc "$s"; done
 $CC -shared -fpic -fuse-ld=lld -O0 -w -o .build/libtier0.so src/stubs/tier0.c
 $CC -shared -fpic -fuse-ld=lld -O0 -w -o .build/libvstdlib.so src/stubs/vstdlib.c

@@ -39,9 +39,9 @@ goto :eof
 -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c || exit /b
 %HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -ladvapi32 ^
 -o .build/mkgamedata.exe src/build/mkgamedata.c src/kv.c || exit /b
-.build\codegen.exe src/autojump.c src/con_.c src/demorec.c src/extmalloc.c src/fixes.c ^
-src/gamedata.c src/gameinfo.c src/hook.c src/kv.c src/rinput.c src/sst.c src/x86.c || exit /b
-.build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv || exit /b
+.build\codegen.exe src/autojump.c src/con_.c src/demorec.c src/extmalloc.c src/fixes.c src/gamedata.c ^
+src/gameinfo.c src/hook.c src/kv.c src/nosleep.c src/rinput.c src/sst.c src/x86.c || exit /b
+.build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv || exit /b
 llvm-rc /FO .build\dll.res src\dll.rc || exit /b
 %CC% -shared -O0 -w -o .build/tier0.dll src/stubs/tier0.c
 %CC% -shared -O0 -w -o .build/vstdlib.dll src/stubs/vstdlib.c
@@ -54,6 +54,7 @@ call :cc src/gamedata.c || exit /b
 call :cc src/gameinfo.c || exit /b
 call :cc src/hook.c || exit /b
 call :cc src/kv.c || exit /b
+call :cc src/nosleep.c || exit /b
 call :cc src/rinput.c || exit /b
 call :cc src/sst.c || exit /b
 call :cc src/x86.c || exit /b

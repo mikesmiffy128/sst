@@ -74,7 +74,7 @@ static bool unprot(void *gm) {
 bool autojump_init(void) {
 	// TODO(featgen): auto-check these factories
 	if (!factory_client || !factory_server) {
-		con_warn("autojump: missing required interfaces\n");
+		con_warn("autojump: missing required factories\n");
 		return false;
 	}
 	if (!gamedata_has_vtidx_CheckJumpButton || !gamedata_has_off_mv) {

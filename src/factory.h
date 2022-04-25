@@ -6,7 +6,8 @@
 /* Access to game and engine factories obtained on plugin load */
 
 typedef void *(*ifacefactory)(const char *name, int *ret);
-extern ifacefactory factory_client, factory_server, factory_engine;
+extern ifacefactory factory_client, factory_server, factory_engine,
+	   factory_inputsystem;
 
 #endif
 

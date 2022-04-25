@@ -1,5 +1,5 @@
 /*
- * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,20 +14,13 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef INC_GAMEDATA_H
-#define INC_GAMEDATA_H
+#ifndef INC_NOSLEEP_H
+#define INC_NOSLEEP_H
 
 #include <stdbool.h>
 
-#ifdef _WIN32
-#define NVDTOR 1
-#else
-#define NVDTOR 2
-#endif
-#include <gamedata.gen.h>
-#undef NVDTOR
-
-void gamedata_init(void);
+bool nosleep_init(void);
+void nosleep_end(void);
 
 #endif
 

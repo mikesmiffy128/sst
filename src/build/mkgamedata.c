@@ -68,6 +68,7 @@ struct ent {
 	};
 	struct ent *next;
 } *ents_head, **ents_tail = &ents_head;
+const char **curdefval; // dumb hacky afterthought, woopsy
 
 struct parsestate {
 	const os_char *filename;
@@ -106,15 +107,20 @@ static void kv_cb(enum kv_token type, const char *p, uint len, void *ctxt) {
 			e->next = 0;
 			*ents_tail = e;
 			ents_tail = &e->next;
+			curdefval = &e->defval; // dumb hacky afterthought part 2
 			break;
 		case KV_NEST_END:
 			state->incond = false;
 			break;
 		case KV_VAL: case KV_VAL_QUOTED:
 			if (state->incond) {
-				// dumb special case mentioned above
+				// continuation of dumb hackiness
 				if (!strcmp(state->lastkey, "default")) {
-					(*ents_tail)->defval = state->lastkey;
+					char *s = malloc(len + 1);
+					if (!s) die("couldn't allocate default value string");
+					memcpy(s, p, len);
+					s[len] = '\0';
+					*curdefval = s;
 					break;
 				}
 				struct ent_cond *c = malloc(sizeof(*c));
@@ -203,7 +209,7 @@ F( "#define gamedata_has_%s true", e->name)
 	for (struct ent *e = ents_head; e; e = e->next) {
 		if (e->iscond) {
 			if (e->defval) {
-F( "int gamedata_%s = %s", e->name, e->defval);
+F( "int gamedata_%s = %s;", e->name, e->defval);
 			}
 			else {
 F( "int gamedata_%s;", e->name);
@@ -216,7 +222,10 @@ _( "void gamedata_init(void) {")
 	for (struct ent *e = ents_head; e; e = e->next) {
 		if (e->iscond) {
 			for (struct ent_cond *c = e->cond; c; c = c->next) {
-				if (!e->defval) {
+				if (e->defval) {
+F( "	if (GAMETYPE_MATCHES(%s)) gamedata_%s = %s;", c->name, e->name, c->expr)
+				}
+				else {
 					// XXX: not bothering to generate `else`s. technically this
 					// has different semantics; we hope that the compiler can
 					// just do the right thing either way.
@@ -224,9 +233,6 @@ F( "	if (GAMETYPE_MATCHES(%s)) {", c->name)
 F( "		gamedata_%s = %s;", e->name, c->expr)
 F( "		gamedata_has_%s = true;", e->name)
 _( "	}")
-				}
-				else {
-F( "	if (GAMETYPE_MATCHES(%s)) %s = %s;", c->name, e->name, c->expr)
 				}
 			}
 		}

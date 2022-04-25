@@ -31,7 +31,7 @@
 // loaded. If m_rawinput already exists, we do nothing; people should use the
 // game's native raw input instead in that case.
 
-#define ERR "sst: rinput: error: "
+#define ERR "rinput: error: "
 
 #define USAGEPAGE_MOUSE 1
 #define USAGE_MOUSE 2
