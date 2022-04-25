@@ -35,8 +35,8 @@ static void unhide(const char *name) {
 	chflags(name, CON_HIDDEN | CON_DEVONLY, 0);
 }
 
-void fixes_apply(void) {
-	// expose all the demo stuff, for games like L4D that hide it for some
+static void generalfixes(void) {
+	// Expose all the demo stuff, for games like L4D that hide it for some
 	// reason.
 	unhide("demo_debug");
 	unhide("demo_fastforwardfinalspeed");
@@ -49,7 +49,7 @@ void fixes_apply(void) {
 	unhide("demo_quitafterplayback");
 	unhide("demo_interpolateview");
 
-	// handy console stuff
+	// some handy console stuff
 	unhide("con_filter_enable");
 	unhide("con_filter_text");
 	unhide("con_filter_text_out");
@@ -69,7 +69,9 @@ void fixes_apply(void) {
 	// a game will want to require demos only (probably not till demos are more
 	// robust anyway... whatever)
 	chflags("developer", CON_HIDDEN | CON_DEVONLY, CON_DEMO);
+}
 
+static void l4d2specific(void) {
 	// L4D2 doesn't let you set sv_cheats in lobbies, but turns out it skips all
 	// the lobby checks if this random command is developer-only, presumably
 	// because that flag is compiled out in debug builds and devs want to be
@@ -88,13 +90,11 @@ void fixes_apply(void) {
 	// constrain it so we don't enable a configuration that isn't already
 	// possible on these earlier versions (who knows if that breaks
 	// something...).
-	if (GAMETYPE_MATCHES(L4D2x)) {
-		struct con_var *v = con_findvar("mat_queue_mode");
-		if (v && !(v->parent->base.flags & CON_ARCHIVE)) { // not already fixed
-			v->parent->base.flags = v->parent->base.flags
-					& ~(CON_HIDDEN | CON_DEVONLY) | CON_ARCHIVE;
-			v->parent->hasmax = true; v->parent->maxval = 0;
-		}
+	struct con_var *v = con_findvar("mat_queue_mode");
+	if (v && !(v->parent->base.flags & CON_ARCHIVE)) { // not already fixed
+		v->parent->base.flags = v->parent->base.flags &
+				~(CON_HIDDEN | CON_DEVONLY) | CON_ARCHIVE;
+		v->parent->hasmax = true; v->parent->maxval = 0;
 	}
 
 #ifdef _WIN32
@@ -103,29 +103,34 @@ void fixes_apply(void) {
 	// to detect device IDs to enable it on, but new devices are still broken,
 	// so just blanket enable it if the primary adapter is Intel, since it
 	// doesn't seem to break anything else anyway.
-	if (GAMETYPE_MATCHES(L4D2x)) {
-		struct con_var *v = con_findvar("mat_tonemapping_occlusion_use_stencil");
-		if (!v || con_getvari(v)) goto e;
-		// considered getting d3d9 object from actual game, but it's way easier
-		// to just create another one
-		IDirect3D9 *d3d9 = Direct3DCreate9(D3D_SDK_VERSION);
-		if (!d3d9) goto e;
-		D3DADAPTER_IDENTIFIER9 ident;
-		if (IDirect3D9_GetAdapterIdentifier(d3d9, 0, 0, &ident) == D3D_OK &&
-				ident.VendorId == 0x8086) { // neat vendor id, btw!
-			con_setvari(v, 1);
-		}
-		IDirect3D9_Release(d3d9);
-e:;	}
+	v = con_findvar("mat_tonemapping_occlusion_use_stencil");
+	if (!v || con_getvari(v)) goto e;
+	// considered getting d3d9 object from actual game, but it's way easier
+	// to just create another one
+	IDirect3D9 *d3d9 = Direct3DCreate9(D3D_SDK_VERSION);
+	if (!d3d9) goto e;
+	D3DADAPTER_IDENTIFIER9 ident;
+	if (IDirect3D9_GetAdapterIdentifier(d3d9, 0, 0, &ident) == D3D_OK &&
+			ident.VendorId == 0x8086) { // neat vendor id, btw!
+		con_setvari(v, 1);
+	}
+	IDirect3D9_Release(d3d9);
+e:;
 #endif
+}
 
+static void l4d1specific(void) {
 	// For some reason, L4D1 hides mat_monitorgamma and doesn't archive it.
 	// This means on every startup it's necessary to manually set non-default
 	// values via the menu. This change here brings it in line with pretty much
 	// all other Source games for convenience.
-	if (GAMETYPE_MATCHES(L4D1)) {
-		chflags("mat_monitorgamma", CON_HIDDEN | CON_DEVONLY, CON_ARCHIVE);
-	}
+	chflags("mat_monitorgamma", CON_HIDDEN | CON_DEVONLY, CON_ARCHIVE);
+}
+
+void fixes_apply(void) {
+	generalfixes();
+	if (GAMETYPE_MATCHES(L4D1)) l4d1specific();
+	else if (GAMETYPE_MATCHES(L4D2x)) l4d2specific();
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

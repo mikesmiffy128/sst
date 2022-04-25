@@ -14,7 +14,10 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* Makes a best-effort attempt to fix up random annoyances in some games. */
+/*
+ * Makes a best-effort attempt to fix up random bugs and annoyances in some
+ * games. If anything fails, it's just ignored.
+ */
 void fixes_apply(void);
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
