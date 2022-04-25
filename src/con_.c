@@ -515,7 +515,8 @@ GETTER(int, con_getvari, ival)
 
 #define SETTER(T, I, N) \
 	void N(struct con_var *v, T x) { \
-		((void (*VCALLCONV)(struct con_var *, T))(v->vtable_iconvar[I]))(v, x); \
+		((void (*VCALLCONV)(void *, T))(v->vtable_iconvar[I]))( \
+				&v->vtable_iconvar, x); \
 	}
 // vtable indexes for str/int/float are consistently at the start, hooray.
 // unfortunately the windows overload ordering meme still applies...
