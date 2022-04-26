@@ -14,8 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <ctype.h>
-#include <limits.h>
 #include <stdbool.h>
 #ifdef _WIN32
 #include <shlwapi.h>
