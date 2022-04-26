@@ -29,8 +29,9 @@ extern u32 _gametype_tag;
 #define _gametype_tag_L4D1		8
 #define _gametype_tag_L4D2		16
 #define _gametype_tag_L4DS		32
-#define _gametype_tag_Portal2	64
-#define _gametype_tag_2013		128
+#define _gametype_tag_Portal1	64
+#define _gametype_tag_Portal2	128
+#define _gametype_tag_2013		256
 
 #define _gametype_tag_L4D		(_gametype_tag_L4D1 | _gametype_tag_L4D2)
 // XXX: *stupid* naming, refactor later (damn Survivors ruining everything)

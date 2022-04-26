@@ -42,103 +42,17 @@
 #define fS "s"
 #endif
 
-#define RGBA(r, g, b, a) (&(struct con_colour){(r), (g), (b), (a)})
-
 u32 _gametype_tag = 0; // spaghetti: no point making a .c file for 1 variable
 
-static int ifacever;
-// this is where we start dynamically adding virtual functions, see vtable[]
-// array below
-static const void **vtable_firstdiff;
-static const void *const *const plugin_obj;
+ifacefactory factory_client = 0, factory_server = 0, factory_engine = 0,
+		factory_inputsystem = 0;
 
-// most plugin callbacks are unused - define dummy functions for each signature
-static void VCALLCONV nop_v_v(void *this) {}
-static void VCALLCONV nop_b_v(void *this, bool b) {}
-static void VCALLCONV nop_p_v(void *this, void *p) {}
-static void VCALLCONV nop_pp_v(void *this, void *p1, void *p2) {}
-static void VCALLCONV nop_pii_v(void *this, void *p, int i1, int i2) {}
-static int VCALLCONV nop_p_i(void *this, void *p) { return 0; }
-static int VCALLCONV nop_pp_i(void *this, void *p1, void *p2) { return 0; }
-static int VCALLCONV nop_5pi_i(void *this, void *p1, void *p2, void *p3,
-		void *p4, void *p5, int i) { return 0; }
-static void VCALLCONV nop_ipipp_v(void *this, int i1, void *p1, int i2,
-		void *p2, void *p3) {}
+static int ifacever;
 
 #ifdef __linux__
 // we need to keep this reference to dlclose() it later - see below
 static void *clientlib = 0;
 #endif
-
-// more source spaghetti wow!
-static void VCALLCONV SetCommandClient(void *this, int i) { con_cmdclient = i; }
-
-ifacefactory factory_client = 0, factory_server = 0, factory_engine = 0,
-		factory_inputsystem = 0;
-
-// TODO(featgen): I wanted some nice fancy automatic feature system that
-// figures out the dependencies at build time and generates all the init glue
-// but we want to actually release the plugin this decade so for now I'm just
-// plonking some bools here and worrying about it later. :^)
-static bool has_autojump = false;
-static bool has_demorec = false;
-static bool has_demorec_custom = false;
-static bool has_nosleep = false;
-#ifdef _WIN32
-static bool has_rinput = false;
-#endif
-
-// since this is static/global, it only becomes false again when the plugin SO
-// is unloaded/reloaded
-static bool already_loaded = false;
-static bool skip_unload = false;
-
-// HACK: later versions of L4D2 show an annoying dialog on every plugin_load.
-// We can suppress this by catching the message string that's passed from
-// engine.dll to gameui.dll through KeyValuesSystem in vstdlib.dll and just
-// replacing it with some other arbitrary garbage string. This makes gameui fail
-// to match the message and thus do nothing. :)
-static void **kvsvt;
-typedef const char *(*VCALLCONV GetStringForSymbol_func)(void *this, int s);
-static GetStringForSymbol_func orig_GetStringForSymbol = 0;
-static const char *VCALLCONV GetStringForSymbol_hook(void *this, int s) {
-	const char *ret = orig_GetStringForSymbol(this, s);
-	if (!strcmp(ret, "OnClientPluginWarning")) ret = "sstBlockedThisEvent";
-	return ret;
-}
-
-// vstdlib symbol, only currently used in l4d2 but exists everywhere so oh well
-IMPORT void *KeyValuesSystem(void);
-
-// XXX: not sure if all this stuff should, like, go somewhere?
-
-struct CUtlMemory {
-	void *mem;
-	int alloccnt;
-	int growsz;
-};
-
-struct CUtlVector {
-	struct CUtlMemory m;
-	int sz;
-	void *mem_again_for_some_reason;
-};
-
-struct CServerPlugin /* : IServerPluginHelpers */ {
-	void **vtable;
-	struct CUtlVector plugins;
-	/*IPluginHelpersCheck*/ void *pluginhlpchk;
-};
-
-struct CPlugin {
-	char description[128];
-	bool paused;
-	void *theplugin; // our own "this" pointer (or whichever other plugin it is)
-	int ifacever;
-	// should be the plugin library, but in old Source branches it's just null,
-	// because CServerPlugin::Load() erroneously shadows this field with a local
-	void *module;
-};
 
 #ifdef _WIN32
 extern long __ImageBase; // this is actually the PE header struct but don't care
@@ -231,6 +145,65 @@ DEF_CCMD_HERE(sst_autoload_disable, "Stop loading SST on game startup", 0) {
 	}
 }
 
+DEF_CCMD_HERE(sst_printversion, "Display plugin version information", 0) {
+	con_msg("v" VERSION "\n");
+}
+
+// HACK: later versions of L4D2 show an annoying dialog on every plugin_load.
+// We can suppress this by catching the message string that's passed from
+// engine.dll to gameui.dll through KeyValuesSystem in vstdlib.dll and just
+// replacing it with some other arbitrary garbage string. This makes gameui fail
+// to match the message and thus do nothing. :)
+static void **kvsvt;
+typedef const char *(*VCALLCONV GetStringForSymbol_func)(void *this, int s);
+static GetStringForSymbol_func orig_GetStringForSymbol = 0;
+static const char *VCALLCONV GetStringForSymbol_hook(void *this, int s) {
+	const char *ret = orig_GetStringForSymbol(this, s);
+	if (!strcmp(ret, "OnClientPluginWarning")) ret = "sstBlockedThisEvent";
+	return ret;
+}
+
+// vstdlib symbol, only currently used in l4d2 but exists everywhere so oh well
+IMPORT void *KeyValuesSystem(void);
+
+// most plugin callbacks are unused - define dummy functions for each signature
+static void VCALLCONV nop_v_v(void *this) {}
+static void VCALLCONV nop_b_v(void *this, bool b) {}
+static void VCALLCONV nop_p_v(void *this, void *p) {}
+static void VCALLCONV nop_pp_v(void *this, void *p1, void *p2) {}
+static void VCALLCONV nop_pii_v(void *this, void *p, int i1, int i2) {}
+static int VCALLCONV nop_p_i(void *this, void *p) { return 0; }
+static int VCALLCONV nop_pp_i(void *this, void *p1, void *p2) { return 0; }
+static int VCALLCONV nop_5pi_i(void *this, void *p1, void *p2, void *p3,
+		void *p4, void *p5, int i) { return 0; }
+static void VCALLCONV nop_ipipp_v(void *this, int i1, void *p1, int i2,
+		void *p2, void *p3) {}
+
+// more source spaghetti wow!
+static void VCALLCONV SetCommandClient(void *this, int i) { con_cmdclient = i; }
+
+// this is where we start dynamically adding virtual functions, see vtable[]
+// array below
+static const void **vtable_firstdiff;
+static const void *const *const plugin_obj;
+
+// TODO(featgen): I wanted some nice fancy automatic feature system that
+// figures out the dependencies at build time and generates all the init glue
+// but we want to actually release the plugin this decade so for now I'm just
+// plonking some bools here and worrying about it later. :^)
+static bool has_autojump = false, has_demorec = false,
+		has_demorec_custom = false, has_nosleep = false;
+#ifdef _WIN32
+static bool has_rinput = false;
+#endif
+
+// since this is static/global, it only becomes false again when the plugin SO
+// is unloaded/reloaded
+static bool already_loaded = false;
+static bool skip_unload = false;
+
+#define RGBA(r, g, b, a) (&(struct con_colour){(r), (g), (b), (a)})
+
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	factory_engine = enginef; factory_server = serverf;
 	if (!con_init(enginef, ifacever)) return false;
@@ -283,6 +256,10 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 		con_warn("sst: warning: couldn't get input system's CreateInterface\n");
 	}
 
+	// detect p1 for the benefit of specific features
+	if (!GAMETYPE_MATCHES(Portal2) && con_findcmd("upgrade_portalgun")) {
+		_gametype_tag |= _gametype_tag_Portal1;
+	}
 	gamedata_init();
 	has_autojump = autojump_init();
 	has_demorec = demorec_init();
@@ -314,6 +291,34 @@ e:	con_colourmsg(RGBA(64, 255, 64, 255),
 	return true;
 }
 
+// XXX: not sure if all this stuff should, like, go somewhere?
+
+struct CUtlMemory {
+	void *mem;
+	int alloccnt, growsz;
+};
+struct CUtlVector {
+	struct CUtlMemory m;
+	int sz;
+	void *mem_again_for_some_reason;
+};
+
+struct CServerPlugin /* : IServerPluginHelpers */ {
+	void **vtable;
+	struct CUtlVector plugins;
+	/*IPluginHelpersCheck*/ void *pluginhlpchk;
+};
+
+struct CPlugin {
+	char description[128];
+	bool paused;
+	void *theplugin; // our own "this" pointer (or whichever other plugin it is)
+	int ifacever;
+	// should be the plugin library, but in old Source branches it's just null,
+	// because CServerPlugin::Load() erroneously shadows this field with a local
+	void *module;
+};
+
 static void do_unload(void) {
 	struct CServerPlugin *pluginhandler =
 			factory_engine("ISERVERPLUGINHELPERS001", 0);
@@ -324,9 +329,10 @@ static void do_unload(void) {
 			if ((*pp)->theplugin == (void *)&plugin_obj) {
 				// see comment in CPlugin above. setting this to the real handle
 				// right before the engine tries to unload us allows it to
-				// actually unload us instead of just doing nothing.
-				// in newer branches that don't have this bug, this is still
-				// correct anyway so no need to bother checking.
+				// actually do so. in newer branches this is redundant but
+				// doesn't do any harm so it's just unconditional.
+				// NOTE: old engines ALSO just leak the handle and never call
+				// Unload() if Load() fails; can't really do anything about that
 				(*pp)->module = ownhandle();
 				break;
 			}
@@ -365,10 +371,7 @@ static bool VCALLCONV Load(void *this, ifacefactory enginef,
 
 static void VCALLCONV Unload(void *this) {
 	// the game tries to unload on a failed load, for some reason
-	if (skip_unload) {
-		skip_unload = false;
-		return;
-	}
+	if (skip_unload) { skip_unload = false; return; }
 	do_unload();
 }
 
@@ -381,10 +384,6 @@ static void VCALLCONV UnPause(void *this) {
 
 static const char *VCALLCONV GetPluginDescription(void *this) {
 	return LONGNAME " v" VERSION;
-}
-
-DEF_CCMD_HERE(sst_printversion, "Display plugin version information", 0) {
-	con_msg("v" VERSION "\n");
 }
 
 #define MAX_VTABLE_FUNCS 21
