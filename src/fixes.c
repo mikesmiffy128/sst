@@ -94,6 +94,7 @@ static void l4d2specific(void) {
 	if (v && !(v->parent->base.flags & CON_ARCHIVE)) { // not already fixed
 		v->parent->base.flags = v->parent->base.flags &
 				~(CON_HIDDEN | CON_DEVONLY) | CON_ARCHIVE;
+		v->parent->hasmin = true; v->parent->minval = -1;
 		v->parent->hasmax = true; v->parent->maxval = 0;
 	}
 

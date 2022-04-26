@@ -141,9 +141,9 @@ struct con_var { // ConVar in engine
 	int ival;
 	bool hasmin;
 	// bool hasmax; // better packing here, might break engine ABI
-	int minval;
+	float minval;
 	bool hasmax; // just sticking to sdk position for now
-	int maxval;
+	float maxval;
 	//void *cb; // we don't currently bother with callback support. add if needed!
 };
 
@@ -253,15 +253,15 @@ extern void *_con_vtab_iconvar[];
 	_DEF_CVAR(name, desc, value, false, 0, false, 0, flags)
 
 /* Defines a console variable with a given mininum numeric value. */
-#define DEF_CVAR_MIN(name_, desc, value, min, flags_) \
+#define DEF_CVAR_MIN(name, desc, value, min, flags) \
 	_DEF_CVAR(name, desc, value, true, min, false, 0, flags)
 
 /* Defines a console variable with a given maximum numeric value. */
-#define DEF_CVAR_MAX(name_, desc, value, max, flags_) \
+#define DEF_CVAR_MAX(name, desc, value, max, flags) \
 	_DEF_CVAR(name, desc, value, false, 0, true, max, flags)
 
 /* Defines a console variable in the given numeric value range. */
-#define DEF_CVAR_MINMAX(name_, desc, value, min, max, flags_) \
+#define DEF_CVAR_MINMAX(name, desc, value, min, max, flags) \
 	_DEF_CVAR(name, desc, value, true, min, true, max, flags)
 
 #define _DEF_CCMD(varname, name_, desc, func, flags_) \
