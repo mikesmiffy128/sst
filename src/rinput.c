@@ -68,7 +68,7 @@ static GetCursorPos_func orig_GetCursorPos;
 static int __stdcall hook_GetCursorPos(POINT *p) {
 	if (!con_getvari(m_rawinput)) return orig_GetCursorPos(p);
 	p->x = dx; p->y = dy;
-	return 0;
+	return 1;
 }
 typedef int (*__stdcall SetCursorPos_func)(int x, int y);
 static SetCursorPos_func orig_SetCursorPos;
