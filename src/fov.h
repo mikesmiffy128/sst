@@ -14,27 +14,19 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef INC_GAMEINFO_H
-#define INC_GAMEINFO_H
+#ifndef INC_FOV_H
+#define INC_FOV_H
 
-#include <stdio.h>
+#include <stdbool.h>
 
-#include "intdefs.h"
-#include "os.h"
+#include "engineapi.h"
 
-/* These variables are only set after calling gameinfo_init(). */
-extern const os_char *gameinfo_bindir;    /* Absolute path to top-level bin/ */
-extern const os_char *gameinfo_gamedir;   /* Absolute path to game directory */
-extern const char    *gameinfo_title;     /* Name of the game (window title) */
-extern const os_char *gameinfo_clientlib; /* Absolute path to the client lib */
-extern const os_char *gameinfo_serverlib; /* Absolute path to the server lib */
+bool fov_init(bool has_ent);
+void fov_end(void);
 
-/*
- * This function is called early in the plugin load and does a whole bunch of
- * spaghetti magic to figure out which game/engine we're in and where its
- * libraries (which we want to hook) are located.
- */
-bool gameinfo_init(void);
+// annoying spaghetti, from sst.c. maybe one day there could be some proper
+// event system...
+void fov_onload(void);
 
 #endif
 

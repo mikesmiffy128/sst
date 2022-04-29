@@ -20,6 +20,7 @@
 #endif
 
 #include "con_.h"
+#include "engineapi.h"
 #include "gametype.h"
 #include "intdefs.h"
 #include "kv.h"
@@ -173,13 +174,7 @@ static void kv_cb(enum kv_token type, const char *p, uint len, void *_ctxt) {
 	};
 
 	// values for ctxt->matchtype
-	enum {
-		mt_none,
-		mt_title,
-		mt_nest,
-		mt_game,
-		mt_gamebin
-	};
+	enum { mt_none, mt_title, mt_nest, mt_game, mt_gamebin };
 
 	#define MATCH(s) (len == sizeof(s) - 1 && matchtok(p, s, sizeof(s) - 1))
 	switch (type) {
@@ -238,29 +233,13 @@ static void kv_cb(enum kv_token type, const char *p, uint len, void *_ctxt) {
 	#undef MATCH
 }
 
-bool gameinfo_init(void *(*ifacef)(const char *, int *)) {
-	typedef char *(*VCALLCONV GetGameDirectory_func)(void *this);
-	GetGameDirectory_func **engclient;
-	int off;
-	if (engclient = ifacef("VEngineClient015", 0)) { // portal 2 (post-release?)
-		off = 35;
-	}
-	else if (engclient = ifacef("VEngineClient014", 0)) { // l4d2000-~2027, bms?
-		if (!GAMETYPE_MATCHES(L4D2x)) goto unsup;
-		off = 73; // YES, THIS IS SEVENTY THREE ALL OF A SUDDEN. I KNOW. CRAZY.
-	}
-	else if (engclient = ifacef("VEngineClient013", 0)) { // ...most things?
-		if (GAMETYPE_MATCHES(L4Dx)) off = 36; // THEY CHANGED IT BACK LATER!?
-		else off = 35;
-	}
-	else if (engclient = ifacef("VEngineClient012", 0)) { // dmomm, ep1, ...
-		off = 37;
-	}
-	else {
-unsup:	con_warn("gameinfo: unsupported VEngineClient interface\n");
+DECL_VFUNC_DYN(const char *, GetGameDirectory)
+
+bool gameinfo_init(void) {
+	if (!has_vtidx_GetGameDirectory) {
+		con_warn("gameinfo: unsupported VEngineClient interface\n");
 		return false;
 	}
-	GetGameDirectory_func GetGameDirectory = (*engclient)[off];
 
 	// engine always calls chdir() with its own base path on startup, so engine
 	// base dir is just cwd
@@ -280,7 +259,7 @@ unsup:	con_warn("gameinfo: unsupported VEngineClient interface\n");
 
 #ifdef _WIN32
 	int gamedirlen = _snwprintf(gamedir, sizeof(gamedir) / sizeof(*gamedir),
-				L"%S", GetGameDirectory(engclient));
+			L"%S", VCALL(engclient, GetGameDirectory));
 	if (gamedirlen < 0) { // encoding error??? ugh...
 		con_warn("gameinfo: invalid game directory path!\n");
 		return false;

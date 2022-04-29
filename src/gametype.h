@@ -19,19 +19,24 @@
 
 #include "intdefs.h"
 
-extern u32 _gametype_tag;
+extern u64 _gametype_tag;
 
 #define _gametype_tag_OE		1
 // TODO(compat): detect in con_init, even if just to fail (VEngineServer broke)
 // TODO(compat): buy dmomm in a steam sale to implement and test the above, lol
-#define _gametype_tag_DMoMM		2
-#define _gametype_tag_OrangeBox	4
-#define _gametype_tag_L4D1		8
-#define _gametype_tag_L4D2		16
-#define _gametype_tag_L4DS		32
-#define _gametype_tag_Portal1	64
-#define _gametype_tag_Portal2	128
-#define _gametype_tag_2013		256
+#define _gametype_tag_DMoMM		(1 << 1)
+#define _gametype_tag_OrangeBox	(1 << 2)
+#define _gametype_tag_L4D1		(1 << 3)
+#define _gametype_tag_L4D2		(1 << 4)
+#define _gametype_tag_L4DS		(1 << 5)
+#define _gametype_tag_Portal1	(1 << 6)
+#define _gametype_tag_Portal2	(1 << 7)
+#define _gametype_tag_2013		(1 << 8)
+#define _gametype_tag_Client015 (1 << 9)
+#define _gametype_tag_Client014 (1 << 10)
+#define _gametype_tag_Client013 (1 << 11)
+#define _gametype_tag_Client012 (1 << 12)
+#define _gametype_tag_Server021 (1 << 13)
 
 #define _gametype_tag_L4D		(_gametype_tag_L4D1 | _gametype_tag_L4D2)
 // XXX: *stupid* naming, refactor later (damn Survivors ruining everything)

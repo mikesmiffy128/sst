@@ -21,10 +21,10 @@
 #include "bitbuf.h"
 #include "con_.h"
 #include "demorec.h"
-#include "hook.h"
-#include "factory.h"
+#include "engineapi.h"
 #include "gamedata.h"
 #include "gameinfo.h"
+#include "hook.h"
 #include "intdefs.h"
 #include "mem.h"
 #include "os.h"
@@ -185,7 +185,7 @@ static inline bool find_recmembers(void *stoprecording) {
 }
 
 bool demorec_init(void) {
-	if (!gamedata_has_vtidx_StopRecording) {
+	if (!has_vtidx_StopRecording) {
 		con_warn("demorec: missing gamedata entries for this engine\n");
 		return false;
 	}
@@ -218,15 +218,15 @@ bool demorec_init(void) {
 		con_warn("demorec: couldn't unprotect CDemoRecorder vtable: %s\n", err);
 		return false;
 	}
-	if (!find_recmembers(vtable[gamedata_vtidx_StopRecording])) {
+	if (!find_recmembers(vtable[vtidx_StopRecording])) {
 		con_warn("demorec: couldn't find m_bRecording and m_nDemoNumber\n");
 		return false;
 	}
 
 	orig_SetSignonState = (SetSignonState_func)hook_vtable(vtable,
-			gamedata_vtidx_SetSignonState, (void *)&hook_SetSignonState);
+			vtidx_SetSignonState, (void *)&hook_SetSignonState);
 	orig_StopRecording = (StopRecording_func)hook_vtable(vtable,
-			gamedata_vtidx_StopRecording, (void *)&hook_StopRecording);
+			vtidx_StopRecording, (void *)&hook_StopRecording);
 
 	orig_record_cb = cmd_record->cb; cmd_record->cb = &hook_record_cb;
 	orig_stop_cb = cmd_stop->cb; cmd_stop->cb = &hook_stop_cb;
@@ -239,10 +239,8 @@ void demorec_end(void) {
 	// avoid dumb edge case if someone somehow records and immediately unloads
 	if (*recording && *demonum == 0) *demonum = 1;
 	void **vtable = *(void ***)demorecorder;
-	unhook_vtable(vtable, gamedata_vtidx_SetSignonState,
-			(void *)orig_SetSignonState);
-	unhook_vtable(vtable, gamedata_vtidx_StopRecording,
-			(void *)orig_StopRecording);
+	unhook_vtable(vtable, vtidx_SetSignonState, (void *)orig_SetSignonState);
+	unhook_vtable(vtable, vtidx_StopRecording, (void *)orig_StopRecording);
 	cmd_record->cb = orig_record_cb;
 	cmd_stop->cb = orig_stop_cb;
 }
@@ -250,8 +248,7 @@ void demorec_end(void) {
 // custom data writing stuff is a separate feature, defined below. it we can't
 // find WriteMessage, we can still probably do the auto recording stuff above
 
-static int nbits_msgtype;
-static int nbits_datalen;
+static int nbits_msgtype, nbits_datalen;
 
 // The engine allows usermessages up to 255 bytes, we add 2 bytes of overhead,
 // and then there's the leading bits before that too (see create_message)
@@ -300,7 +297,7 @@ void demorec_writecustom(void *buf, int len) {
 // it out to the demo file being recorded.
 static bool find_WriteMessages(void) {
 	// TODO(compat): probably rewrite this to just scan for a call instruction!
-	const uchar *insns = (*(uchar ***)demorecorder)[gamedata_vtidx_RecordPacket];
+	const uchar *insns = (*(uchar ***)demorecorder)[vtidx_RecordPacket];
 	// RecordPacket calls WriteMessages pretty much right away:
 	// 56           push  esi
 	// 57           push  edi
@@ -329,8 +326,7 @@ static bool find_WriteMessages(void) {
 }
 
 bool demorec_custom_init(void) { 
-	if (!gamedata_has_vtidx_GetEngineBuildNumber ||
-			!gamedata_has_vtidx_RecordPacket) {
+	if (!has_vtidx_GetEngineBuildNumber || !has_vtidx_RecordPacket) {
 		con_warn("demorec: custom: missing gamedata entries for this engine\n");
 		return false;
 	}
@@ -348,7 +344,7 @@ bool demorec_custom_init(void) {
 	if (clientiface = factory_engine("VEngineClient013", 0)) {
 		typedef uint (*VCALLCONV GetEngineBuildNumber_func)(void *this);
 		buildnum = (*(GetEngineBuildNumber_func **)clientiface)[
-				gamedata_vtidx_GetEngineBuildNumber](clientiface);
+				vtidx_GetEngineBuildNumber](clientiface);
 	}
 	// add support for other interfaces here:
 	// else if (clientiface = factory_engine("VEngineClient0XX", 0)) {

@@ -14,28 +14,36 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef INC_GAMEINFO_H
-#define INC_GAMEINFO_H
+#include <stdbool.h>
 
-#include <stdio.h>
-
+#include "con_.h"
+#include "engineapi.h"
+#include "gamedata.h"
+#include "gametype.h"
 #include "intdefs.h"
-#include "os.h"
+#include "vcall.h"
 
-/* These variables are only set after calling gameinfo_init(). */
-extern const os_char *gameinfo_bindir;    /* Absolute path to top-level bin/ */
-extern const os_char *gameinfo_gamedir;   /* Absolute path to game directory */
-extern const char    *gameinfo_title;     /* Name of the game (window title) */
-extern const os_char *gameinfo_clientlib; /* Absolute path to the client lib */
-extern const os_char *gameinfo_serverlib; /* Absolute path to the server lib */
+DECL_VFUNC_DYN(void *, PEntityOfEntIndex, int)
 
-/*
- * This function is called early in the plugin load and does a whole bunch of
- * spaghetti magic to figure out which game/engine we're in and where its
- * libraries (which we want to hook) are located.
- */
-bool gameinfo_init(void);
+void *ent_get(int idx) {
+	// TODO(compat): Based on previous attempts at this, for L4D2, we need
+	// factory_server("PlayerInfoManager002")->GetGlobalVars()->edicts
+	// (offset 22 or so). Then get edicts from that. For now, we only need this
+	// for Portal FOV stuff, so just doing this eiface stuff.
 
-#endif
+	struct edict *e = VCALL(engserver, PEntityOfEntIndex, idx);
+	if (!e) return 0;
+	return e->ent_unknown;
+}
+
+bool ent_init(void) {
+	if (!has_vtidx_PEntityOfEntIndex) {
+		con_warn("ent: missing gamedata entries for this engine\n");
+		return false;
+	}
+	// for PEntityOfEntIndex we don't really have to do any more init, we can
+	// just call the function later.
+	return true;
+}
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

@@ -13,7 +13,8 @@ mkdir -p .build/include
 : "${CC:=clang --target=-i686-pc-linux-gnu -fuse-ld=lld}"
 : "${HOSTCC:=clang -fuse-ld=lld}"
 
-warnings="-Wall -pedantic -Wno-parentheses -Wno-missing-braces"
+warnings="-Wall -pedantic -Wno-parentheses -Wno-missing-braces \
+-Wno-gnu-zero-variadic-macro-arguments"
 
 dbg=0
 if [ "$dbg" = 1 ]; then
@@ -41,8 +42,11 @@ src="\
 	autojump.c
 	con_.c
 	demorec.c
+	engineapi.c
+	ent.c
 	extmalloc.c
 	fixes.c
+	fov.c
 	gamedata.c
 	gameinfo.c
 	hook.c

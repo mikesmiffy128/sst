@@ -14,27 +14,15 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef INC_GAMEINFO_H
-#define INC_GAMEINFO_H
+#ifndef INC_ENT_H
+#define INC_ENT_H
 
-#include <stdio.h>
+#include <stdbool.h>
 
-#include "intdefs.h"
-#include "os.h"
+void *ent_get(int idx);
 
-/* These variables are only set after calling gameinfo_init(). */
-extern const os_char *gameinfo_bindir;    /* Absolute path to top-level bin/ */
-extern const os_char *gameinfo_gamedir;   /* Absolute path to game directory */
-extern const char    *gameinfo_title;     /* Name of the game (window title) */
-extern const os_char *gameinfo_clientlib; /* Absolute path to the client lib */
-extern const os_char *gameinfo_serverlib; /* Absolute path to the server lib */
-
-/*
- * This function is called early in the plugin load and does a whole bunch of
- * spaghetti magic to figure out which game/engine we're in and where its
- * libraries (which we want to hook) are located.
- */
-bool gameinfo_init(void);
+bool ent_init(void);
+void ent_end(void);
 
 #endif
 

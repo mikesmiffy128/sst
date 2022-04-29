@@ -13,7 +13,8 @@ if not exist .build\include\ md .build\include
 if "%CC%"=="" set CC=clang --target=i686-pc-windows-msvc -fuse-ld=lld
 if "%HOSTCC%"=="" set HOSTCC=clang -fuse-ld=lld
 
-set warnings=-Wall -pedantic -Wno-parentheses -Wno-missing-braces
+set warnings=-Wall -pedantic -Wno-parentheses -Wno-missing-braces ^
+-Wno-gnu-zero-variadic-macro-arguments
 
 set dbg=0
 if "%dbg%"=="1" (
@@ -39,8 +40,8 @@ goto :eof
 -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c || exit /b
 %HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -ladvapi32 ^
 -o .build/mkgamedata.exe src/build/mkgamedata.c src/kv.c || exit /b
-.build\codegen.exe src/autojump.c src/con_.c src/demorec.c src/extmalloc.c src/fixes.c src/gamedata.c ^
-src/gameinfo.c src/hook.c src/kv.c src/nosleep.c src/rinput.c src/sst.c src/x86.c || exit /b
+.build\codegen.exe src/autojump.c src/con_.c src/demorec.c src/engineapi.c src/ent.c src/extmalloc.c src/fixes.c ^
+src/fov.c src/gamedata.c src/gameinfo.c src/hook.c src/kv.c src/nosleep.c src/rinput.c src/sst.c src/x86.c || exit /b
 .build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv || exit /b
 llvm-rc /FO .build\dll.res src\dll.rc || exit /b
 %CC% -shared -O0 -w -o .build/tier0.dll src/stubs/tier0.c
@@ -48,8 +49,11 @@ llvm-rc /FO .build\dll.res src\dll.rc || exit /b
 call :cc src/autojump.c || exit /b
 call :cc src/con_.c || exit /b
 call :cc src/demorec.c || exit /b
+call :cc src/engineapi.c || exit /b
+call :cc src/ent.c || exit /b
 call :cc src/extmalloc.c || exit /b
 call :cc src/fixes.c || exit /b
+call :cc src/fov.c || exit /b
 call :cc src/gamedata.c || exit /b
 call :cc src/gameinfo.c || exit /b
 call :cc src/hook.c || exit /b

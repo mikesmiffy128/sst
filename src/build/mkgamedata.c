@@ -14,6 +14,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +23,7 @@
 #include "../kv.h"
 #include "../noreturn.h"
 #include "../os.h"
+#include "vec.h"
 
 #ifdef _WIN32
 #define fS "S"
@@ -35,10 +37,18 @@ static noreturn die(const char *s) {
 }
 
 /*
- * We keep the gamedata KV format as simple and flat as possible:
+ * We keep the gamedata KV format as simple as possible. Default values are
+ * specified as direct key-value pairs:
  *
  *   <varname> <expr>
+ *
+ * Game- or engine-specific values are set using blocks:
+ *
  *   <varname> { <gametype> <expr> <gametype> <expr> ... [default <expr>] }
+ *
+ * The most complicated it can get is if conditionals are nested, which
+ * basically translates directly into nested ifs:
+ *   <varname> { <gametype> { <gametype> <expr> <gametype> <expr> } }
  *   [however many entries...]
  *
  * If that doesn't make sense, just look at one of the existing data files and
@@ -47,35 +57,21 @@ static noreturn die(const char *s) {
  * Note: if `default` isn't given in a conditional block, that piece of gamedata
  * is considered unavailable and modules that use it won't get initialised/used.
  */
+struct vec_ent VEC(struct ent *);
 struct ent {
-	const char *name;
-	// normally I'd be inclined to do some pointer bitpacking meme but that's
-	// annoying and doesn't matter here so here's an bool and 7 bytes of padding
-	bool iscond;
-	union {
-		struct {
-			struct ent_cond {
-				const char *name;
-				// note: can be any old C expression; just plopped in
-				const char *expr;
-				struct ent_cond *next;
-			} *cond;
-			// store user-specified defaults in a special place to make the
-			// actual codegen logic easier
-			const char *defval;
-		};
-		const char *expr;
-	};
-	struct ent *next;
-} *ents_head, **ents_tail = &ents_head;
-const char **curdefval; // dumb hacky afterthought, woopsy
+	const char *name; // (or condition tag, in a child node)
+	const char *defexpr;
+	struct vec_ent subents;
+	struct ent *parent; // to back up a level during parse
+};
+// root only contains subents list but it's easier to use the same struct
+static struct ent root = {0};
 
 struct parsestate {
 	const os_char *filename;
 	struct kv_parser *parser;
-	const char *lastkey;
-	struct ent_cond **nextcond;
-	bool incond;
+	struct ent *curent; // current ent lol
+	bool haddefault; // blegh;
 };
 
 static noreturn badparse(struct parsestate *state, const char *e) {
@@ -88,67 +84,52 @@ static void kv_cb(enum kv_token type, const char *p, uint len, void *ctxt) {
 	struct parsestate *state = ctxt;
 	switch (type) {
 		case KV_IDENT: case KV_IDENT_QUOTED:;
+			if (len == 7 && !memcmp(p, "default", 7)) { // special case!
+				if (state->curent == &root) {
+					badparse(state, "unexpected default keyword at top level");
+				}
+				struct ent *e = state->curent;
+				if (e->defexpr) {
+					badparse(state, "multiple default keywords");
+				}
+				state->haddefault = true;
+				break;
+			}
+			state->haddefault = false;
 			char *k = malloc(len + 1);
 			if (!k) die("couldn't allocate key string");
-			memcpy(k, p, len);
-			k[len] = '\0';
-			state->lastkey = k;
-			break; 
-		case KV_NEST_START:
-			if (state->incond) badparse(state, "unexpected nested object");
-			state->incond = true;
+			// FIXME(?): should check and prevent duplicate keys probably!
+			// need table.h or something to avoid O(n^2) :)
+			memcpy(k, p, len); k[len] = '\0';
 			struct ent *e = malloc(sizeof(*e));
 			if (!e) die("couldn't allocate memory");
-			e->name = state->lastkey;
-			e->iscond = true;
-			e->cond = 0;
-			e->defval = 0;
-			state->nextcond = &e->cond;
-			e->next = 0;
-			*ents_tail = e;
-			ents_tail = &e->next;
-			curdefval = &e->defval; // dumb hacky afterthought part 2
+			e->name = k;
+			e->defexpr = 0;
+			e->subents = (struct vec_ent){0};
+			if (!vec_push(&state->curent->subents, e)) {
+				die("couldn't append to array");
+			}
+			e->parent = state->curent;
+			state->curent = e;
+			break;
+		case KV_NEST_START:
+			if (state->haddefault) badparse(state, "default cannot be a block");
 			break;
 		case KV_NEST_END:
-			state->incond = false;
+			if (!state->curent->parent) {
+				badparse(state, "unexpected closing brace");
+			}
+			state->curent = state->curent->parent;
 			break;
 		case KV_VAL: case KV_VAL_QUOTED:
-			if (state->incond) {
-				// continuation of dumb hackiness
-				if (!strcmp(state->lastkey, "default")) {
-					char *s = malloc(len + 1);
-					if (!s) die("couldn't allocate default value string");
-					memcpy(s, p, len);
-					s[len] = '\0';
-					*curdefval = s;
-					break;
-				}
-				struct ent_cond *c = malloc(sizeof(*c));
-				if (!c) die("couldn't allocate memory");
-				c->name = state->lastkey;
-				char *expr = malloc(len + 1);
-				if (!expr) die("couldn't allocate value/expression string");
-				memcpy(expr, p, len);
-				expr[len] = '\0';
-				c->expr = expr;
-				c->next = 0;
-				*(state->nextcond) = c;
-				state->nextcond = &c->next;
-			}
-			else {
-				// also kind of dumb but whatever
-				struct ent *e = malloc(sizeof(*e));
-				if (!e) die("couldn't allocate memory");
-				e->name = state->lastkey;
-				e->iscond = false;
-				char *expr = malloc(len + 1);
-				if (!expr) die("couldn't allocate value/expression string");
-				memcpy(expr, p, len);
-				expr[len] = '\0';
-				e->expr = expr;
-				e->next = 0;
-				*ents_tail = e;
-				ents_tail = &e->next;
+			char *s = malloc(len + 1);
+			if (!s) die("couldn't allocate value string");
+			memcpy(s, p, len); s[len] = '\0';
+			state->curent->defexpr = s;
+			if (!state->haddefault) {
+				// a non-default value is just a node that itself only has a
+				// default value.
+				state->curent = state->curent->parent;
 			}
 			break;
 		case KV_COND_PREFIX: case KV_COND_SUFFIX:
@@ -156,20 +137,85 @@ static void kv_cb(enum kv_token type, const char *p, uint len, void *ctxt) {
 	}
 }
 
+static inline noreturn diewrite(void) { die("couldn't write to file"); }
+
+#define _doindent \
+	for (int _indent = 0; _indent < indent; ++_indent) { \
+		if (fputs("\t", out) == -1) diewrite(); \
+	}
 #define _(x) \
-	if (fprintf(out, "%s\n", x) < 0) die("couldn't write to file");
+	if (fprintf(out, "%s\n", x) < 0) diewrite();
+#define _i(x) _doindent _(x)
 #define F(f, ...) \
-	if (fprintf(out, f "\n", __VA_ARGS__) < 0) die("couldn't write to file");
+	if (fprintf(out, f "\n", __VA_ARGS__) < 0) diewrite();
+#define Fi(...) _doindent F(__VA_ARGS__)
 #define H() \
 _( "/* This file is autogenerated by src/build/mkgamedata.c. DO NOT EDIT! */") \
 _( "")
+
+static void decls(FILE *out) {
+	for (struct ent *const *pp = root.subents.data;
+			pp - root.subents.data < root.subents.sz; ++pp) {
+		if ((*pp)->defexpr) {
+F( "#define has_%s true", (*pp)->name)
+			if ((*pp)->subents.sz) {
+F( "extern int %s;", (*pp)->name)
+			}
+			else {
+F( "enum { %s = %s };", (*pp)->name, (*pp)->defexpr)
+			}
+		}
+		else {
+F( "extern bool has_%s;", (*pp)->name)
+F( "extern int %s;", (*pp)->name)
+		}
+	}
+}
+
+static void inits(FILE *out, const char *var, struct vec_ent *v, bool needhas,
+		int indent) {
+	for (struct ent *const *pp = v->data; pp - v->data < v->sz; ++pp) {
+Fi("if (GAMETYPE_MATCHES(%s)) {", (*pp)->name)
+		bool has = needhas && (*pp)->defexpr;
+		if (has) {
+Fi("	has_%s = true;", var);
+		}
+		if ((*pp)->defexpr) {
+Fi("	%s = %s;", var, (*pp)->defexpr);
+		}
+		inits(out, var, &(*pp)->subents, !has, indent + 1);
+_i("}")
+	}
+}
+
+static void defs(FILE *out) {
+	for (struct ent *const *pp = root.subents.data;
+			pp - root.subents.data < root.subents.sz; ++pp) {
+		if ((*pp)->defexpr) {
+			if ((*pp)->subents.sz) {
+F( "int %s = %s;", (*pp)->name, (*pp)->defexpr);
+			}
+		}
+		else {
+F( "int %s;", (*pp)->name);
+F( "bool has_%s = false;", (*pp)->name);
+		}
+	}
+_( "")
+_( "void gamedata_init(void) {")
+	for (struct ent *const *pp = root.subents.data;
+			pp - root.subents.data < root.subents.sz; ++pp) {
+		inits(out, (*pp)->name, &(*pp)->subents, !(*pp)->defexpr, 1);
+	}
+_( "}")
+}
 
 int OS_MAIN(int argc, os_char *argv[]) {
 	for (++argv; *argv; ++argv) {
 		int fd = os_open(*argv, O_RDONLY);
 		if (fd == -1) die("couldn't open file");
 		struct kv_parser kv = {0};
-		struct parsestate state = {*argv, &kv};
+		struct parsestate state = {*argv, &kv, &root};
 		char buf[1024];
 		int nread;
 		while (nread = read(fd, buf, sizeof(buf))) {
@@ -187,58 +233,12 @@ ep:			fprintf(stderr, "mkgamedata: %" fS ":%d:%d: bad syntax: %s\n",
 	FILE *out = fopen(".build/include/gamedata.gen.h", "wb");
 	if (!out) die("couldn't open gamedata.gen.h");
 	H();
-	for (struct ent *e = ents_head; e; e = e->next) {
-		if (e->iscond) {
-F( "extern int gamedata_%s;", e->name)
-			if (e->defval) {
-F( "#define gamedata_has_%s true", e->name)
-			}
-			else {
-F( "extern bool gamedata_has_%s;", e->name)
-			}
-		}
-		else {
-F( "enum { gamedata_%s = %s };", e->name, e->expr)
-F( "#define gamedata_has_%s true", e->name)
-		}
-	}
+	decls(out);
 
 	out = fopen(".build/include/gamedatainit.gen.h", "wb");
 	if (!out) die("couldn't open gamedatainit.gen.h");
 	H();
-	for (struct ent *e = ents_head; e; e = e->next) {
-		if (e->iscond) {
-			if (e->defval) {
-F( "int gamedata_%s = %s;", e->name, e->defval);
-			}
-			else {
-F( "int gamedata_%s;", e->name);
-F( "bool gamedata_has_%s = false;", e->name);
-			}
-		}
-	}
-_( "")
-_( "void gamedata_init(void) {")
-	for (struct ent *e = ents_head; e; e = e->next) {
-		if (e->iscond) {
-			for (struct ent_cond *c = e->cond; c; c = c->next) {
-				if (e->defval) {
-F( "	if (GAMETYPE_MATCHES(%s)) gamedata_%s = %s;", c->name, e->name, c->expr)
-				}
-				else {
-					// XXX: not bothering to generate `else`s. technically this
-					// has different semantics; we hope that the compiler can
-					// just do the right thing either way.
-F( "	if (GAMETYPE_MATCHES(%s)) {", c->name)
-F( "		gamedata_%s = %s;", e->name, c->expr)
-F( "		gamedata_has_%s = true;", e->name)
-_( "	}")
-				}
-			}
-		}
-	}
-_( "}")
-
+	defs(out);
 	return 0;
 }
 

@@ -24,7 +24,9 @@
 #include "autojump.h"
 #include "con_.h"
 #include "demorec.h"
-#include "factory.h"
+#include "engineapi.h"
+#include "ent.h"
+#include "fov.h"
 #include "fixes.h"
 #include "gamedata.h"
 #include "gameinfo.h"
@@ -41,11 +43,6 @@
 #else
 #define fS "s"
 #endif
-
-u32 _gametype_tag = 0; // spaghetti: no point making a .c file for 1 variable
-
-ifacefactory factory_client = 0, factory_server = 0, factory_engine = 0,
-		factory_inputsystem = 0;
 
 static int ifacever;
 
@@ -191,23 +188,27 @@ static const void *const *const plugin_obj;
 // figures out the dependencies at build time and generates all the init glue
 // but we want to actually release the plugin this decade so for now I'm just
 // plonking some bools here and worrying about it later. :^)
-static bool has_autojump = false, has_demorec = false,
-		has_demorec_custom = false, has_nosleep = false;
+static bool has_autojump = false, has_demorec = false, has_fov = false,
+		has_nosleep = false;
 #ifdef _WIN32
 static bool has_rinput = false;
 #endif
 
-// since this is static/global, it only becomes false again when the plugin SO
-// is unloaded/reloaded
-static bool already_loaded = false;
-static bool skip_unload = false;
+static bool already_loaded = false, skip_unload = false;
 
 #define RGBA(r, g, b, a) (&(struct con_colour){(r), (g), (b), (a)})
 
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	factory_engine = enginef; factory_server = serverf;
 	if (!con_init(enginef, ifacever)) return false;
-	if (!gameinfo_init(enginef)) { con_disconnect(); return false; }
+	engineapi_init(); // load some other interfaces
+	// detect p1 for the benefit of specific features
+	if (!GAMETYPE_MATCHES(Portal2) && con_findcmd("upgrade_portalgun")) {
+		_gametype_tag |= _gametype_tag_Portal1;
+	}
+	gamedata_init();
+	if (!gameinfo_init()) { con_disconnect(); return false; }
+
 	const void **p = vtable_firstdiff;
 	if (GAMETYPE_MATCHES(Portal2)) *p++ = (void *)&nop_p_v; // ClientFullyConnect
 	*p++ = (void *)&nop_p_v;		  // ClientDisconnect
@@ -256,18 +257,16 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 		con_warn("sst: warning: couldn't get input system's CreateInterface\n");
 	}
 
-	// detect p1 for the benefit of specific features
-	if (!GAMETYPE_MATCHES(Portal2) && con_findcmd("upgrade_portalgun")) {
-		_gametype_tag |= _gametype_tag_Portal1;
-	}
-	gamedata_init();
 	has_autojump = autojump_init();
 	has_demorec = demorec_init();
+	// not enabling demorec_custom yet - kind of incomplete and currently unused
+	//if (has_demorec) demorec_custom_init();
+	bool has_ent = ent_init();
+	has_fov = fov_init(has_ent);
 	has_nosleep = nosleep_init();
 #ifdef _WIN32
 	has_rinput = rinput_init();
 #endif
-	if (has_demorec) has_demorec_custom = demorec_custom_init();
 	fixes_apply();
 
 	// NOTE: this is technically redundant for early versions but I CBA writing
@@ -280,8 +279,8 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 					"vtable; won't be able to prevent nag message\n");
 			goto e;
 		}
-		orig_GetStringForSymbol = (GetStringForSymbol_func)hook_vtable(kvsvt,
-				4, (void *)GetStringForSymbol_hook);
+		orig_GetStringForSymbol = (GetStringForSymbol_func)hook_vtable(kvsvt, 4,
+				(void *)GetStringForSymbol_hook);
 	}
 
 e:	con_colourmsg(RGBA(64, 255, 64, 255),
@@ -291,24 +290,11 @@ e:	con_colourmsg(RGBA(64, 255, 64, 255),
 	return true;
 }
 
-// XXX: not sure if all this stuff should, like, go somewhere?
-
-struct CUtlMemory {
-	void *mem;
-	int alloccnt, growsz;
-};
-struct CUtlVector {
-	struct CUtlMemory m;
-	int sz;
-	void *mem_again_for_some_reason;
-};
-
 struct CServerPlugin /* : IServerPluginHelpers */ {
 	void **vtable;
 	struct CUtlVector plugins;
 	/*IPluginHelpersCheck*/ void *pluginhlpchk;
 };
-
 struct CPlugin {
 	char description[128];
 	bool paused;
@@ -320,6 +306,7 @@ struct CPlugin {
 };
 
 static void do_unload(void) {
+#ifdef _WIN32 // this is only relevant in builds that predate linux support
 	struct CServerPlugin *pluginhandler =
 			factory_engine("ISERVERPLUGINHELPERS001", 0);
 	if (pluginhandler) { // if not, oh well too bad we tried :^)
@@ -338,9 +325,11 @@ static void do_unload(void) {
 			}
 		}
 	}
+#endif
 
 	if (has_autojump) autojump_end();
 	if (has_demorec) demorec_end();
+	if (has_fov) fov_end(); // dep on ent
 	if (has_nosleep) nosleep_end();
 #ifdef _WIN32
 	if (has_rinput) rinput_end();
@@ -386,6 +375,13 @@ static const char *VCALLCONV GetPluginDescription(void *this) {
 	return LONGNAME " v" VERSION;
 }
 
+static void VCALLCONV ClientActive(void *this, struct edict *player) {
+	// XXX: it's kind of dumb that we get handed the edict here then go look it
+	// up again in fov.c but I can't be bothered refactoring any further now
+	// that this finally works, do something later lol
+	if (has_fov) fov_onload();
+}
+
 #define MAX_VTABLE_FUNCS 21
 static const void *vtable[MAX_VTABLE_FUNCS] = {
 	// start off with the members which (thankfully...) are totally stable
@@ -397,10 +393,10 @@ static const void *vtable[MAX_VTABLE_FUNCS] = {
 	(void *)&UnPause,
 	(void *)&GetPluginDescription,
 	(void *)&nop_p_v,	// LevelInit
-	(void *)&nop_pii_v, // ServerActivate
+	(void *)&nop_pii_v,	// ServerActivate
 	(void *)&nop_b_v,	// GameFrame
 	(void *)&nop_v_v,	// LevelShutdown
-	(void *)&nop_p_v	// ClientActive
+	(void *)&ClientActive
 	// At this point, Alien Swarm and Portal 2 add ClientFullyConnect, so we
 	// can't hardcode any more of the layout!
 };

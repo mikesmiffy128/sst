@@ -23,7 +23,6 @@
 #endif
 
 #include "con_.h"
-#include "factory.h"
 #include "gametype.h"
 
 static void chflags(const char *name, int unset, int set) {

@@ -17,9 +17,9 @@
 #include <stdbool.h>
 
 #include "con_.h"
-#include "hook.h"
-#include "factory.h"
+#include "engineapi.h"
 #include "gamedata.h"
+#include "hook.h"
 #include "os.h"
 #include "vcall.h"
 
@@ -44,30 +44,29 @@ bool nosleep_init(void) {
 		con_warn("nosleep: missing required factories\n");
 		return false;
 	}
-	if (!gamedata_has_vtidx_SleepUntilInput) {
+	if (!has_vtidx_SleepUntilInput) {
 		con_warn("nosleep: missing gamedata entries for this engine\n");
 		return false;
 	}
 	void *insys = factory_inputsystem("InputSystemVersion001", 0);
 	if (!insys) {
-		con_warn("nosleep: couldn't get intput system interface\n");
+		con_warn("nosleep: couldn't get input system interface\n");
 		return false;
 	}
 	vtable = *(void ***)insys;
-	if (!os_mprot(vtable + gamedata_vtidx_SleepUntilInput,
-			sizeof(void *), PAGE_EXECUTE_READWRITE)) {
-		con_warn("nosleep: couldn't make memory writeable\n");
+	if (!os_mprot(vtable + vtidx_SleepUntilInput, sizeof(void *),
+			PAGE_EXECUTE_READWRITE)) {
+		con_warn("nosleep: couldn't make memory writable\n");
 		return false;
 	}
 	orig_SleepUntilInput = (SleepUntilInput_func)hook_vtable(vtable,
-			gamedata_vtidx_SleepUntilInput, (void *)&hook_SleepUntilInput);
+			vtidx_SleepUntilInput, (void *)&hook_SleepUntilInput);
 	engine_no_focus_sleep->base.flags &= ~CON_HIDDEN;
 	return true;
 }
 
 void nosleep_end(void) {
-	unhook_vtable(vtable, gamedata_vtidx_SleepUntilInput,
-			(void *)orig_SleepUntilInput);
+	unhook_vtable(vtable, vtidx_SleepUntilInput, (void *)orig_SleepUntilInput);
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

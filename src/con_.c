@@ -52,8 +52,8 @@ void (*_con_colourmsgf)(void *this, const struct con_colour *c, const char *fmt,
 // XXX: the const and non-const entries might actually be flipped on windows,
 // not 100% sure, but dunno if it's worth essentially duping most of these when
 // the actual executed machine code is probably identical anyway.
-DECL_VFUNC0(int, AllocateDLLIdentifier, 5)
-DECL_VFUNC0(int, AllocateDLLIdentifier_p2, 8)
+DECL_VFUNC(int, AllocateDLLIdentifier, 5)
+DECL_VFUNC(int, AllocateDLLIdentifier_p2, 8)
 DECL_VFUNC(void, RegisterConCommand, 6, /*ConCommandBase*/ void *)
 DECL_VFUNC(void, RegisterConCommand_p2, 9, /*ConCommandBase*/ void *)
 DECL_VFUNC(void, UnregisterConCommands, 8, int)
@@ -61,7 +61,7 @@ DECL_VFUNC(void, UnregisterConCommands_p2, 11, int)
 // DECL_VFUNC(void *, FindCommandBase, 10, const char *)
 DECL_VFUNC(void *, FindCommandBase_p2, 13, const char *)
 DECL_VFUNC(struct con_var *, FindVar, 12, const char *)
-// DECL_VFUNC0(const struct con_var *, FindVar_const, 13, const char *)
+// DECL_VFUNC(const struct con_var *, FindVar_const, 13, const char *)
 DECL_VFUNC(struct con_var *, FindVar_p2, 15, const char *)
 DECL_VFUNC(struct con_cmd *, FindCommand, 14, const char *)
 DECL_VFUNC(struct con_cmd *, FindCommand_p2, 17, const char *)
@@ -91,7 +91,7 @@ static inline void initval(struct con_var *v) {
 // to try and be like the engine even though it's probably not actually
 // required, we call the Internal* virtual functions by actual virtual lookup.
 // since the vtables are filled dynamically (below), we store this index; other
-// indexes are just offset from this one since the 3-or-4 functions are all
+// indices are just offset from this one since the 3-or-4 functions are all
 // right next to each other.
 static int vtidx_InternalSetValue;
 
@@ -182,10 +182,11 @@ static void VCALLCONV ChangeStringValue(struct con_var *this, const char *s,
 		this->strlen = len;
 	}
 	memcpy(this->strval, s, len);
-	//if (cb) {...} // not bothering
-	// also note: portal2 has a *list* of callbacks, although that part of ABI
-	// doesn't matter as far as plugin compat goes, so still not bothering
-	// we do however bother to call global callbacks, as is polite.
+	// callbacks don't matter as far as ABI compat goes (and thank goodness
+	// because e.g. portal2 randomly adds a *list* of callbacks!?). however we
+	// do need callbacks for at least one feature, so do our own minimal thing
+	if (this->cb) this->cb(this);
+	// also call global callbacks, as is polite.
 	if (GAMETYPE_MATCHES(Portal2)) {
 		VCALL(_con_iface, CallGlobalChangeCallbacks_p2, this, old, oldf);
 	}
@@ -415,12 +416,12 @@ bool con_init(void *(*f)(const char *, int *), int plugin_ver) {
 		// the actual ABI to use to avoid spectacular crashes.
 		if (VCALL(_con_iface, FindCommandBase_p2, "portal2_square_portals")) {
 			_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf_p2);
-			dllid = VCALL0(_con_iface, AllocateDLLIdentifier_p2);
+			dllid = VCALL(_con_iface, AllocateDLLIdentifier_p2);
 			_gametype_tag |= _gametype_tag_Portal2;
 		}
 		else if (VCALL(_con_iface, FindCommand, "l4d2_snd_adrenaline")) {
 			_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf_l4d);
-			dllid = VCALL0(_con_iface, AllocateDLLIdentifier);
+			dllid = VCALL(_con_iface, AllocateDLLIdentifier);
 			// while we're here, also distinguish Survivors, the stupid Japanese
 			// arcade game a few people seem to care about for some reason
 			// (which for some other reason also has some vtable changes)
@@ -433,7 +434,7 @@ bool con_init(void *(*f)(const char *, int *), int plugin_ver) {
 		}
 		else if (VCALL(_con_iface, FindVar, "z_difficulty")) {
 			_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf_l4d);
-			dllid = VCALL0(_con_iface, AllocateDLLIdentifier);
+			dllid = VCALL(_con_iface, AllocateDLLIdentifier);
 			_gametype_tag |= _gametype_tag_L4D1;
 		}
 		else {
@@ -449,7 +450,7 @@ bool con_init(void *(*f)(const char *, int *), int plugin_ver) {
 		// TODO(compat): are there any cases where 004 is incompatible? could
 		// this crash? find out!
 		_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf_004);
-		dllid = VCALL0(_con_iface, AllocateDLLIdentifier);
+		dllid = VCALL(_con_iface, AllocateDLLIdentifier);
 		// even more spaghetti! we need the plugin interface version to
 		// accurately distinguish 2007/2013 branches
 		if (plugin_ver == 3) _gametype_tag |= _gametype_tag_2013;
@@ -489,12 +490,8 @@ void con_disconnect(void) {
 }
 
 struct con_var *con_findvar(const char *name) {
-	if (GAMETYPE_MATCHES(Portal2)) {
-		return VCALL(_con_iface, FindVar_p2, name);
-	}
-	else {
-		return VCALL(_con_iface, FindVar, name);
-	}
+	if (GAMETYPE_MATCHES(Portal2)) return VCALL(_con_iface, FindVar_p2, name);
+	else return VCALL(_con_iface, FindVar, name);
 }
 
 struct con_cmd *con_findcmd(const char *name) {
@@ -506,8 +503,7 @@ struct con_cmd *con_findcmd(const char *name) {
 	}
 }
 
-#define GETTER(T, N, M) \
-	T N(const struct con_var *v) { return v->parent->M; }
+#define GETTER(T, N, M) T N(const struct con_var *v) { return v->parent->M; }
 GETTER(const char *, con_getvarstr, strval)
 GETTER(float, con_getvarf, fval)
 GETTER(int, con_getvari, ival)
@@ -518,7 +514,7 @@ GETTER(int, con_getvari, ival)
 		((void (*VCALLCONV)(void *, T))(v->vtable_iconvar[I]))( \
 				&v->vtable_iconvar, x); \
 	}
-// vtable indexes for str/int/float are consistently at the start, hooray.
+// vtable indices for str/int/float are consistently at the start, hooray.
 // unfortunately the windows overload ordering meme still applies...
 #ifdef _WIN32
 SETTER(const char *, 2, con_setvarstr)

@@ -17,7 +17,7 @@
 #include <stdbool.h>
 
 #include "con_.h"
-#include "factory.h"
+#include "engineapi.h"
 #include "gamedata.h"
 #include "intdefs.h"
 #include "hook.h"
@@ -28,34 +28,17 @@
 DEF_CVAR(sst_autojump, "Jump upon hitting the ground while holding space", 0,
 		CON_REPLICATE | CON_DEMO | CON_HIDDEN)
 
-struct vec3f { float x, y, z; };
-struct CMoveData {
-	bool firstrun : 1, gamecodemoved : 1;
-	ulong playerhandle;
-	int impulse;
-	struct vec3f viewangles, absviewangles;
-	int buttons, oldbuttons;
-	float mv_forward, mv_side, mv_up;
-	float maxspeed, clmaxspeed;
-	struct vec3f vel, angles, oldangles;
-	float out_stepheight;
-	struct vec3f out_wishvel, out_jumpvel;
-	struct vec3f constraint_centre;
-	float constraint_radius, constraint_width, constraint_speedfactor;
-	struct vec3f origin;
-};
-
 #define IN_JUMP 2
 #define NIDX 256 // *completely* arbitrary lol
 static bool justjumped[NIDX] = {0};
 static inline int handleidx(ulong h) { return h & (1 << 11) - 1; }
 
 static void *gmsv = 0, *gmcl = 0;
-typedef bool (VCALLCONV *CheckJumpButton_f)(void *);
-static CheckJumpButton_f origsv, origcl;
+typedef bool (*VCALLCONV CheckJumpButton_func)(void *);
+static CheckJumpButton_func origsv, origcl;
 
 static bool VCALLCONV hook(void *this) {
-	struct CMoveData **mvp = mem_offset(this, gamedata_off_mv), *mv = *mvp;
+	struct CMoveData **mvp = mem_offset(this, off_mv), *mv = *mvp;
 	// use 0 idx for client side, as server indices start at 1
 	// FIXME: does this account for splitscreen???
 	int i = this == gmsv ? handleidx(mv->playerhandle) : 0;
@@ -65,9 +48,9 @@ static bool VCALLCONV hook(void *this) {
 
 static bool unprot(void *gm) {
 	void **vtable = *(void ***)gm;
-	bool ret = os_mprot(vtable + gamedata_vtidx_CheckJumpButton,
-			sizeof(void *), PAGE_EXECUTE_READWRITE);
-	if (!ret) con_warn("autojump: couldn't make memory writeable\n");
+	bool ret = os_mprot(vtable + vtidx_CheckJumpButton, sizeof(void *),
+			PAGE_EXECUTE_READWRITE);
+	if (!ret) con_warn("autojump: couldn't make memory writable\n");
 	return ret;
 }
 
@@ -77,7 +60,7 @@ bool autojump_init(void) {
 		con_warn("autojump: missing required factories\n");
 		return false;
 	}
-	if (!gamedata_has_vtidx_CheckJumpButton || !gamedata_has_off_mv) {
+	if (!has_vtidx_CheckJumpButton || !has_off_mv) {
 		con_warn("autojump: missing gamedata entries for this engine\n");
 		return false;
 	}
@@ -94,20 +77,18 @@ bool autojump_init(void) {
 		return false;
 	}
 	if (!unprot(gmcl)) return false;
-	origsv = (CheckJumpButton_f)hook_vtable(*(void ***)gmsv,
-			gamedata_vtidx_CheckJumpButton, (void *)&hook);
-	origcl = (CheckJumpButton_f)hook_vtable(*(void ***)gmcl,
-			gamedata_vtidx_CheckJumpButton, (void *)&hook);
+	origsv = (CheckJumpButton_func)hook_vtable(*(void ***)gmsv,
+			vtidx_CheckJumpButton, (void *)&hook);
+	origcl = (CheckJumpButton_func)hook_vtable(*(void ***)gmcl,
+			vtidx_CheckJumpButton, (void *)&hook);
 
 	sst_autojump->base.flags &= ~CON_HIDDEN;
 	return true;
 }
 
 void autojump_end(void) {
-	unhook_vtable(*(void ***)gmsv, gamedata_vtidx_CheckJumpButton,
-			(void *)origsv);
-	unhook_vtable(*(void ***)gmcl, gamedata_vtidx_CheckJumpButton,
-			(void *)origcl);
+	unhook_vtable(*(void ***)gmsv, vtidx_CheckJumpButton, (void *)origsv);
+	unhook_vtable(*(void ***)gmcl, vtidx_CheckJumpButton, (void *)origcl);
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

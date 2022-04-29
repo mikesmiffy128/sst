@@ -144,7 +144,13 @@ struct con_var { // ConVar in engine
 	float minval;
 	bool hasmax; // just sticking to sdk position for now
 	float maxval;
-	//void *cb; // we don't currently bother with callback support. add if needed!
+	/*
+	 * Our quickly-chucked in optional callback - doesn't match the engine!!
+	 * Also has to be manually set in code, although that's probably fine anyway
+	 * as it's common to only want a cvar to do something if the feature
+	 * succesfully init-ed.
+	 */
+	void (*cb)(struct con_var *this);
 };
 
 /* The change callback used in most branches of Source. Takes an IConVar :) */
