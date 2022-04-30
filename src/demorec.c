@@ -32,7 +32,7 @@
 #include "vcall.h"
 #include "x86.h"
 
-DEF_CVAR(sst_autorecord, "Continue recording demos after server disconnects", 1,
+DEF_CVAR(sst_autorecord, "Continuously record demos even after reconnecting", 1,
 		CON_ARCHIVE | CON_HIDDEN)
 
 static void *demorecorder;
@@ -48,19 +48,19 @@ typedef void (*VCALLCONV SetSignonState_func)(void *, int);
 static SetSignonState_func orig_SetSignonState;
 static void VCALLCONV hook_SetSignonState(void *this_, int state) {
 	struct CDemoRecorder *this = this_;
-	// apparently NEW only *sometimes* bumps the demo num - prevent this!
+	// NEW fires once every map or save load, but only bumps number if demo file
+	// was left open (i.e. every transition). bump it unconditionally instead!
 	if (state == SIGNONSTATE_NEW) {
 		int oldnum = *demonum;
 		orig_SetSignonState(this, state);
-		*demonum = oldnum;
+		*demonum = oldnum + 1;
 		return;
 	}
-	// SPAWN always fires once every load, so use that to bump demonum instead
-	if (state == SIGNONSTATE_SPAWN) ++*demonum;
-	// dumb hack: game actually creates the demo file on FULL. we set demonum to
-	// 0 in the record command hook so that it gets incremented to 1 on SPAWN.
-	// if it's still 0 here, bump it up to 1 real quick!
-	else if (state == SIGNONSTATE_FULL && *demonum == 0) *demonum = 1;
+	// dumb hack: demo file gets opened on FULL. bumping the number on NEW would
+	// make the first demo number 2 so we set the number to 0 in the record
+	// command. however if we started recording already in-map we need to bodge
+	// it back up to 1 right before the demo actually gets created
+	if (state == SIGNONSTATE_FULL && *demonum == 0) *demonum = 1;
 	orig_SetSignonState(this, state);
 }
 
