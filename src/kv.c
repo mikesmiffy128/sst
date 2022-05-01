@@ -143,7 +143,7 @@ STATE(ident_slash):
 	switch (c = READ()) {
 		HANDLE_EOF();
 		case '/': CB(KV_IDENT); SKIP_COMMENT(sep);
-		default: GOTO(ident);
+		default: OUT('/'); GOTO(ident);
 	}
 
 STATE(identq):
@@ -228,7 +228,7 @@ STATE(val_slash):
 	switch (c = READ()) {
 		HANDLE_EOF();
 		case '/': CB(KV_VAL); SKIP_COMMENT(afterval);
-		default: GOTO(val);
+		default: OUT('/'); GOTO(val);
 	}
 
 STATE(valq):
