@@ -36,13 +36,16 @@ set objs=%objs% .build/%basename%.o
 goto :eof
 
 :main
-%HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -ladvapi32 ^
+%HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS ^
 -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c || exit /b
-%HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -ladvapi32 ^
+%HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS ^
 -o .build/mkgamedata.exe src/build/mkgamedata.c src/kv.c || exit /b
+%HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -ladvapi32 ^
+-o .build/mkentprops.exe src/build/mkentprops.c src/kv.c || exit /b
 .build\codegen.exe src/autojump.c src/con_.c src/demorec.c src/engineapi.c src/ent.c src/extmalloc.c src/fixes.c ^
-src/fov.c src/gamedata.c src/gameinfo.c src/hook.c src/kv.c src/nosleep.c src/rinput.c src/sst.c src/x86.c || exit /b
+src/fov.c src/gamedata.c src/gameinfo.c src/hook.c src/kv.c src/l4dwarp.c src/nosleep.c src/rinput.c src/sst.c src/x86.c || exit /b
 .build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv || exit /b
+.build\mkentprops.exe gamedata/entprops.kv || exit /b
 llvm-rc /FO .build\dll.res src\dll.rc || exit /b
 %CC% -shared -O0 -w -o .build/tier0.dll src/stubs/tier0.c
 %CC% -shared -O0 -w -o .build/vstdlib.dll src/stubs/vstdlib.c
@@ -58,6 +61,7 @@ call :cc src/gamedata.c || exit /b
 call :cc src/gameinfo.c || exit /b
 call :cc src/hook.c || exit /b
 call :cc src/kv.c || exit /b
+call :cc src/l4dwarp.c || exit /b
 call :cc src/nosleep.c || exit /b
 call :cc src/rinput.c || exit /b
 call :cc src/sst.c || exit /b

@@ -21,29 +21,40 @@
 
 extern u64 _gametype_tag;
 
+/* general engine branches used in a bunch of stuff */
 #define _gametype_tag_OE		1
-// TODO(compat): detect in con_init, even if just to fail (VEngineServer broke)
+#define _gametype_tag_OrangeBox	(1 << 1)
+#define _gametype_tag_2013		(1 << 2)
+
+/* specific games with dedicated branches / engine changes */
+// TODO(compat): detect dmomm, even if only just to fail (VEngineServer broke)
 // TODO(compat): buy dmomm in a steam sale to implement and test the above, lol
-#define _gametype_tag_DMoMM		(1 << 1)
-#define _gametype_tag_OrangeBox	(1 << 2)
-#define _gametype_tag_L4D1		(1 << 3)
-#define _gametype_tag_L4D2		(1 << 4)
-#define _gametype_tag_L4DS		(1 << 5)
-#define _gametype_tag_Portal1	(1 << 6)
+#define _gametype_tag_DMoMM		(1 << 3)
+#define _gametype_tag_L4D1		(1 << 4)
+#define _gametype_tag_L4D2		(1 << 5)
+#define _gametype_tag_L4DS		(1 << 6) /* Survivors (weird arcade port) */
 #define _gametype_tag_Portal2	(1 << 7)
-#define _gametype_tag_2013		(1 << 8)
+
+/* games needing game-specific stuff, but not tied to a singular branch */
+#define _gametype_tag_Portal1	(1 << 8)
+
+/* VEngineClient versions */
 #define _gametype_tag_Client015 (1 << 9)
 #define _gametype_tag_Client014 (1 << 10)
 #define _gametype_tag_Client013 (1 << 11)
 #define _gametype_tag_Client012 (1 << 12)
 #define _gametype_tag_Server021 (1 << 13)
 
+/* ServerGameDLL versions */
+#define _gametype_tag_SrvDLL009	(1 << 14) // 2013-ish
+#define _gametype_tag_SrvDLL005	(1 << 15) // mostly everything else, it seems
+
+/* Matches for any multiple possible tags */
 #define _gametype_tag_L4D		(_gametype_tag_L4D1 | _gametype_tag_L4D2)
 // XXX: *stupid* naming, refactor later (damn Survivors ruining everything)
 #define _gametype_tag_L4D2x		(_gametype_tag_L4D2 | _gametype_tag_L4DS)
 #define _gametype_tag_L4Dx		(_gametype_tag_L4D1 | _gametype_tag_L4D2x)
-#define _gametype_tag_L4Dbased \
-	(_gametype_tag_L4D1 | _gametype_tag_L4D2x | _gametype_tag_Portal2)
+#define _gametype_tag_L4Dbased	(_gametype_tag_L4Dx | _gametype_tag_Portal2)
 #define _gametype_tag_OrangeBoxbased \
 	(_gametype_tag_OrangeBox | _gametype_tag_2013)
 

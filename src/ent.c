@@ -21,29 +21,39 @@
 #include "gamedata.h"
 #include "gametype.h"
 #include "intdefs.h"
+#include "mem.h"
 #include "vcall.h"
 
 DECL_VFUNC_DYN(void *, PEntityOfEntIndex, int)
+static struct edict **edicts = 0;
+
+void *ent_getedict(int idx) {
+	if (edicts) {
+		// globalvars->edicts seems to be null when disconnected
+		if (!*edicts) return 0;
+		return mem_offset(*edicts, sz_edict * idx);
+	}
+	else {
+		return VCALL(engserver, PEntityOfEntIndex, idx);
+	}
+}
 
 void *ent_get(int idx) {
-	// TODO(compat): Based on previous attempts at this, for L4D2, we need
-	// factory_server("PlayerInfoManager002")->GetGlobalVars()->edicts
-	// (offset 22 or so). Then get edicts from that. For now, we only need this
-	// for Portal FOV stuff, so just doing this eiface stuff.
-
-	struct edict *e = VCALL(engserver, PEntityOfEntIndex, idx);
+	struct edict *e = ent_getedict(idx);
 	if (!e) return 0;
 	return e->ent_unknown;
 }
 
 bool ent_init(void) {
-	if (!has_vtidx_PEntityOfEntIndex) {
-		con_warn("ent: missing gamedata entries for this engine\n");
-		return false;
+	// for PEntityOfEntIndex we don't really have to do any more init, we
+	// can just call the function later.
+	if (has_vtidx_PEntityOfEntIndex) return true;
+	if (globalvars && has_off_edicts) {
+		edicts = mem_offset(globalvars, off_edicts);
+		return true;
 	}
-	// for PEntityOfEntIndex we don't really have to do any more init, we can
-	// just call the function later.
-	return true;
+	con_warn("ent: not implemented for this engine\n");
+	return false;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

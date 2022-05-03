@@ -42,13 +42,11 @@ struct VEngineClient {
 	void **vtable;
 	/* opaque fields */
 };
-extern struct VEngineClient *engclient;
 
 struct VEngineServer {
 	void **vtable;
 	/* opaque fields */
 };
-extern struct VEngineServer *engserver;
 
 struct CUtlMemory {
 	void *mem;
@@ -61,10 +59,14 @@ struct CUtlVector {
 };
 
 struct edict {
+	// CBaseEdict
 	int stateflags;
 	int netserial;
 	void *ent_networkable;
 	void *ent_unknown;
+	// edict_t
+	// NOTE! *REMOVED* in l4d-based branches. don't iterate over edict pointers!
+	float freetime;
 };
 
 struct vec3f { float x, y, z; };
@@ -84,15 +86,52 @@ struct CMoveData {
 	struct vec3f origin;
 };
 
+#define SENDPROP_INT 0
+#define SENDPROP_FLOAT 1
+#define SENDPROP_VEC 2
+#define SENDPROP_VECXY 3
+#define SENDPROP_STR 4
+#define SENDPROP_ARRAY 5
+#define SENDPROP_DTABLE 6
+#define SENDPROP_INT64 7
+
+// these have to be opaque because, naturally, they're unstable between
+// branches - access stuff using gamedata offsets as usual
+struct RecvProp;
+struct SendProp;
+
+// these two things seem to be stable enough for our purposes
+struct SendTable {
+	struct SendProp *props;
+	int nprops;
+	char *tablename;
+	void *precalc;
+	bool inited : 1;
+	bool waswritten : 1;
+	/* "has props encoded against current tick count" ??? */
+	bool haspropsenccurtickcnt : 1; 
+};
+struct ServerClass {
+	char *name;
+	struct SendTable *table;
+	struct ServerClass *next;
+	int id;
+	int instbaselineidx;
+};
+
 /// }}}
+
+extern struct VEngineClient *engclient;
+extern struct VEngineServer *engserver;
+extern void *globalvars;
 
 /*
  * Called on plugin init to attempt to initialise various core interfaces.
  * Doesn't return an error result, because the plugin can still load even if
  * this stuff is missing.
  *
- * Also performs additional gametype detection after con_init(), before
- * gamedata_init().
+ * Also performs additional gametype detection after con_init(), and calls
+ * gamedata_init() to setup offsets and such.
  */
 void engineapi_init(void);
 

@@ -19,6 +19,9 @@
 
 #include <stdbool.h>
 
+#include "engineapi.h"
+
+struct edict *ent_getedict(int idx);
 void *ent_get(int idx);
 
 bool ent_init(void);

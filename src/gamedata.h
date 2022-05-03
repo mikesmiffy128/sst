@@ -1,5 +1,5 @@
 /*
- * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,6 +25,8 @@
 #define NVDTOR 2
 #endif
 #include <gamedata.gen.h>
+// entprops are built by a different tool, in a different header for simplicity
+#include <entprops.gen.h>
 #undef NVDTOR
 
 void gamedata_init(void);

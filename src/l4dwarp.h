@@ -14,30 +14,12 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef INC_CMETA_H
-#define INC_CMETA_H
+#ifndef INC_L4DWARP_H
+#define INC_L4DWARP_H
 
 #include <stdbool.h>
 
-#include "../os.h"
-
-struct cmeta;
-
-const struct cmeta *cmeta_loadfile(const os_char *f);
-
-/*
- * Iterates through all the #include directives in a file, passing each one in
- * turn to the callback cb.
- */
-void cmeta_includes(const struct cmeta *cm,
-		void (*cb)(const char *f, bool issys, void *ctxt), void *ctxt);
-
-/*
- * Iterates through all commands and variables declared using the macros in
- * con_.h, passing each one in turn to the callback cb.
- */
-void cmeta_conmacros(const struct cmeta *cm,
-		void (*cb)(const char *name, bool isvar, bool unreg));
+bool l4dwarp_init(void);
 
 #endif
 

@@ -14,9 +14,15 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <stdbool.h> // used in generated code
+#include <string.h> // "
+
 #include "engineapi.h"
+#include "gamedata.h"
 #include "gametype.h"
 #include "intdefs.h"
+#include "mem.h" // "
+#include "vcall.h"
 
 u64 _gametype_tag = 0; // declared in gametype.h but seems sensible enough here
 
@@ -25,6 +31,15 @@ ifacefactory factory_client = 0, factory_server = 0, factory_engine = 0,
 
 struct VEngineClient *engclient;
 struct VEngineServer *engserver;
+
+// this seems to be very stable, thank goodness
+DECL_VFUNC(void *, GetGlobalVars, 1)
+void *globalvars;
+
+DECL_VFUNC_DYN(void *, GetAllServerClasses)
+DECL_VFUNC_DYN(int, GetEngineBuildNumber)
+
+#include <entpropsinit.gen.h>
 
 void engineapi_init(void) {
 	if (engclient = factory_engine("VEngineClient015", 0)) {
@@ -45,6 +60,53 @@ void engineapi_init(void) {
 	}
 	// else if (engserver = others as needed...) {
 	// }
+
+	void *pim = factory_server("PlayerInfoManager002", 0);
+	if (pim) globalvars = VCALL(pim, GetGlobalVars);
+
+	void *srvdll;
+	// TODO(compat): add this back when there's gamedata for 009 (no point atm)
+	/*if (srvdll = factory_engine("ServerGameDLL009", 0)) {
+		_gametype_tag |= _gametype_tag_SrvDLL009;
+	}*/
+	if (srvdll = factory_server("ServerGameDLL005", 0)) {
+		_gametype_tag |= _gametype_tag_SrvDLL005;
+	}
+
+	// need to do this now; ServerClass network table iteration requires
+	// SendProp offsets
+	gamedata_init();
+
+	// TODO(compat): we need this terrible hack for now because TLS somehow
+	// changed the entity vtable layout and I've yet to think of a way to make
+	// gamedata more flexible to handle that properly. I blame JAiZ.
+	if (engclient && has_vtidx_GetEngineBuildNumber &&
+			VCALL(engclient, GetEngineBuildNumber) >= 2200) {
+		++vtidx_Teleport;
+	}
+
+	if (has_vtidx_GetAllServerClasses && has_sz_SendProp &&
+			has_off_SP_varname && has_off_SP_offset) {
+		struct ServerClass *svclass = VCALL(srvdll, GetAllServerClasses);
+		initentprops(svclass);
+#if 0 // just keeping a note of this testing code for now, might delete later
+		for (; svclass; svclass = svclass->next) {
+			struct SendTable *st = svclass->table;
+			for (struct SendProp *p = st->props; (char *)p -
+					(char *)st->props < st->nprops * sz_SendProp;
+					p = mem_offset(p, sz_SendProp)) {
+				if (!strcmp(*(const char **)mem_offset(p, off_SP_varname),
+						"m_angEyeAngles[0]")) {
+					con_msg("%s\n", svclass->name);
+					con_msg("  %s\n", st->tablename);
+					con_msg("    %s = %d\n", *(const char **)mem_offset(p,
+							off_SP_varname), *(int *)mem_offset(p, off_SP_offset));
+				return;
+				}
+			}
+		}
+#endif
+	}
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

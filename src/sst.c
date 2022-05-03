@@ -32,6 +32,7 @@
 #include "gameinfo.h"
 #include "gametype.h"
 #include "hook.h"
+#include "l4dwarp.h"
 #include "nosleep.h"
 #include "os.h"
 #include "rinput.h"
@@ -201,12 +202,11 @@ static bool already_loaded = false, skip_unload = false;
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	factory_engine = enginef; factory_server = serverf;
 	if (!con_init(enginef, ifacever)) return false;
-	engineapi_init(); // load some other interfaces
+	engineapi_init(); // load some other interfaces. also calls gamedata_init()
 	// detect p1 for the benefit of specific features
 	if (!GAMETYPE_MATCHES(Portal2) && con_findcmd("upgrade_portalgun")) {
 		_gametype_tag |= _gametype_tag_Portal1;
 	}
-	gamedata_init();
 	if (!gameinfo_init()) { con_disconnect(); return false; }
 
 	const void **p = vtable_firstdiff;
@@ -263,6 +263,7 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	//if (has_demorec) demorec_custom_init();
 	bool has_ent = ent_init();
 	has_fov = fov_init(has_ent);
+	if (has_ent) l4dwarp_init();
 	has_nosleep = nosleep_init();
 #ifdef _WIN32
 	has_rinput = rinput_init();

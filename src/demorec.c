@@ -363,7 +363,7 @@ bool demorec_custom_init(void) {
 		// really.
 		if (buildnum >= 2042) nbits_datalen = 11; else nbits_datalen = 12;
 	// }
-	
+
 	return find_WriteMessages();
 }
 

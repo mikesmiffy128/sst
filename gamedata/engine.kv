@@ -8,7 +8,10 @@ vtidx_RecordPacket 11
 // VEngineClient
 vtidx_GetGameDirectory {
 	Client015 35 // current portal 2
-	Client014 { L4D2 73 } // YES IT'S SEVENTY THREE ALL OF A SUDDEN.
+	Client014 {
+		L4D2 73 // YES IT'S SEVENTY THREE ALL OF A SUDDEN.
+		2013 35
+	}
 	Client013 {
 		L4Dx 36 // AND THEN THEY CHANGED IT BACK LATER!
 		default 35 // <- most things have this!
@@ -17,5 +20,42 @@ vtidx_GetGameDirectory {
 }
 vtidx_GetEngineBuildNumber { L4D2 99 }
 vtidx_PEntityOfEntIndex { OrangeBox 19 } // probably OE too but???
+
+sz_edict {
+	default 20
+	L4Dbased 16 // see engineapi.h comment
+}
+
+// SendProp
+sz_SendProp {
+	// wrapping all these in 005 for right now.
+	// will need at least 009 as well at some point!
+	SrvDLL005 {
+		OrangeBox	76
+		L4D1		80
+		L4D2		84
+		Portal2		84
+	}
+	//2013 80 // TODO(compat): not sure about 2013/009 yet
+}
+off_SP_varname {
+	SrvDLL005 {
+		OrangeBox	44
+		//L4Dbased	48 // TODO(compat): haven't tested Survivors
+		// for now do this instead:
+		L4D			48
+		Portal2		48
+	}
+	//2013 48 // TODO(compat): not sure about 2013/009 yet pt2
+}
+off_SP_offset {
+	SrvDLL005 {
+		OrangeBox	68
+		L4D1		72
+		L4D2		76
+		Portal2		76
+	}
+	//2013 72 // TODO(compat): not sure about 2013/009 yet pt3
+}
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
