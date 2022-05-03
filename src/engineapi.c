@@ -87,25 +87,7 @@ void engineapi_init(void) {
 
 	if (has_vtidx_GetAllServerClasses && has_sz_SendProp &&
 			has_off_SP_varname && has_off_SP_offset) {
-		struct ServerClass *svclass = VCALL(srvdll, GetAllServerClasses);
-		initentprops(svclass);
-#if 0 // just keeping a note of this testing code for now, might delete later
-		for (; svclass; svclass = svclass->next) {
-			struct SendTable *st = svclass->table;
-			for (struct SendProp *p = st->props; (char *)p -
-					(char *)st->props < st->nprops * sz_SendProp;
-					p = mem_offset(p, sz_SendProp)) {
-				if (!strcmp(*(const char **)mem_offset(p, off_SP_varname),
-						"m_angEyeAngles[0]")) {
-					con_msg("%s\n", svclass->name);
-					con_msg("  %s\n", st->tablename);
-					con_msg("    %s = %d\n", *(const char **)mem_offset(p,
-							off_SP_varname), *(int *)mem_offset(p, off_SP_offset));
-				return;
-				}
-			}
-		}
-#endif
+		initentprops(VCALL(srvdll, GetAllServerClasses));
 	}
 }
 
