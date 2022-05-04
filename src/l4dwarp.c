@@ -32,7 +32,7 @@ DECL_VFUNC_DYN(void, Teleport, const struct vec3f *pos, const struct vec3f *ang,
 		const struct vec3f *vel)
 
 DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you",
-		CON_SERVERSIDE) {
+		CON_SERVERSIDE | CON_CHEAT) {
 	struct edict *ed = ent_getedict(con_cmdclient + 1);
 	if (!ed) { con_warn("error: couldn't access player entity\n"); return; }
 	void *e = VCALL(ed->ent_unknown, GetBaseEntity); // is this call required?
