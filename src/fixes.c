@@ -68,6 +68,27 @@ static void generalfixes(void) {
 	// a game will want to require demos only (probably not till demos are more
 	// robust anyway... whatever)
 	chflags("developer", CON_HIDDEN | CON_DEVONLY, CON_DEMO);
+
+	// fps_max policy varies a bit between speedgames and their communities!
+	// in theory we might wanna remove CON_NOTCONN on Portal 1 in a future
+	// release, but for now people haven't fully talked themselves into it.
+	struct con_var *v = con_findvar("fps_max");
+	if (GAMETYPE_MATCHES(L4Dx)) {
+		// for L4D games, generally changing anything above normal limits is
+		// banned, but externally capping FPS will always be possible so we
+		// might as well allow lowering it ingame for convenience.
+		if (v->parent->base.flags & (CON_HIDDEN | CON_DEVONLY)) {
+			v->parent->base.flags &= ~(CON_HIDDEN | CON_DEVONLY);
+			v->parent->hasmax = true; v->parent->maxval = 300;
+		}
+		else {
+			// in TLS, this was made changeable, but still limit to 1000 to
+			// prevent breaking the engine
+			v->parent->hasmax = true; v->parent->maxval = 1000;
+		}
+		// also show the lower limit in help. engine should enforce anyway
+		v->parent->hasmin = true; v->parent->minval = 30;
+	}
 }
 
 static void l4d2specific(void) {
