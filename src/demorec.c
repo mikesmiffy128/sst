@@ -120,7 +120,13 @@ static void hook_record_cb(const struct con_cmdargs *args) {
 		}
 	}
 	orig_record_cb(args);
-	if (!was && *recording) *demonum = 0; // see SetSignonState comment above
+	if (!was && *recording) {
+		*demonum = 0; // see SetSignonState comment above
+		// For UX, make it more obvious we're recording, in particular when not
+		// already in a map as the "recording to x.dem" won't come up yet.
+		// mike: I think this is questionably necessary but I'm outvoted :)
+		con_msg("Demo recording started\n");
+	}
 }
 
 static void hook_stop_cb(const struct con_cmdargs *args) {

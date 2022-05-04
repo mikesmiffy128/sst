@@ -62,7 +62,7 @@ static bool find_SetDefaultFOV(struct con_cmd *fov) {
 		}
 		p += len;
 	}
-	return true;
+	return false;
 }
 
 // replacement cvar needs to actively set player fov if in a map
