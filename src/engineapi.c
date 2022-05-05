@@ -22,7 +22,11 @@
 #include "gametype.h"
 #include "intdefs.h"
 #include "mem.h" // "
+#include "os.h"
 #include "vcall.h"
+#include "x86.h"
+
+#include "con_.h"
 
 u64 _gametype_tag = 0; // declared in gametype.h but seems sensible enough here
 
@@ -73,18 +77,17 @@ void engineapi_init(void) {
 		_gametype_tag |= _gametype_tag_SrvDLL005;
 	}
 
+	// TERRIBLE HACK: TODO(compat): come up with a better method later
+	if (GAMETYPE_MATCHES(L4D2) && os_access(OS_LIT(
+			"update/maps/c14m1_junkyard.bsp"), R_OK) != -1) {
+		_gametype_tag |= _gametype_tag_TheLastStand;
+	}
+
 	// need to do this now; ServerClass network table iteration requires
 	// SendProp offsets
 	gamedata_init();
 
 	// TODO(compat): we need this terrible hack for now because TLS somehow
-	// changed the entity vtable layout and I've yet to think of a way to make
-	// gamedata more flexible to handle that properly. I blame JAiZ.
-	if (engclient && has_vtidx_GetEngineBuildNumber &&
-			VCALL(engclient, GetEngineBuildNumber) >= 2200) {
-		++vtidx_Teleport;
-	}
-
 	if (has_vtidx_GetAllServerClasses && has_sz_SendProp &&
 			has_off_SP_varname && has_off_SP_offset) {
 		initentprops(VCALL(srvdll, GetAllServerClasses));

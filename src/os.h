@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #ifdef _WIN32
+#include <direct.h>
 #include <io.h>
 #include <wchar.h>
 // DUMB HACK: noreturn.h is alphabetically before os.h so including it after
