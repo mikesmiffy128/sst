@@ -127,13 +127,14 @@ extern void *globalvars;
 
 /*
  * Called on plugin init to attempt to initialise various core interfaces.
- * Doesn't return an error result, because the plugin can still load even if
- * this stuff is missing.
+ * This includes console/cvar initialisation and populating gametype and
+ * gamedata values.
  *
- * Also performs additional gametype detection after con_init(), and calls
- * gamedata_init() to setup offsets and such.
+ * Returns true if there is enough stuff in place for the plugin to function -
+ * there may still be stuff missing. Returns false if there's no way the plugin
+ * can possibly work, e.g. if there's no cvar interface.
  */
-void engineapi_init(void);
+bool engineapi_init(int pluginver);
 
 #endif
 

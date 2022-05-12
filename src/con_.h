@@ -94,7 +94,8 @@ typedef int (*con_complcb)(const char *part,
  * These are called by the plugin load/unload functions; they have no use
  * elsewhere.
  */
-bool con_init(void *(*f)(const char *, int *), int plugin_ver);
+bool con_detect(int pluginver);
+void con_init(void);
 void con_disconnect(void);
 
 /*

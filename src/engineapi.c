@@ -17,16 +17,16 @@
 #include <stdbool.h> // used in generated code
 #include <string.h> // "
 
+#include "con_.h"
 #include "engineapi.h"
 #include "gamedata.h"
+#include "gameinfo.h"
 #include "gametype.h"
 #include "intdefs.h"
 #include "mem.h" // "
 #include "os.h"
 #include "vcall.h"
 #include "x86.h"
-
-#include "con_.h"
 
 u64 _gametype_tag = 0; // declared in gametype.h but seems sensible enough here
 
@@ -45,7 +45,9 @@ DECL_VFUNC_DYN(int, GetEngineBuildNumber)
 
 #include <entpropsinit.gen.h>
 
-void engineapi_init(void) {
+bool engineapi_init(int pluginver) {
+	if (!con_detect(pluginver)) return false;
+
 	if (engclient = factory_engine("VEngineClient015", 0)) {
 		_gametype_tag |= _gametype_tag_Client015;
 	}
@@ -77,6 +79,11 @@ void engineapi_init(void) {
 		_gametype_tag |= _gametype_tag_SrvDLL005;
 	}
 
+	// detect p1 for the benefit of specific features
+	if (!GAMETYPE_MATCHES(Portal2) && con_findcmd("upgrade_portalgun")) {
+		_gametype_tag |= _gametype_tag_Portal1;
+	}
+
 	// TERRIBLE HACK: TODO(compat): come up with a better method later
 	if (GAMETYPE_MATCHES(L4D2) && os_access(OS_LIT(
 			"update/maps/c14m1_junkyard.bsp"), R_OK) != -1) {
@@ -86,12 +93,15 @@ void engineapi_init(void) {
 	// need to do this now; ServerClass network table iteration requires
 	// SendProp offsets
 	gamedata_init();
+	con_init();
+	if (!gameinfo_init()) { con_disconnect(); return false; }
 
-	// TODO(compat): we need this terrible hack for now because TLS somehow
 	if (has_vtidx_GetAllServerClasses && has_sz_SendProp &&
 			has_off_SP_varname && has_off_SP_offset) {
 		initentprops(VCALL(srvdll, GetAllServerClasses));
 	}
+
+	return true;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

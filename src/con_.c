@@ -22,6 +22,7 @@
 
 #include "abi.h"
 #include "con_.h"
+#include "engineapi.h" // only for factories - XXX: do we care this is circular?
 #include "extmalloc.h"
 #include "gametype.h"
 #include "mem.h"
@@ -52,6 +53,8 @@ void (*_con_colourmsgf)(void *this, const struct con_colour *c, const char *fmt,
 // XXX: the const and non-const entries might actually be flipped on windows,
 // not 100% sure, but dunno if it's worth essentially duping most of these when
 // the actual executed machine code is probably identical anyway.
+// XXX: make these use gamedata at some point and avoid all the conditionals,
+// now that gamedata is populated before the rest of console init
 DECL_VFUNC(int, AllocateDLLIdentifier, 5)
 DECL_VFUNC(int, AllocateDLLIdentifier_p2, 8)
 DECL_VFUNC(void, RegisterConCommand, 6, /*ConCommandBase*/ void *)
@@ -240,6 +243,7 @@ static void VCALLCONV InternalSetIntValue(struct con_var *this, int v) {
 
 // Hack: IConVar things get this-adjusted pointers, we just reverse the offset
 // to get the top pointer.
+// XXX: rewrite these at some point to use the normal VCALL stuff
 static void VCALLCONV SetValue_str_thunk(void *thisoff, const char *v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
@@ -335,7 +339,7 @@ void *_con_vtab_iconvar[7] = {
 #endif
 };
 
-static void fillvts(void) {
+void con_init(void) {
 	void **pc = _con_vtab_cmd + 3 + NVDTOR, **pv = _con_vtab_var + 3 + NVDTOR,
 			**pi = _con_vtab_iconvar
 #ifndef _WIN32
@@ -394,6 +398,8 @@ static void fillvts(void) {
 	*pi++ = (void *)&IsFlagSet_thunk;
 	// last one: not in 004, but doesn't matter. one less branch!
 	*pi++ = (void *)&GetSplitScreenPlayerSlot;
+
+	regcmds();
 }
 
 void con_reg(void *cmd_or_var) {
@@ -405,9 +411,9 @@ void con_reg(void *cmd_or_var) {
 	}
 }
 
-bool con_init(void *(*f)(const char *, int *), int plugin_ver) {
+bool con_detect(int pluginver) {
 	int ifacever; // for error messages
-	if (_con_iface = f("VEngineCvar007", 0)) {
+	if (_con_iface = factory_engine("VEngineCvar007", 0)) {
 		// GENIUS HACK (BUT STILL BAD): Portal 2 has everything in ICvar shifted
 		// down 3 places due to the extra stuff in IAppSystem. This means that
 		// if we look up the Portal 2-specific cvar using FindCommandBase, it
@@ -442,28 +448,24 @@ bool con_init(void *(*f)(const char *, int *), int plugin_ver) {
 			ifacever = 7;
 			goto e;
 		}
-		fillvts();
-		regcmds();
 		return true;
 	}
-	if (_con_iface = f("VEngineCvar004", 0)) {
+	if (_con_iface = factory_engine("VEngineCvar004", 0)) {
 		// TODO(compat): are there any cases where 004 is incompatible? could
 		// this crash? find out!
 		_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf_004);
 		dllid = VCALL(_con_iface, AllocateDLLIdentifier);
 		// even more spaghetti! we need the plugin interface version to
 		// accurately distinguish 2007/2013 branches
-		if (plugin_ver == 3) _gametype_tag |= _gametype_tag_2013;
+		if (pluginver == 3) _gametype_tag |= _gametype_tag_2013;
 		else _gametype_tag |= _gametype_tag_OrangeBox;
-		fillvts();
-		regcmds();
 		return true;
 	}
-	if (f("VEngineCvar003", 0)) {
+	if (factory_engine("VEngineCvar003", 0)) {
 		ifacever = 3;
 		goto warnoe;
 	}
-	if (f("VEngineCvar002", 0)) {
+	if (factory_engine("VEngineCvar002", 0)) {
 		// I don't suppose there's anything below 002 worth caring about? Shrug.
 		ifacever = 2;
 warnoe:	con_warn("sst: error: old engine console support is not implemented\n");
@@ -474,7 +476,7 @@ warnoe:	con_warn("sst: error: old engine console support is not implemented\n");
 e:	con_msg("\n\n");
 	con_msg("-- Please include ALL of the following if asking for help:\n");
 	con_msg("--   plugin:     " LONGNAME " v" VERSION "\n");
-	con_msg("--   interfaces: %d/%d\n", plugin_ver, ifacever);
+	con_msg("--   interfaces: %d/%d\n", pluginver, ifacever);
 	con_msg("\n\n");
 	return false;
 }
