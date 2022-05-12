@@ -20,4 +20,11 @@
  */
 void fixes_apply(void);
 
+/*
+ * Applies specific fixes *again*, in cases where they wouldn't work very early
+ * in game startup (like if the plugin is loaded via VDF). Isn't guaranteed to
+ * be called if the plugin is loaded later, so must do things redundantly.
+ */
+void fixes_tryagainlater(void);
+
 // vi: sw=4 ts=4 noet tw=80 cc=80

@@ -161,4 +161,12 @@ void fixes_apply(void) {
 	else if (GAMETYPE_MATCHES(L4D2x)) l4d2specific();
 }
 
+void fixes_tryagainlater(void) {
+	if (GAMETYPE_MATCHES(L4D1)) {
+		// whatever dll this is in seems to load late (mm_l4d_debug is fine)
+		struct con_var *v = con_findvar("ui_l4d_debug");
+		if (v) con_setvari(v, 0);
+	}
+}
+
 // vi: sw=4 ts=4 noet tw=80 cc=80

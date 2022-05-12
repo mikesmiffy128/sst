@@ -160,6 +160,15 @@ static const char *VCALLCONV GetStringForSymbol_hook(void *this, int s) {
 	return ret;
 }
 
+// by hooking stuffcmds, we get a callback after the last of the startup
+// commands have run (the command line ones)
+static struct con_cmd *cmd_stuffcmds = 0;
+static con_cmdcb orig_stuffcmds_cb;
+static void hook_stuffcmds_cb(const struct con_cmdargs *args) {
+	orig_stuffcmds_cb(args);
+	fixes_tryagainlater();
+}
+
 // vstdlib symbol, only currently used in l4d2 but exists everywhere so oh well
 IMPORT void *KeyValuesSystem(void);
 
@@ -277,6 +286,12 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 				(void *)GetStringForSymbol_hook);
 	}
 
+	cmd_stuffcmds = con_findcmd("stuffcmds");
+	if (cmd_stuffcmds) {
+		orig_stuffcmds_cb = cmd_stuffcmds->cb;
+		cmd_stuffcmds->cb = hook_stuffcmds_cb;
+	}
+
 e:	con_colourmsg(RGBA(64, 255, 64, 255),
 			LONGNAME " v" VERSION " successfully loaded");
 	con_colourmsg(RGBA(255, 255, 255, 255), " for game ");
@@ -338,6 +353,7 @@ static void do_unload(void) {
 	if (orig_GetStringForSymbol) {
 		unhook_vtable(kvsvt, 4, (void *)orig_GetStringForSymbol);
 	}
+	if (cmd_stuffcmds) cmd_stuffcmds->cb = orig_stuffcmds_cb;
 }
 
 static bool VCALLCONV Load(void *this, ifacefactory enginef,
