@@ -1,5 +1,18 @@
 // = engine library =
 
+// ICvar
+// XXX: const and non-const entries might be flipped here on Windows, not 100%
+// sure. kind of just choosing not to care thusfar, as it still works the same!
+vtidx_AllocateDLLIdentifier { default 5 Portal2 8 }
+vtidx_RegisterConCommand { default 6 Portal2 9 }
+vtidx_UnregisterConCommands { default 8 Portal2 11 }
+//vtidx_FindComandBase { default 10 Portal2 13 } // unused
+vtidx_FindVar { default 12 Portal2 15 }
+//vtidx_FindVar_const { default 13 Portal2 16 } // e.g. this might be wrong(???)
+vtidx_FindCommand { default 14 Portal2 17 }
+vtidx_CallGlobalChangeCallbacks { default 20 L4Dx 18 Portal2 21 }
+vtidx_ConsoleColorPrintf { OrangeBoxbased 23 L4Dx 21 Portal2 24 }
+
 // CDemoRecorder
 vtidx_SetSignonState 3
 vtidx_StopRecording 7
@@ -62,4 +75,4 @@ off_SP_offset {
 	//2013 72 // TODO(compat): not sure about 2013/009 yet pt3
 }
 
-// vi: sw=4 ts=4 noet tw=80 cc=80
+// vi: sw=4 ts=4 noet tw=80 cc=80 ft=plain

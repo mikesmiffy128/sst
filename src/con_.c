@@ -50,35 +50,21 @@ void *_con_iface;
 void (*_con_colourmsgf)(void *this, const struct con_colour *c, const char *fmt,
 		...) _CON_PRINTF(3, 4);
 
-// XXX: the const and non-const entries might actually be flipped on windows,
-// not 100% sure, but dunno if it's worth essentially duping most of these when
-// the actual executed machine code is probably identical anyway.
-// XXX: make these use gamedata at some point and avoid all the conditionals,
-// now that gamedata is populated before the rest of console init
-DECL_VFUNC(int, AllocateDLLIdentifier, 5)
-DECL_VFUNC(int, AllocateDLLIdentifier_p2, 8)
-DECL_VFUNC(void, RegisterConCommand, 6, /*ConCommandBase*/ void *)
-DECL_VFUNC(void, RegisterConCommand_p2, 9, /*ConCommandBase*/ void *)
-DECL_VFUNC(void, UnregisterConCommands, 8, int)
-DECL_VFUNC(void, UnregisterConCommands_p2, 11, int)
-// DECL_VFUNC(void *, FindCommandBase, 10, const char *)
+// bootstrap hackery, see "GENIUS HACK" comment below :)
 DECL_VFUNC(void *, FindCommandBase_p2, 13, const char *)
-DECL_VFUNC(struct con_var *, FindVar, 12, const char *)
+DECL_VFUNC(void *, FindCommand_nonp2, 14, const char *)
+DECL_VFUNC(void *, FindVar_nonp2, 12, const char *)
+
+// rest of these are figured out from gamedata after initial game detection
+DECL_VFUNC_DYN(int, AllocateDLLIdentifier)
+DECL_VFUNC_DYN(void, RegisterConCommand, /*ConCommandBase*/ void *)
+DECL_VFUNC_DYN(void, UnregisterConCommands, int)
+DECL_VFUNC_DYN(struct con_var *, FindVar, const char *)
 // DECL_VFUNC(const struct con_var *, FindVar_const, 13, const char *)
-DECL_VFUNC(struct con_var *, FindVar_p2, 15, const char *)
-DECL_VFUNC(struct con_cmd *, FindCommand, 14, const char *)
-DECL_VFUNC(struct con_cmd *, FindCommand_p2, 17, const char *)
-DECL_VFUNC(void, CallGlobalChangeCallbacks, 20, struct con_var *, const char *,
+DECL_VFUNC_DYN(struct con_cmd *, FindCommand, const char *)
+DECL_VFUNC_DYN(void, CallGlobalChangeCallbacks, struct con_var *, const char *,
 		float)
-DECL_VFUNC(void, CallGlobalChangeCallbacks_l4d, 18, struct con_var *,
-		const char *, float)
-DECL_VFUNC(void, CallGlobalChangeCallbacks_p2, 21, struct con_var *,
-		const char *, float)
-DECL_VFUNC_CDECL(void, ConsoleColorPrintf_004, 23, const struct con_colour *,
-		const char *, ...)
-DECL_VFUNC_CDECL(void, ConsoleColorPrintf_l4d, 21, const struct con_colour *,
-		const char *, ...)
-DECL_VFUNC_CDECL(void, ConsoleColorPrintf_p2, 24, const struct con_colour *,
+DECL_VFUNC_CDECLDYN(void, ConsoleColorPrintf, const struct con_colour *,
 		const char *, ...)
 
 static inline void initval(struct con_var *v) {
@@ -95,8 +81,12 @@ static inline void initval(struct con_var *v) {
 // required, we call the Internal* virtual functions by actual virtual lookup.
 // since the vtables are filled dynamically (below), we store this index; other
 // indices are just offset from this one since the 3-or-4 functions are all
-// right next to each other.
+// right next to each other. the #defines allow us to still use the nice VCALL
+// stuff.
 static int vtidx_InternalSetValue;
+#define vtidx_InternalSetFloatValue (vtidx_InternalSetValue + 1)
+#define vtidx_InternalSetIntValue (vtidx_InternalSetValue + 2)
+#define vtidx_InternalSetColorValue (vtidx_InternalSetValue + 3)
 
 // implementation of virtual functions for our vars and commands below...
 
@@ -190,15 +180,7 @@ static void VCALLCONV ChangeStringValue(struct con_var *this, const char *s,
 	// do need callbacks for at least one feature, so do our own minimal thing
 	if (this->cb) this->cb(this);
 	// also call global callbacks, as is polite.
-	if (GAMETYPE_MATCHES(Portal2)) {
-		VCALL(_con_iface, CallGlobalChangeCallbacks_p2, this, old, oldf);
-	}
-	else if (GAMETYPE_MATCHES(L4D)) {
-		VCALL(_con_iface, CallGlobalChangeCallbacks_l4d, this, old, oldf);
-	}
-	else {
-		VCALL(_con_iface, CallGlobalChangeCallbacks, this, old, oldf);
-	}
+	VCALL(_con_iface, CallGlobalChangeCallbacks, this, old, oldf);
 }
 
 static void VCALLCONV InternalSetValue(struct con_var *this, const char *v) {
@@ -241,32 +223,32 @@ static void VCALLCONV InternalSetIntValue(struct con_var *this, int v) {
 	}
 }
 
+DECL_VFUNC_DYN(void, InternalSetValue, const char *)
+DECL_VFUNC_DYN(void, InternalSetFloatValue, float)
+DECL_VFUNC_DYN(void, InternalSetIntValue, int)
+DECL_VFUNC_DYN(void, InternalSetColorValue, struct con_colour)
+
 // Hack: IConVar things get this-adjusted pointers, we just reverse the offset
 // to get the top pointer.
-// XXX: rewrite these at some point to use the normal VCALL stuff
 static void VCALLCONV SetValue_str_thunk(void *thisoff, const char *v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	((void (*VCALLCONV)(void *, const char *))(this->parent->base.vtable[
-			vtidx_InternalSetValue]))(this, v);
+	VCALL(&this->parent->base, InternalSetValue, v);
 }
 static void VCALLCONV SetValue_f_thunk(void *thisoff, float v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	((void (*VCALLCONV)(void *, float))(this->parent->base.vtable[
-			vtidx_InternalSetValue + 1]))(this, v);
+	VCALL(&this->parent->base, InternalSetFloatValue, v);
 }
 static void VCALLCONV SetValue_i_thunk(void *thisoff, int v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	((void (*VCALLCONV)(void *, int))(this->parent->base.vtable[
-			vtidx_InternalSetValue + 2]))(this, v);
+	VCALL(&this->parent->base, InternalSetIntValue, v);
 }
 static void VCALLCONV SetValue_colour_thunk(void *thisoff, struct con_colour v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	((void (*VCALLCONV)(void *, struct con_colour))(this->parent->base.vtable[
-			vtidx_InternalSetValue + 3]))(this, v);
+	VCALL(&this->parent->base, InternalSetColorValue, v);
 }
 
 // more misc thunks, hopefully these just compile to a sub and a jmp
@@ -339,7 +321,14 @@ void *_con_vtab_iconvar[7] = {
 #endif
 };
 
+void con_reg(void *cmd_or_var) {
+	VCALL(_con_iface, RegisterConCommand, cmd_or_var);
+}
+
 void con_init(void) {
+	_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf);
+	dllid = VCALL(_con_iface, AllocateDLLIdentifier);
+
 	void **pc = _con_vtab_cmd + 3 + NVDTOR, **pv = _con_vtab_var + 3 + NVDTOR,
 			**pi = _con_vtab_iconvar
 #ifndef _WIN32
@@ -402,17 +391,19 @@ void con_init(void) {
 	regcmds();
 }
 
-void con_reg(void *cmd_or_var) {
-	if (GAMETYPE_MATCHES(Portal2)) {
-		VCALL(_con_iface, RegisterConCommand_p2, cmd_or_var);
-	}
-	else {
-		VCALL(_con_iface, RegisterConCommand, cmd_or_var);
-	}
+static void helpuserhelpus(int pluginver, char ifaceverchar) {
+	con_msg("\n");
+	con_msg("-- Please include ALL of the following if asking for help:\n");
+	con_msg("--   plugin:     " LONGNAME " v" VERSION "\n");
+	con_msg("--   interfaces: %d/%c\n", pluginver, ifaceverchar);
+	con_msg("\n");
+}
+
+static void warnoe(void) {
+	con_warn("sst: error: this engine version is not yet supported\n");
 }
 
 bool con_detect(int pluginver) {
-	int ifacever; // for error messages
 	if (_con_iface = factory_engine("VEngineCvar007", 0)) {
 		// GENIUS HACK (BUT STILL BAD): Portal 2 has everything in ICvar shifted
 		// down 3 places due to the extra stuff in IAppSystem. This means that
@@ -421,88 +412,63 @@ bool con_detect(int pluginver) {
 		// which just happens to still work fine. From there, we can figure out
 		// the actual ABI to use to avoid spectacular crashes.
 		if (VCALL(_con_iface, FindCommandBase_p2, "portal2_square_portals")) {
-			_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf_p2);
-			dllid = VCALL(_con_iface, AllocateDLLIdentifier_p2);
 			_gametype_tag |= _gametype_tag_Portal2;
+			return true;
 		}
-		else if (VCALL(_con_iface, FindCommand, "l4d2_snd_adrenaline")) {
-			_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf_l4d);
-			dllid = VCALL(_con_iface, AllocateDLLIdentifier);
+		if (VCALL(_con_iface, FindCommand_nonp2, "l4d2_snd_adrenaline")) {
 			// while we're here, also distinguish Survivors, the stupid Japanese
 			// arcade game a few people seem to care about for some reason
 			// (which for some other reason also has some vtable changes)
-			if (VCALL(_con_iface, FindVar, "avatarbasemodel")) {
+			if (VCALL(_con_iface, FindVar_nonp2, "avatarbasemodel")) {
 				_gametype_tag |= _gametype_tag_L4DS;
 			}
 			else {
 				_gametype_tag |= _gametype_tag_L4D2;
 			}
+			return true;
 		}
-		else if (VCALL(_con_iface, FindVar, "z_difficulty")) {
-			_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf_l4d);
-			dllid = VCALL(_con_iface, AllocateDLLIdentifier);
+		if (VCALL(_con_iface, FindVar_nonp2, "z_difficulty")) {
 			_gametype_tag |= _gametype_tag_L4D1;
+			return true;
 		}
-		else {
-			con_warn("sst: error: game is unsupported (using VEngineCvar007)\n");
-			ifacever = 7;
-			goto e;
-		}
-		return true;
+		con_warn("sst: error: game is unsupported (using VEngineCvar007)\n");
+		helpuserhelpus(pluginver, '7');
+		return false;
 	}
 	if (_con_iface = factory_engine("VEngineCvar004", 0)) {
 		// TODO(compat): are there any cases where 004 is incompatible? could
 		// this crash? find out!
-		_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf_004);
-		dllid = VCALL(_con_iface, AllocateDLLIdentifier);
-		// even more spaghetti! we need the plugin interface version to
-		// accurately distinguish 2007/2013 branches
 		if (pluginver == 3) _gametype_tag |= _gametype_tag_2013;
 		else _gametype_tag |= _gametype_tag_OrangeBox;
 		return true;
 	}
 	if (factory_engine("VEngineCvar003", 0)) {
-		ifacever = 3;
-		goto warnoe;
+		warnoe();
+		helpuserhelpus(pluginver, '3');
+		return false;
 	}
+	// I don't suppose there's anything below 002 worth caring about? Shrug.
 	if (factory_engine("VEngineCvar002", 0)) {
-		// I don't suppose there's anything below 002 worth caring about? Shrug.
-		ifacever = 2;
-warnoe:	con_warn("sst: error: old engine console support is not implemented\n");
-		goto e;
+		warnoe();
+		helpuserhelpus(pluginver, '2');
+		return false;
 	}
 	con_warn("sst: error: couldn't find a supported console interface\n");
-	ifacever = -1; // meh
-e:	con_msg("\n\n");
-	con_msg("-- Please include ALL of the following if asking for help:\n");
-	con_msg("--   plugin:     " LONGNAME " v" VERSION "\n");
-	con_msg("--   interfaces: %d/%d\n", pluginver, ifacever);
-	con_msg("\n\n");
+	helpuserhelpus(pluginver, '?');
 	return false;
 }
 
 void con_disconnect(void) {
-	if (GAMETYPE_MATCHES(Portal2)) {
-		VCALL(_con_iface, UnregisterConCommands_p2, dllid);
-	}
-	else {
-		VCALL(_con_iface, UnregisterConCommands, dllid);
-	}
+	VCALL(_con_iface, UnregisterConCommands, dllid);
 	freevars();
 }
 
 struct con_var *con_findvar(const char *name) {
-	if (GAMETYPE_MATCHES(Portal2)) return VCALL(_con_iface, FindVar_p2, name);
-	else return VCALL(_con_iface, FindVar, name);
+	return VCALL(_con_iface, FindVar, name);
 }
 
 struct con_cmd *con_findcmd(const char *name) {
-	if (GAMETYPE_MATCHES(Portal2)) {
-		return VCALL(_con_iface, FindCommand_p2, name);
-	}
-	else {
-		return VCALL(_con_iface, FindCommand, name);
-	}
+	return VCALL(_con_iface, FindCommand, name);
 }
 
 #define GETTER(T, N, M) T N(const struct con_var *v) { return v->parent->M; }
@@ -511,6 +477,7 @@ GETTER(float, con_getvarf, fval)
 GETTER(int, con_getvari, ival)
 #undef GETTER
 
+// XXX: move this to vcall/gamedata (will require win/linux conditionals first!)
 #define SETTER(T, I, N) \
 	void N(struct con_var *v, T x) { \
 		((void (*VCALLCONV)(void *, T))(v->vtable_iconvar[I]))( \
