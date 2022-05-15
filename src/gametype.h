@@ -59,6 +59,7 @@ extern u64 _gametype_tag;
 #define _gametype_tag_L4Dbased	(_gametype_tag_L4Dx | _gametype_tag_Portal2)
 #define _gametype_tag_OrangeBoxbased \
 	(_gametype_tag_OrangeBox | _gametype_tag_2013)
+#define _gametype_tag_Portal (_gametype_tag_Portal1 | _gametype_tag_Portal2)
 
 #define GAMETYPE_MATCHES(x) !!(_gametype_tag & (_gametype_tag_##x))
 

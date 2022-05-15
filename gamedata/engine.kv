@@ -26,16 +26,19 @@ vtidx_GetGameDirectory {
 		2013 35
 	}
 	Client013 {
-		L4Dx 36 // AND THEN THEY CHANGED IT BACK LATER!
+		L4Dx 36 // AND THEN THEY CHANGED IT BACK LATER! (on 2.0.4.1)
 		default 35 // <- most things have this!
 	}
 	Client012 37 // dmomm, ep1, ...
 }
-// TODO(compat): apparently this changed, in early versions it's NOT 99!
-// Come up with some way to detect it properly!?
 vtidx_GetEngineBuildNumber {
-	//L4D2 99
+	L4D2 {
+		Client013 99
+		//Client014 ??? // TODO(compat): find out what this (maybe 136?)
+	}
 }
+
+// VEngineServer
 vtidx_PEntityOfEntIndex { OrangeBox 19 } // probably OE too but???
 
 sz_edict {

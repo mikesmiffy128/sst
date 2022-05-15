@@ -144,11 +144,11 @@ _( "static void initentprops(struct ServerClass *class) {")
 F( "	for (int needclasses = %d; class; class = class->next) {", nclasses)
 	char *else1 = "";
 	for (struct class *c = classes.x[0]; c; c = c->hdr.x[0]) {
-		// TODO(opt): some sort of PHF instead of chained strcmp, if we ever
-		// have more than a few classes/properties?
+		// TODO(opt): some sort of PHF or trie instead of chained strcmp, if we
+		// ever have more than a few classes/properties?
 F( "		%sif (!strcmp(class->name, \"%s\")) {", else1, c->name)
 _( "			struct SendTable *st = class->table;")
-				// christ this is awful :(
+				// XXX: christ this is all awful :(
 F( "			int needprops = %d;", c->props.sz)
 _( "			for (struct SendProp *p = st->props; (char *)p -")
 _( "					(char *)st->props < st->nprops * sz_SendProp;")
@@ -159,7 +159,12 @@ _( "					p = mem_offset(p, sz_SendProp)) {")
 F( "				%sif (!strcmp(*(const char **)mem_offset(p, off_SP_varname), \"%s\")) {",
 		else2, (*pp)->propname) // ugh
 F( "					has_%s = true;", (*pp)->varname)
-F( "					%s = *(int *)mem_offset(p, off_SP_offset);", (*pp)->varname)
+			// from AM L4D2 SDK headers:
+			// > SENDPROP_VECTORELEM makes [offset] negative to start with so we
+			// > can detect that and set the SPROP_IS_VECTOR_ELEM flag.
+			// apparently if we're loaded via VDF, it hasn't been flipped back
+			// yet. just calling abs() on it as an easy solution.
+F( "					%s = abs(*(int *)mem_offset(p, off_SP_offset));", (*pp)->varname)
 _( "					if (!--needprops) break;")
 _( "				}")
 			else2 = "else ";

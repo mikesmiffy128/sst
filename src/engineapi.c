@@ -15,6 +15,7 @@
  */
 
 #include <stdbool.h> // used in generated code
+#include <stdlib.h> // "
 #include <string.h> // "
 
 #include "con_.h"
@@ -42,6 +43,8 @@ void *globalvars;
 
 DECL_VFUNC_DYN(void *, GetAllServerClasses)
 DECL_VFUNC_DYN(int, GetEngineBuildNumber)
+
+DECL_VFUNC(int, GetEngineBuildNumber_newl4d2, 99) // duping gamedata entry, yuck
 
 #include <entpropsinit.gen.h>
 
@@ -84,9 +87,13 @@ bool engineapi_init(int pluginver) {
 		_gametype_tag |= _gametype_tag_Portal1;
 	}
 
-	// TERRIBLE HACK: TODO(compat): come up with a better method later
-	if (GAMETYPE_MATCHES(L4D2) && os_access(OS_LIT(
-			"update/maps/c14m1_junkyard.bsp"), R_OK) != -1) {
+	// Ugly HACK: we want to call GetEngineBuildNumber to find out if we're on a
+	// Last Stand version (because they changed entity vtables for some reason),
+	// but that function also got moved in 2.0.4.1 which means we can't call it
+	// till gamedata is set up, so we have to have a bit of redundant logic here
+	// to bootstrap things.
+	if (GAMETYPE_MATCHES(L4D2) && GAMETYPE_MATCHES(Client013) &&
+			VCALL(engclient, GetEngineBuildNumber_newl4d2) >= 2200) {
 		_gametype_tag |= _gametype_tag_TheLastStand;
 	}
 
@@ -100,7 +107,6 @@ bool engineapi_init(int pluginver) {
 			has_off_SP_varname && has_off_SP_offset) {
 		initentprops(VCALL(srvdll, GetAllServerClasses));
 	}
-
 	return true;
 }
 
