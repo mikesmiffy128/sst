@@ -109,6 +109,9 @@ static inline void os_randombytes(void *buf, int sz) {
 #define W_OK 2
 #define X_OK R_OK // there's no actual X bit, just pretend
 
+// windows doesn't define this for some reason!? note: add others as needed...
+#define S_ISDIR(mode) (((mode) & S_IFMT) == S_IFDIR)
+
 // just dump this boilerplate here as well, I spose
 #define OS_WINDOWS_ERROR(arrayname) \
 	FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), \

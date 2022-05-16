@@ -88,7 +88,8 @@ static void hook_record_cb(const struct con_cmdargs *args) {
 	bool was = *recording;
 	if (!was && args->argc == 2 || args->argc == 3) {
 		// safety check: make sure a directory exists, otherwise recording
-		// silently fails
+		// silently fails. this is necessarily TOCTOU, but in practice it's
+		// way better than not doing it - just to have a sanity check.
 		const char *arg = args->argv[1];
 		const char *lastslash = 0;
 		for (const char *p = arg; *p; ++p) {
@@ -111,9 +112,28 @@ static void hook_record_cb(const struct con_cmdargs *args) {
 					*q = (uchar)*p;
 				}
 				q[argdirlen] = OS_LIT('\0');
-				if (os_access(dir, X_OK) == -1) {
-					con_warn("ERROR: can't record demo: subdirectory %.*s "
-							"doesn't exist\n", argdirlen, arg);
+				// this is pretty ugly. the error cases would be way tidier if
+				// we could use open(O_DIRECTORY), but that's not a thing on
+				// windows, of course.
+				struct os_stat s;
+				if (os_stat(dir, &s) == -1) {
+					con_warn("ERROR: can't record demo: ");
+					if (errno == ENOENT) {
+						con_warn("subdirectory %.*s doesn't exist\n",
+								argdirlen, arg);
+					}
+					else {
+						con_warn("%s\n", strerror(errno)); // guess this'll do.
+					}
+					return;
+				}
+				if (!S_ISDIR(s.st_mode)) {
+					// duping this warning call to avoid duping the string data,
+					// very stupid, oh well. if/when we have New And Improved
+					// Logging this can be tidied up...
+					con_warn("ERROR: can't record demo: ");
+					con_warn("the path %.*s is not a directory\n",
+							argdirlen, arg);
 					return;
 				}
 			}
