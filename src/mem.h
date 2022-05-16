@@ -68,6 +68,11 @@ static inline void mem_storeptr(void *to, const void *val) {
  * to any pointer type */
 static inline void *mem_offset(void *p, int off) { return (char *)p + off; }
 
+/* returns the offset in bytes from one pointer to another (p - q) */
+static inline ssize mem_diff(const void *p, const void *q) {
+	return (char *)p - (char *)q;
+}
+
 #endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

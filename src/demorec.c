@@ -351,6 +351,8 @@ static bool find_WriteMessages(void) {
 	return false;
 }
 
+DECL_VFUNC_DYN(int, GetEngineBuildNumber)
+
 bool demorec_custom_init(void) { 
 	if (!has_vtidx_GetEngineBuildNumber || !has_vtidx_RecordPacket) {
 		con_warn("demorec: custom: missing gamedata entries for this engine\n");
@@ -363,22 +365,8 @@ bool demorec_custom_init(void) {
 	// > otherwise it's 12 bits
 	// > there might be some other l4d2 versions where it's 11 but idk
 	// So here we have to figure out the network protocol version!
-	void *clientiface;
-	uint buildnum;
-	// TODO(compat): probably expose VEngineClient/VEngineServer some other way
-	// if it's useful elsewhere later!?
-	if (clientiface = factory_engine("VEngineClient013", 0)) {
-		typedef uint (*VCALLCONV GetEngineBuildNumber_func)(void *this);
-		buildnum = (*(GetEngineBuildNumber_func **)clientiface)[
-				vtidx_GetEngineBuildNumber](clientiface);
-	}
-	// add support for other interfaces here:
-	// else if (clientiface = factory_engine("VEngineClient0XX", 0)) {
-	//     ...
-	// }
-	else {
-		return false;
-	}
+	// NOTE: assuming engclient != null as GEBN index relies on client version
+	int buildnum = VCALL(engclient, GetEngineBuildNumber);
 	// condition is redundant until other GetEngineBuildNumber offsets are added
 	// if (GAMETYPE_MATCHES(L4D2)) {
 		nbits_msgtype = 6;

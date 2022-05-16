@@ -85,7 +85,9 @@ nosp:	con_warn("hook_inline: out of trampoline space\n");
 	// pad with original bytes so we can do an 8-byte atomic write
 	memcpy(jmp + 5, func + 5, 3);
 	*(volatile uvlong *)func = *(uvlong *)jmp; // (assuming function is aligned)
-	FlushInstructionCache(GetCurrentProcess(), func, len);
+	// -1 is the current process, and it's a constant in the WDK, so it's
+	// assumed we can safely avoid the useless GetCurrentProcess call
+	FlushInstructionCache((void *)-1, func, len);
 	return trampoline;
 }
 
@@ -95,7 +97,7 @@ void unhook_inline(void *orig) {
 	int off = mem_load32(p + len + 1);
 	uchar *q = p + off + 5;
 	memcpy(q, p, 5); // XXX: not atomic atm! (does any of it even need to be?)
-	FlushInstructionCache(GetCurrentProcess(), q, 5);
+	FlushInstructionCache((void *)-1, q, 5);
 }
 
 #else

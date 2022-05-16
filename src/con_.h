@@ -141,12 +141,12 @@ struct con_var { // ConVar in engine
 	float fval;
 	int ival;
 	bool hasmin;
-	// bool hasmax; // better packing here, might break engine ABI
+	// bool hasmax; // better packing here, would break engine ABI
 	float minval;
-	bool hasmax; // just sticking to sdk position for now
+	bool hasmax; // just sticking to sdk position
 	float maxval;
 	/*
-	 * Our quickly-chucked in optional callback - doesn't match the engine!!
+	 * Our quickly-chucked-in optional callback - doesn't match the engine!!
 	 * Also has to be manually set in code, although that's probably fine anyway
 	 * as it's common to only want a cvar to do something if the feature
 	 * succesfully init-ed.

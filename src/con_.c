@@ -497,13 +497,11 @@ SETTER(int, 2, con_setvari)
 #undef SETTER
 
 con_cmdcb con_getcmdcb(const struct con_cmd *cmd) {
-	if (cmd->use_newcmdiface || !cmd->use_newcb) return 0;
-	return cmd->cb;
+	return !cmd->use_newcmdiface && cmd->use_newcb ? cmd->cb : 0;
 }
 
 con_cmdcbv1 con_getcmdcbv1(const struct con_cmd *cmd) {
-	if (cmd->use_newcmdiface || cmd->use_newcb) return 0;
-	return cmd->cb_v1;
+	return !cmd->use_newcmdiface && !cmd->use_newcb ? cmd->cb_v1 : 0;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

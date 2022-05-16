@@ -102,7 +102,6 @@ bool engineapi_init(int pluginver) {
 	gamedata_init();
 	con_init();
 	if (!gameinfo_init()) { con_disconnect(); return false; }
-
 	if (has_vtidx_GetAllServerClasses && has_sz_SendProp &&
 			has_off_SP_varname && has_off_SP_offset) {
 		initentprops(VCALL(srvdll, GetAllServerClasses));

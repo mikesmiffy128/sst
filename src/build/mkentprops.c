@@ -148,23 +148,23 @@ F( "	for (int needclasses = %d; class; class = class->next) {", nclasses)
 		// ever have more than a few classes/properties?
 F( "		%sif (!strcmp(class->name, \"%s\")) {", else1, c->name)
 _( "			struct SendTable *st = class->table;")
-				// XXX: christ this is all awful :(
 F( "			int needprops = %d;", c->props.sz)
-_( "			for (struct SendProp *p = st->props; (char *)p -")
-_( "					(char *)st->props < st->nprops * sz_SendProp;")
+_( "			for (struct SendProp *p = st->props;")
+_( "					mem_diff(p, st->props) < st->nprops * sz_SendProp;")
 _( "					p = mem_offset(p, sz_SendProp)) {")
+_( "				const char *varname = mem_loadptr(mem_offset(p, off_SP_varname));")
 		char *else2 = "";
 		for (struct prop **pp = c->props.data;
 				pp - c->props.data < c->props.sz; ++pp) {
-F( "				%sif (!strcmp(*(const char **)mem_offset(p, off_SP_varname), \"%s\")) {",
-		else2, (*pp)->propname) // ugh
+F( "				%sif (!strcmp(varname, \"%s\")) {", else2, (*pp)->propname)
 F( "					has_%s = true;", (*pp)->varname)
 			// from AM L4D2 SDK headers:
 			// > SENDPROP_VECTORELEM makes [offset] negative to start with so we
 			// > can detect that and set the SPROP_IS_VECTOR_ELEM flag.
 			// apparently if we're loaded via VDF, it hasn't been flipped back
-			// yet. just calling abs() on it as an easy solution.
-F( "					%s = abs(*(int *)mem_offset(p, off_SP_offset));", (*pp)->varname)
+			// yet. just calling abs() on everything as an easy solution.
+F( "					%s = abs(*(int *)mem_offset(p, off_SP_offset));",
+		(*pp)->varname)
 _( "					if (!--needprops) break;")
 _( "				}")
 			else2 = "else ";
