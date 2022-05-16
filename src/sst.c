@@ -385,11 +385,35 @@ static const char *VCALLCONV GetPluginDescription(void *this) {
 	return LONGNAME " v" VERSION;
 }
 
+DECL_VFUNC_DYN(void, ServerCommand, const char *)
+
+// XXX: quick hack requested by Portal people for some timeboxed IL grind
+// challenge they want to do. I think this is a terribly sad way to do this but
+// at the same time it's easy and low-impact so put it in as hidden for now
+// until we come up with something better later.
+DEF_CVAR(_sst_onload_echo, "EXPERIMENTAL! Don't rely on this existing!", "",
+		CON_HIDDEN)
+
 static void VCALLCONV ClientActive(void *this, struct edict *player) {
 	// XXX: it's kind of dumb that we get handed the edict here then go look it
 	// up again in fov.c but I can't be bothered refactoring any further now
 	// that this finally works, do something later lol
 	if (has_fov) fov_onload();
+
+	// continuing dumb portal hack. didn't even seem worth adding a feature for
+	if (has_vtidx_ServerCommand && con_getvarstr(_sst_onload_echo)[0]) {
+		char *s = malloc(8 + _sst_onload_echo->strlen); // dumb lol
+		if (s) { // if not, game probably exploded already
+			memcpy(s, "echo \"", 6);
+			// note: assume there's no quotes in the variable, because there
+			// should be no way to do this at least via console
+			memcpy(s + 6, con_getvarstr(_sst_onload_echo),
+					_sst_onload_echo->strlen);
+			memcpy(s + 6 + _sst_onload_echo->strlen - 1, "\"\n", 3);
+			VCALL(engserver, ServerCommand, s);
+			free(s);
+		}
+	}
 }
 
 #define MAX_VTABLE_FUNCS 21
