@@ -160,15 +160,6 @@ static const char *VCALLCONV GetStringForSymbol_hook(void *this, int s) {
 	return ret;
 }
 
-// by hooking stuffcmds, we get a callback after the last of the startup
-// commands have run (the command line ones)
-static struct con_cmd *cmd_stuffcmds = 0;
-static con_cmdcb orig_stuffcmds_cb;
-static void hook_stuffcmds_cb(const struct con_cmdargs *args) {
-	orig_stuffcmds_cb(args);
-	fixes_tryagainlater();
-}
-
 // vstdlib symbol, only currently used in l4d2 but exists everywhere so oh well
 IMPORT void *KeyValuesSystem(void);
 
@@ -207,6 +198,75 @@ static bool already_loaded = false, skip_unload = false;
 
 #define RGBA(r, g, b, a) (&(struct con_colour){(r), (g), (b), (a)})
 
+static void do_featureinit(void) {
+	has_autojump = autojump_init();
+	has_demorec = demorec_init();
+	// not enabling demorec_custom yet - kind of incomplete and currently unused
+	//if (has_demorec) demorec_custom_init();
+	bool has_ent = ent_init();
+	has_fov = fov_init(has_ent);
+	if (has_ent) l4dwarp_init();
+	has_nosleep = nosleep_init();
+#ifdef _WIN32
+	has_rinput = rinput_init();
+#endif
+	fixes_apply();
+
+	con_colourmsg(RGBA(64, 255, 64, 255),
+			LONGNAME " v" VERSION " successfully loaded");
+	con_colourmsg(RGBA(255, 255, 255, 255), " for game ");
+	con_colourmsg(RGBA(0, 255, 255, 255), "%s\n", gameinfo_title);
+}
+
+static void *vgui;
+typedef void (*VCALLCONV VGuiConnect_func)(void);
+static VGuiConnect_func orig_VGuiConnect;
+static void VCALLCONV hook_VGuiConnect(void) {
+	orig_VGuiConnect();
+	do_featureinit();
+	unhook_vtable(*(void ***)vgui, vtidx_VGuiConnect, (void *)orig_VGuiConnect);
+}
+
+// --- Magical deferred load order hack nonsense! ---
+// The engine loads VDF plugins basically right after server.dll, but long
+// before most other stuff, which makes hooking certain other stuff a pain. We
+// still want to be able to load via VDF as it's the only reasonable way to get
+// in before config.cfg, which is needed for any kind of configuration to work
+// correctly.
+//
+// So here, we hook CEngineVGui::Connect() which is pretty much the last thing
+// that gets called on init, and defer feature init till afterwards. That allows
+// us to touch pretty much any engine stuff without worrying about load order
+// nonsense.
+//
+// In do_load() below, we check to see whether we're loading early by checking
+// whether gameui.dll is loaded yet; this is one of several possible arbitrary
+// checks. If it's loaded already, we assume we're getting loaded late via the
+// console and just init everything immediately.
+//
+// Route credit to Bill for helping figure a lot of this out - mike
+static void deferinit(void) {
+	vgui = factory_engine("VEngineVGui001", 0);
+	if (!vgui) {
+		con_warn("sst: warning: couldn't get VEngineVGui for deferred "
+				"feature setup\n");
+		goto e;
+	}
+	if (!os_mprot(*(void ***)vgui + vtidx_VGuiConnect, sizeof(void *),
+			PAGE_READWRITE)) {
+		con_warn("sst: warning: couldn't unprotect CEngineVGui vtable for "
+				"deferred feature setup\n");
+		goto e;
+	}
+	orig_VGuiConnect = (VGuiConnect_func)hook_vtable(*(void ***)vgui,
+			vtidx_VGuiConnect, (void *)&hook_VGuiConnect);
+	return;
+
+e:	con_warn("!!! SOME FEATURES MAY BE BROKEN !!!\n");
+	// I think this is the lesser of two evils! Unlikely to happen anyway.
+	do_featureinit();
+}
+
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	factory_engine = enginef; factory_server = serverf;
 	if (!engineapi_init(ifacever)) return false;
@@ -226,14 +286,12 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	*p   = (void *)&nop_p_v;		  // OnEdictFreed
 
 #ifdef _WIN32
-	//serverlib = GetModuleHandleW(gameinfo_serverlib);
 	void *clientlib = GetModuleHandleW(gameinfo_clientlib);
 #else
-	// Linux Source load order seems to be different to the point where if we
-	// +plugin_load or use a vdf then RTLD_NOLOAD won't actually find these, so
-	// we have to just dlopen them normally - and then remember to decrement the
-	// refcount again later in do_unload() so nothing gets leaked
-	//serverlib = dlopen(gameinfo_serverlib, RTLD_NOW);
+	// Apparently on Linux, the client library isn't actually loaded yet here,
+	// so RTLD_NOLOAD won't actually find it. We have to just dlopen it
+	// normally - and then remember to decrement the refcount again later in
+	// do_unload() so nothing gets leaked!
 	clientlib = dlopen(gameinfo_clientlib, RTLD_NOW);
 #endif
 	if (!clientlib) {
@@ -247,6 +305,7 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	void *inputsystemlib = GetModuleHandleW(L"inputsystem.dll");
 #else
 	// TODO(linux): assuming the above doesn't apply to this; check if it does!
+	// ... actually, there's a good chance this assumption is now wrong!
 	void *inputsystemlib = dlopen("bin/libinputsystem.so",
 			RTLD_NOW | RLTD_NOLOAD);
 	if (inputsystemlib) dlclose(inputsystemlib); // blegh
@@ -259,19 +318,6 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 		con_warn("sst: warning: couldn't get input system's CreateInterface\n");
 	}
 
-	has_autojump = autojump_init();
-	has_demorec = demorec_init();
-	// not enabling demorec_custom yet - kind of incomplete and currently unused
-	//if (has_demorec) demorec_custom_init();
-	bool has_ent = ent_init();
-	has_fov = fov_init(has_ent);
-	if (has_ent) l4dwarp_init();
-	has_nosleep = nosleep_init();
-#ifdef _WIN32
-	has_rinput = rinput_init();
-#endif
-	fixes_apply();
-
 	// NOTE: this is technically redundant for early versions but I CBA writing
 	// a version check; it's easier to just do this unilaterally.
 	if (GAMETYPE_MATCHES(L4D2x)) {
@@ -280,22 +326,21 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 		if (!os_mprot(kvsvt + 4, sizeof(void *), PAGE_READWRITE)) {
 			con_warn("sst: warning: couldn't unprotect KeyValuesSystem "
 					"vtable; won't be able to prevent nag message\n");
-			goto e;
 		}
-		orig_GetStringForSymbol = (GetStringForSymbol_func)hook_vtable(kvsvt, 4,
-				(void *)GetStringForSymbol_hook);
+		else {
+			orig_GetStringForSymbol = (GetStringForSymbol_func)hook_vtable(
+					kvsvt, 4, (void *)GetStringForSymbol_hook);
+		}
 	}
 
-	cmd_stuffcmds = con_findcmd("stuffcmds");
-	if (cmd_stuffcmds) {
-		orig_stuffcmds_cb = cmd_stuffcmds->cb;
-		cmd_stuffcmds->cb = hook_stuffcmds_cb;
-	}
-
-e:	con_colourmsg(RGBA(64, 255, 64, 255),
-			LONGNAME " v" VERSION " successfully loaded");
-	con_colourmsg(RGBA(255, 255, 255, 255), " for game ");
-	con_colourmsg(RGBA(0, 255, 255, 255), "%s\n", gameinfo_title);
+#ifdef _WIN32
+	bool isvdf = !GetModuleHandleW(L"gameui.dll");
+#else
+	void *gameuilib = dlopen("bin/libgameui.so", RTLD_NOW | RLTD_NOLOAD);
+	bool isvdf = !gameuilib;
+	if (gameuilib) dlclose(gameuilib);
+#endif
+	if (isvdf) deferinit(); else do_featureinit();
 	return true;
 }
 
@@ -345,7 +390,6 @@ static void do_unload(void) {
 #endif
 
 #ifdef __linux__
-	//if (serverlib) dlclose(serverlib);
 	if (clientlib) dlclose(clientlib);
 #endif
 	con_disconnect();
@@ -353,7 +397,6 @@ static void do_unload(void) {
 	if (orig_GetStringForSymbol) {
 		unhook_vtable(kvsvt, 4, (void *)orig_GetStringForSymbol);
 	}
-	if (cmd_stuffcmds) cmd_stuffcmds->cb = orig_stuffcmds_cb;
 }
 
 static bool VCALLCONV Load(void *this, ifacefactory enginef,

@@ -163,6 +163,9 @@ F( "					has_%s = true;", (*pp)->varname)
 			// > can detect that and set the SPROP_IS_VECTOR_ELEM flag.
 			// apparently if we're loaded via VDF, it hasn't been flipped back
 			// yet. just calling abs() on everything as an easy solution.
+			// TODO(opt): if we moved this into deferred init we wouldn't need
+			// to bother with this, but that might involve untangling more
+			// engineapi stuff
 F( "					%s = abs(*(int *)mem_offset(p, off_SP_offset));",
 		(*pp)->varname)
 _( "					if (!--needprops) break;")
