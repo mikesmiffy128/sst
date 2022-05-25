@@ -484,7 +484,7 @@ static const void *const *const plugin_obj = vtable;
 
 EXPORT const void *CreateInterface(const char *name, int *ret) {
 	if (!strncmp(name, "ISERVERPLUGINCALLBACKS00", 24)) {
-		if ((name[24] >= '1' || name[24] <= '3') && name[25] == '\0') {
+		if (name[24] >= '1' && name[24] <= '3' && name[25] == '\0') {
 			if (ret) *ret = 0;
 			ifacever = name[24] - '0';
 			return &plugin_obj;
