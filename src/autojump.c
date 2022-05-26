@@ -37,13 +37,26 @@ static void *gmsv = 0, *gmcl = 0;
 typedef bool (*VCALLCONV CheckJumpButton_func)(void *);
 static CheckJumpButton_func origsv, origcl;
 
-static bool VCALLCONV hook(void *this) {
-	struct CMoveData **mvp = mem_offset(this, off_mv), *mv = *mvp;
-	// use 0 idx for client side, as server indices start at 1
-	// FIXME: does this account for splitscreen???
-	int i = this == gmsv ? handleidx(mv->playerhandle) : 0;
-	if (con_getvari(sst_autojump) && !justjumped[i]) mv->oldbuttons &= ~IN_JUMP;
-	return justjumped[i] = (this == gmsv ? origsv : origcl)(this);
+static bool VCALLCONV hooksv(void *this) {
+	struct CMoveData *mv = mem_loadptr(mem_offset(this, off_mv));
+	int idx = handleidx(mv->playerhandle);
+	if (con_getvari(sst_autojump) && mv->firstrun && !justjumped[idx]) {
+		mv->oldbuttons &= ~IN_JUMP;
+	}
+	bool ret = origsv(this);
+	if (mv->firstrun) justjumped[idx] = ret;
+	return ret;
+}
+
+static bool VCALLCONV hookcl(void *this) {
+	struct CMoveData *mv = mem_loadptr(mem_offset(this, off_mv));
+	// FIXME: this will stutter in the rare case where justjumped is true.
+	// currently doing clientside justjumped handling makes multiplayer
+	// prediction in general wrong, so this'll need more work to do totally
+	// properly.
+	//if (con_getvari(sst_autojump) && !justjumped[0]) mv->oldbuttons &= ~IN_JUMP;
+	mv->oldbuttons &= ~IN_JUMP;
+	return justjumped[0] = origcl(this);
 }
 
 static bool unprot(void *gm) {
@@ -78,9 +91,9 @@ bool autojump_init(void) {
 	}
 	if (!unprot(gmcl)) return false;
 	origsv = (CheckJumpButton_func)hook_vtable(*(void ***)gmsv,
-			vtidx_CheckJumpButton, (void *)&hook);
+			vtidx_CheckJumpButton, (void *)&hooksv);
 	origcl = (CheckJumpButton_func)hook_vtable(*(void ***)gmcl,
-			vtidx_CheckJumpButton, (void *)&hook);
+			vtidx_CheckJumpButton, (void *)&hookcl);
 
 	sst_autojump->base.flags &= ~CON_HIDDEN;
 	return true;
