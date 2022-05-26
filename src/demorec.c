@@ -353,7 +353,7 @@ static bool find_WriteMessages(void) {
 
 DECL_VFUNC_DYN(int, GetEngineBuildNumber)
 
-bool demorec_custom_init(void) { 
+bool demorec_custom_init(void) {
 	if (!has_vtidx_GetEngineBuildNumber || !has_vtidx_RecordPacket) {
 		con_warn("demorec: custom: missing gamedata entries for this engine\n");
 		return false;

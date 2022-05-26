@@ -52,7 +52,7 @@ static bool find_SetDefaultFOV(struct con_cmd *fov) {
 		// SetDefaultFOV is the third.
 		if (p[0] == X86_CALL && ++callcnt == 3) {
 			orig_SetDefaultFOV = (SetDefaultFOV_func)(p + 5 +
-					mem_loadoffset(p + 1)); 
+					mem_loadoffset(p + 1));
 			return true;
 		}
 		int len = x86_len(p);

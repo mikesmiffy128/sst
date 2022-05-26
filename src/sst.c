@@ -92,7 +92,7 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 		return;
 	}
 	// arbitrary aesthetic judgement
-	for (os_char *p = relpath; *p; ++p) if (*p == L'\\') *p = L'/'; 
+	for (os_char *p = relpath; *p; ++p) if (*p == L'\\') *p = L'/';
 #else
 #error TODO(linux): implement this, it's late right now and I can't be bothered
 #endif

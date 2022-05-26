@@ -109,7 +109,7 @@ struct SendTable {
 	bool inited : 1;
 	bool waswritten : 1;
 	/* "has props encoded against current tick count" ??? */
-	bool haspropsenccurtickcnt : 1; 
+	bool haspropsenccurtickcnt : 1;
 };
 struct ServerClass {
 	char *name;
