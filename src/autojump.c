@@ -55,7 +55,7 @@ static bool VCALLCONV hookcl(void *this) {
 	// prediction in general wrong, so this'll need more work to do totally
 	// properly.
 	//if (con_getvari(sst_autojump) && !justjumped[0]) mv->oldbuttons &= ~IN_JUMP;
-	mv->oldbuttons &= ~IN_JUMP;
+	if (con_getvari(sst_autojump)) mv->oldbuttons &= ~IN_JUMP;
 	return justjumped[0] = origcl(this);
 }
 
