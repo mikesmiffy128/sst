@@ -53,6 +53,7 @@ src="\
 	kv.c
 	l4dwarp.c
 	nosleep.c
+	portalcolours.c
 	sst.c
 	x86.c"
 if [ "$dbg" = 1 ]; then src="$src \

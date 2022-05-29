@@ -234,7 +234,7 @@ bool demorec_init(void) {
 
 	void **vtable = *(void ***)demorecorder;
 	// XXX: 16 is totally arbitrary here! figure out proper bounds later
-	if (!os_mprot(vtable, 16 * sizeof(void *), PAGE_EXECUTE_READWRITE)) {
+	if (!os_mprot(vtable, 16 * sizeof(void *), PAGE_READWRITE)) {
 #ifdef _WIN32
 		char err[128];
 		OS_WINDOWS_ERROR(err);

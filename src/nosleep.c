@@ -55,7 +55,7 @@ bool nosleep_init(void) {
 	}
 	vtable = *(void ***)insys;
 	if (!os_mprot(vtable + vtidx_SleepUntilInput, sizeof(void *),
-			PAGE_EXECUTE_READWRITE)) {
+			PAGE_READWRITE)) {
 		con_warn("nosleep: couldn't make memory writable\n");
 		return false;
 	}

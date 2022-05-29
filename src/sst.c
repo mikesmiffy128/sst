@@ -33,6 +33,7 @@
 #include "hook.h"
 #include "l4dwarp.h"
 #include "nosleep.h"
+#include "portalcolours.h"
 #include "os.h"
 #include "rinput.h"
 #include "vcall.h"
@@ -46,10 +47,8 @@
 
 static int ifacever;
 
-#ifdef __linux__
 // we need to keep this reference to dlclose() it later - see below
 static void *clientlib = 0;
-#endif
 
 #ifdef _WIN32
 extern long __ImageBase; // this is actually the PE header struct but don't care
@@ -189,7 +188,7 @@ static const void *const *const plugin_obj;
 // but we want to actually release the plugin this decade so for now I'm just
 // plonking some bools here and worrying about it later. :^)
 static bool has_autojump = false, has_demorec = false, has_fov = false,
-		has_nosleep = false;
+		has_nosleep = false, has_portalcolours = false;
 #ifdef _WIN32
 static bool has_rinput = false;
 #endif
@@ -207,6 +206,7 @@ static void do_featureinit(void) {
 	has_fov = fov_init(has_ent);
 	if (has_ent) l4dwarp_init();
 	has_nosleep = nosleep_init();
+	if (clientlib) has_portalcolours = portalcolours_init(clientlib);
 #ifdef _WIN32
 	has_rinput = rinput_init();
 #endif
@@ -286,7 +286,7 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	*p   = (void *)&nop_p_v;		  // OnEdictFreed
 
 #ifdef _WIN32
-	void *clientlib = GetModuleHandleW(gameinfo_clientlib);
+	clientlib = GetModuleHandleW(gameinfo_clientlib);
 #else
 	// Apparently on Linux, the client library isn't actually loaded yet here,
 	// so RTLD_NOLOAD won't actually find it. We have to just dlopen it
@@ -385,6 +385,7 @@ static void do_unload(void) {
 	if (has_demorec) demorec_end();
 	if (has_fov) fov_end(); // dep on ent
 	if (has_nosleep) nosleep_end();
+	if (has_portalcolours) portalcolours_end();
 #ifdef _WIN32
 	if (has_rinput) rinput_end();
 #endif

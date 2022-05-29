@@ -62,7 +62,7 @@ static bool VCALLCONV hookcl(void *this) {
 static bool unprot(void *gm) {
 	void **vtable = *(void ***)gm;
 	bool ret = os_mprot(vtable + vtidx_CheckJumpButton, sizeof(void *),
-			PAGE_EXECUTE_READWRITE);
+			PAGE_READWRITE);
 	if (!ret) con_warn("autojump: couldn't make memory writable\n");
 	return ret;
 }
