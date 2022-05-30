@@ -1,0 +1,11 @@
+Come up with a better error logging abstraction
+====
+Something like the BSD err/warn/errx/warnx maybe, although taking into account
+all the stupid Windows GetLastError differences too. As it stands, different
+source files have different ways of prefixing messages, a lot of strings are
+pretty redundant (would maybe be nice to have something closer to the DJB-style
+concatenated string messages to solve that problem?), and almost nothing bothers
+to include the actual system error string because doing so is currently doing
+annoying.
+
+pls fix

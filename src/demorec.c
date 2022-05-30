@@ -128,9 +128,9 @@ static void hook_record_cb(const struct con_cmdargs *args) {
 					return;
 				}
 				if (!S_ISDIR(s.st_mode)) {
-					// duping this warning call to avoid duping the string data,
-					// very stupid, oh well. if/when we have New And Improved
-					// Logging this can be tidied up...
+					// TODO(errmsg): duping this warning call to avoid duping
+					// the string data, very stupid, oh well. if/when we have
+					// New And Improved Logging this can be tidied up...
 					con_warn("ERROR: can't record demo: ");
 					con_warn("the path %.*s is not a directory\n",
 							argdirlen, arg);
@@ -235,13 +235,15 @@ bool demorec_init(void) {
 	void **vtable = *(void ***)demorecorder;
 	// XXX: 16 is totally arbitrary here! figure out proper bounds later
 	if (!os_mprot(vtable, 16 * sizeof(void *), PAGE_READWRITE)) {
+		// TODO(errmsg): this is one of the only places I apparently bothered
+		// to properly log this stuff. really should solve this at some point
 #ifdef _WIN32
 		char err[128];
 		OS_WINDOWS_ERROR(err);
 #else
 		const char *err = strerror(errno);
 #endif
-		con_warn("demorec: couldn't unprotect CDemoRecorder vtable: %s\n", err);
+		con_warn("demorec: couldn't make memory writable: %s\n", err);
 		return false;
 	}
 	if (!find_recmembers(vtable[vtidx_StopRecording])) {
