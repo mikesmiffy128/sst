@@ -19,7 +19,7 @@ BEGIN
 			VALUE "FileDescription", LONGNAME
 			VALUE "FileVersion", VERSION
 			VALUE "InternalName", NAME
-			VALUE "LegalCopyright", "Copyright (C) 2022 multiple authors. Refer to the included LICENCE file."
+			VALUE "LegalCopyright", "See the LICENCE file for copyright notices."
 			VALUE "ProductName", LONGNAME
 			VALUE "ProductVersion", VERSION
 		END
