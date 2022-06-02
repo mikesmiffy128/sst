@@ -25,6 +25,7 @@
 #include "con_.h"
 #include "demorec.h"
 #include "engineapi.h"
+#include "errmsg.h"
 #include "ent.h"
 #include "fov.h"
 #include "fixes.h"
@@ -80,14 +81,14 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 	os_char path[PATH_MAX];
 	if (!os_dlfile(ownhandle(), path, sizeof(path) / sizeof(*path))) {
 		// hopefully by this point this won't happen, but, like, never know
-		con_warn("error: failed to get path to plugin\n");
+		errmsg_errordl("failed to get path to plugin");
 		return;
 	}
 	os_char relpath[PATH_MAX];
 #ifdef _WIN32
 	if (!PathRelativePathToW(relpath, searchdir, FILE_ATTRIBUTE_DIRECTORY,
 			path, 0)) {
-		con_warn("error: couldn't compute a relative path for some reason\n");
+		errmsg_errorsys("couldn't compute a relative path for some reason");
 		return;
 	}
 	// arbitrary aesthetic judgement
@@ -98,13 +99,13 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 	int len = os_strlen(gameinfo_gamedir);
 	if (len + sizeof("/addons/" VDFBASENAME ".vdf") >
 			sizeof(path) / sizeof(*path)) {
-		con_warn("error: path to VDF is too long\n");
+		errmsg_errorx("path to VDF is too long");
 		return;
 	}
 	memcpy(path, gameinfo_gamedir, len * sizeof(*gameinfo_gamedir));
 	memcpy(path + len, OS_LIT("/addons"), 8 * sizeof(os_char));
 	if (os_mkdir(path) == -1 && errno != EEXIST) {
-		con_warn("error: couldn't create %" fS ": %s\n", path, strerror(errno));
+		errmsg_errorstd("couldn't create %" fS, path);
 		return;
 	}
 	memcpy(path + len + sizeof("/addons") - 1,
@@ -112,7 +113,7 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 			sizeof("/" VDFBASENAME ".vdf") * sizeof(os_char));
 	FILE *f = os_fopen(path, OS_LIT("wb"));
 	if (!f) {
-		con_warn("error: couldn't open %" fS ": %s", path, strerror(errno));
+		errmsg_errorstd("couldn't open %" fS, path);
 		return;
 	}
 	// XXX: oh, crap, we're clobbering unicode again. welp, let's hope the
@@ -120,7 +121,7 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 	// doesn't matter.
 	if (fprintf(f, "Plugin { file \"%" fS "\" }\n", relpath) < 0 ||
 			fflush(f) == -1) {
-		con_warn("error: couldn't write to %" fS ": %s", path, strerror(errno));
+		errmsg_errorstd("couldn't write to %" fS, path);
 	}
 	fclose(f);
 }
@@ -130,14 +131,14 @@ DEF_CCMD_HERE(sst_autoload_disable, "Stop loading SST on game startup", 0) {
 	int len = os_strlen(gameinfo_gamedir);
 	if (len + sizeof("/addons/" VDFBASENAME ".vdf") >
 			sizeof(path) / sizeof(*path)) {
-		con_warn("error: path to VDF is too long\n");
+		errmsg_errorx("path to VDF is too long");
 		return;
 	}
 	memcpy(path, gameinfo_gamedir, len * sizeof(*gameinfo_gamedir));
 	memcpy(path + len, OS_LIT("/addons/") OS_LIT(VDFBASENAME) OS_LIT(".vdf"),
 			sizeof("/addons/" VDFBASENAME ".vdf") * sizeof(os_char));
 	if (os_unlink(path) == -1 && errno != ENOENT) {
-		con_warn("warning: couldn't delete %" fS ":%s\n", path, strerror(errno));
+		errmsg_warnstd("couldn't delete %" fS, path);
 	}
 }
 
@@ -248,14 +249,13 @@ static void VCALLCONV hook_VGuiConnect(void) {
 static void deferinit(void) {
 	vgui = factory_engine("VEngineVGui001", 0);
 	if (!vgui) {
-		con_warn("sst: warning: couldn't get VEngineVGui for deferred "
-				"feature setup\n");
+		errmsg_warnx("couldn't get VEngineVGui for deferred feature setup");
 		goto e;
 	}
 	if (!os_mprot(*(void ***)vgui + vtidx_VGuiConnect, sizeof(void *),
 			PAGE_READWRITE)) {
-		con_warn("sst: warning: couldn't unprotect CEngineVGui vtable for "
-				"deferred feature setup\n");
+		errmsg_warnsys("couldn't make CEngineVGui vtable writable for deferred "
+				"feature setup");
 		goto e;
 	}
 	orig_VGuiConnect = (VGuiConnect_func)hook_vtable(*(void ***)vgui,
@@ -295,11 +295,11 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	clientlib = dlopen(gameinfo_clientlib, RTLD_NOW);
 #endif
 	if (!clientlib) {
-		con_warn("sst: warning: couldn't get the game's client library\n");
+		errmsg_warndl("couldn't get the game's client library");
 	}
 	else if (!(factory_client = (ifacefactory)os_dlsym(clientlib,
 			"CreateInterface"))) {
-		con_warn("sst: warning: couldn't get client's CreateInterface\n");
+		errmsg_warndl("couldn't get client's CreateInterface");
 	}
 #ifdef _WIN32
 	void *inputsystemlib = GetModuleHandleW(L"inputsystem.dll");
@@ -311,11 +311,11 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	if (inputsystemlib) dlclose(inputsystemlib); // blegh
 #endif
 	if (!inputsystemlib) {
-		con_warn("sst: warning: couldn't get the input system library\n");
+		errmsg_warndl("couldn't get the input system library");
 	}
 	else if (!(factory_inputsystem = (ifacefactory)os_dlsym(inputsystemlib,
 			"CreateInterface"))) {
-		con_warn("sst: warning: couldn't get input system's CreateInterface\n");
+		errmsg_warndl("couldn't get input system's CreateInterface");
 	}
 
 	// NOTE: this is technically redundant for early versions but I CBA writing
@@ -324,8 +324,8 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 		void *kvs = KeyValuesSystem();
 		kvsvt = *(void ***)kvs;
 		if (!os_mprot(kvsvt + 4, sizeof(void *), PAGE_READWRITE)) {
-			con_warn("sst: warning: couldn't unprotect KeyValuesSystem "
-					"vtable; won't be able to prevent nag message\n");
+			errmsg_warnx("couldn't make KeyValuesSystem vtable writable");
+			errmsg_note("won't be able to prevent any nag messages");
 		}
 		else {
 			orig_GetStringForSymbol = (GetStringForSymbol_func)hook_vtable(

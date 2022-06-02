@@ -18,6 +18,7 @@
 
 #include "con_.h"
 #include "engineapi.h"
+#include "errmsg.h"
 #include "gamedata.h"
 #include "intdefs.h"
 #include "hook.h"
@@ -63,30 +64,30 @@ static bool unprot(void *gm) {
 	void **vtable = *(void ***)gm;
 	bool ret = os_mprot(vtable + vtidx_CheckJumpButton, sizeof(void *),
 			PAGE_READWRITE);
-	if (!ret) con_warn("autojump: couldn't make memory writable\n");
+	if (!ret) errmsg_errorsys("couldn't make virtual table writable");
 	return ret;
 }
 
 bool autojump_init(void) {
 	// TODO(featgen): auto-check these factories
 	if (!factory_client || !factory_server) {
-		con_warn("autojump: missing required factories\n");
+		errmsg_warnx("missing required factories");
 		return false;
 	}
 	if (!has_vtidx_CheckJumpButton || !has_off_mv) {
-		con_warn("autojump: missing gamedata entries for this engine\n");
+		errmsg_warnx("missing gamedata entries for this engine");
 		return false;
 	}
 
 	gmsv = factory_server("GameMovement001", 0);
 	if (!gmsv) {
-		con_warn("autojump: couldn't get server-side game movement interface\n");
+		errmsg_errorx("couldn't get server-side game movement interface");
 		return false;
 	}
 	if (!unprot(gmsv)) return false;
 	gmcl = factory_client("GameMovement001", 0);
 	if (!gmcl) {
-		con_warn("autojump: couldn't get client-side game movement interface\n");
+		errmsg_errorx("couldn't get client-side game movement interface");
 		return false;
 	}
 	if (!unprot(gmcl)) return false;

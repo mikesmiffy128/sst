@@ -18,6 +18,7 @@
 
 #include "con_.h"
 #include "engineapi.h"
+#include "errmsg.h"
 #include "gamedata.h"
 #include "hook.h"
 #include "os.h"
@@ -41,22 +42,22 @@ bool nosleep_init(void) {
 	con_reg(engine_no_focus_sleep);
 	// TODO(featgen): auto-check these factories
 	if (!factory_inputsystem) {
-		con_warn("nosleep: missing required factories\n");
+		errmsg_warnx("missing required factories");
 		return false;
 	}
 	if (!has_vtidx_SleepUntilInput) {
-		con_warn("nosleep: missing gamedata entries for this engine\n");
+		errmsg_warnx("missing gamedata entries for this engine");
 		return false;
 	}
 	void *insys = factory_inputsystem("InputSystemVersion001", 0);
 	if (!insys) {
-		con_warn("nosleep: couldn't get input system interface\n");
+		errmsg_errorx("couldn't get input system interface");
 		return false;
 	}
 	vtable = *(void ***)insys;
 	if (!os_mprot(vtable + vtidx_SleepUntilInput, sizeof(void *),
 			PAGE_READWRITE)) {
-		con_warn("nosleep: couldn't make memory writable\n");
+		errmsg_errorx("couldn't make virtual table writable");
 		return false;
 	}
 	orig_SleepUntilInput = (SleepUntilInput_func)hook_vtable(vtable,

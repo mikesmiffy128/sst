@@ -16,8 +16,8 @@
 
 #include <stdbool.h>
 
-#include "con_.h"
 #include "engineapi.h"
+#include "errmsg.h"
 #include "gamedata.h"
 #include "gametype.h"
 #include "intdefs.h"
@@ -52,7 +52,7 @@ bool ent_init(void) {
 		edicts = mem_offset(globalvars, off_edicts);
 		return true;
 	}
-	con_warn("ent: not implemented for this engine\n");
+	errmsg_warnx("not implemented for this engine");
 	return false;
 }
 

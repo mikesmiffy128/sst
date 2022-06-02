@@ -1,0 +1,6 @@
+Come up with a better error logging abstraction
+====
+This is done, see errmsg.h.
+
+Because it's all format string nonsense to talk to the engine, it's mostly a
+pile of macros, which is kind of wacky. But hey, it works.

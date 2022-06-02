@@ -20,6 +20,7 @@
 
 #include "con_.h"
 #include "engineapi.h"
+#include "errmsg.h"
 #include "ent.h"
 #include "gamedata.h"
 #include "gametype.h"
@@ -34,7 +35,7 @@ DECL_VFUNC_DYN(void, Teleport, const struct vec3f *pos, const struct vec3f *ang,
 DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you",
 		CON_SERVERSIDE | CON_CHEAT) {
 	struct edict *ed = ent_getedict(con_cmdclient + 1);
-	if (!ed) { con_warn("error: couldn't access player entity\n"); return; }
+	if (!ed) { errmsg_errorx("couldn't access player entity"); return; }
 	void *e = VCALL(ed->ent_unknown, GetBaseEntity); // is this call required?
 	struct vec3f *org = mem_offset(e, off_entpos);
 	struct vec3f *ang = mem_offset(e, off_eyeang);
@@ -50,7 +51,7 @@ DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you",
 bool l4dwarp_init(void) {
 	if (!GAMETYPE_MATCHES(L4Dx)) return false;
 	if (!has_off_entpos || !has_off_eyeang || !has_vtidx_Teleport) {
-		con_warn("l4dwarp: missing gamedata entries for this engine\n");
+		errmsg_warnx("missing gamedata entries for this engine");
 		return false;
 	}
 	con_reg(sst_l4d_testwarp);

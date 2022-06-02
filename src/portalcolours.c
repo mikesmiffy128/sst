@@ -19,7 +19,7 @@
 
 #include "con_.h"
 #include "engineapi.h"
-#include "extmalloc.h"
+#include "errmsg.h"
 #include "gametype.h"
 #include "hook.h"
 #include "intdefs.h"
@@ -123,13 +123,13 @@ bool portalcolours_init(void *clientlib) { // ... should libs be globals?
 	if (!GAMETYPE_MATCHES(Portal)) return false;
 #ifdef _WIN32
 	if (!find_UTIL_Portal_Color(clientlib)) {
-		con_warn("portalcolours: error: couldn't find UTIL_Portal_Color\n");
+		errmsg_errorx("couldn't find UTIL_Portal_Color");
 		return false;
 	}
 	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)hook_inline(
 			(void *)orig_UTIL_Portal_Color, (void *)&hook_UTIL_Portal_Color);
 	if (!orig_UTIL_Portal_Color) {
-		con_warn("portalcolours: error: couldn't hook UTIL_Portal_Color\n");
+		errmsg_errorsys("couldn't hook UTIL_Portal_Color");
 		return false;
 	}
 	sst_portal_colour0->base.flags &= ~CON_HIDDEN;

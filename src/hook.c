@@ -48,20 +48,24 @@ void *hook_inline(void *func_, void *target) {
 	if (!os_mprot(func, 5, PAGE_EXECUTE_READWRITE)) return false;
 	int len = 0;
 	for (;;) {
+		// FIXME: these cases may result in somewhat dodgy error messaging. They
+		// shouldn't happen anyway though. Maybe if we're confident we just
+		// compile 'em out of release builds some day, but that sounds a little
+		// scary. For now prefering confusing messages over crashes, I guess.
 		if (func[len] == X86_CALL) {
 			con_warn("hook_inline: can't trampoline call instructions\n");
-			return false;
+			return 0;
 		}
 		int ilen = x86_len(func + len);
 		if (ilen == -1) {
 			con_warn("hook_inline: unknown or invalid instruction\n");
-			return false;
+			return 0;
 		}
 		len += ilen;
 		if (len >= 5) break;
 		if (func[len] == X86_JMPIW) {
 			con_warn("hook_inline: can't trampoline jmp instructions\n");
-			return false;
+			return 0;
 		}
 	}
 	// for simplicity, just bump alloc the trampoline. no need to free anyway

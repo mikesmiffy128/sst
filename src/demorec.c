@@ -22,6 +22,7 @@
 #include "con_.h"
 #include "demorec.h"
 #include "engineapi.h"
+#include "errmsg.h"
 #include "gamedata.h"
 #include "gameinfo.h"
 #include "hook.h"
@@ -116,23 +117,19 @@ static void hook_record_cb(const struct con_cmdargs *args) {
 				// we could use open(O_DIRECTORY), but that's not a thing on
 				// windows, of course.
 				struct os_stat s;
+				static const char *const errpfx = "ERROR: can't record demo: ";
 				if (os_stat(dir, &s) == -1) {
-					con_warn("ERROR: can't record demo: ");
 					if (errno == ENOENT) {
-						con_warn("subdirectory %.*s doesn't exist\n",
+						con_warn("%ssubdirectory %.*s doesn't exist\n", errpfx,
 								argdirlen, arg);
 					}
 					else {
-						con_warn("%s\n", strerror(errno)); // guess this'll do.
+						con_warn("%s%s\n", errpfx, strerror(errno));
 					}
 					return;
 				}
 				if (!S_ISDIR(s.st_mode)) {
-					// TODO(errmsg): duping this warning call to avoid duping
-					// the string data, very stupid, oh well. if/when we have
-					// New And Improved Logging this can be tidied up...
-					con_warn("ERROR: can't record demo: ");
-					con_warn("the path %.*s is not a directory\n",
+					con_warn("%spath %.*s is not a directory\n", errpfx,
 							argdirlen, arg);
 					return;
 				}
@@ -157,10 +154,10 @@ static void hook_stop_cb(const struct con_cmdargs *args) {
 
 // XXX: probably want some general foreach-instruction macro once we start doing
 // this kind of hackery in multiple different places
-#define NEXT_INSN(p) do { \
+#define NEXT_INSN(p, tgt) do { \
 	int _len = x86_len(p); \
 	if (_len == -1) { \
-		con_warn("demorec: %s: unknown or invalid instruction\n", __func__); \
+		errmsg_errorx("unknown or invalid instruction looking for %s", tgt); \
 		return false; \
 	} \
 	(p) += _len; \
@@ -178,7 +175,7 @@ static inline bool find_demorecorder(struct con_cmd *cmd_stop) {
 			demorecorder = *indirect;
 			return true;
 		}
-		NEXT_INSN(p);
+		NEXT_INSN(p, "demorecorder object");
 	}
 #else
 #warning TODO(linux): implement linux equivalent (cdecl!)
@@ -202,7 +199,7 @@ static inline bool find_recmembers(void *stoprecording) {
 			recording = mem_offset(demorecorder, mem_load32(p + 2));
 		}
 		if (recording && demonum) return true; // blegh
-		NEXT_INSN(p);
+		NEXT_INSN(p, "state variables");
 	}
 #else // linux is probably different here idk
 #warning TODO(linux): implement linux equivalent (???)
@@ -212,42 +209,34 @@ static inline bool find_recmembers(void *stoprecording) {
 
 bool demorec_init(void) {
 	if (!has_vtidx_StopRecording) {
-		con_warn("demorec: missing gamedata entries for this engine\n");
+		errmsg_warnx("missing gamedata entries for this engine");
 		return false;
 	}
 	cmd_record = con_findcmd("record");
 	if (!cmd_record) { // can *this* even happen? I hope not!
-		con_warn("demorec: couldn't find \"record\" command\n");
+		errmsg_errorx("couldn't find \"record\" command");
 		return false;
 	}
 	orig_record_cb = con_getcmdcb(cmd_record);
 	cmd_stop = con_findcmd("stop");
 	if (!cmd_stop) {
-		con_warn("demorec: couldn't find \"stop\" command\n");
+		errmsg_errorx("couldn't find \"stop\" command");
 		return false;
 	}
 	orig_stop_cb = con_getcmdcb(cmd_stop);
 	if (!find_demorecorder(cmd_stop)) {
-		con_warn("demorec: couldn't find demo recorder instance\n");
+		errmsg_errorx("couldn't find demo recorder instance");
 		return false;
 	}
 
 	void **vtable = *(void ***)demorecorder;
 	// XXX: 16 is totally arbitrary here! figure out proper bounds later
 	if (!os_mprot(vtable, 16 * sizeof(void *), PAGE_READWRITE)) {
-		// TODO(errmsg): this is one of the only places I apparently bothered
-		// to properly log this stuff. really should solve this at some point
-#ifdef _WIN32
-		char err[128];
-		OS_WINDOWS_ERROR(err);
-#else
-		const char *err = strerror(errno);
-#endif
-		con_warn("demorec: couldn't make memory writable: %s\n", err);
+		errmsg_errorsys("couldn't make virtual table writable");
 		return false;
 	}
 	if (!find_recmembers(vtable[vtidx_StopRecording])) {
-		con_warn("demorec: couldn't find m_bRecording and m_nDemoNumber\n");
+		errmsg_errorx("couldn't find recording state variables");
 		return false;
 	}
 
@@ -357,7 +346,7 @@ DECL_VFUNC_DYN(int, GetEngineBuildNumber)
 
 bool demorec_custom_init(void) {
 	if (!has_vtidx_GetEngineBuildNumber || !has_vtidx_RecordPacket) {
-		con_warn("demorec: custom: missing gamedata entries for this engine\n");
+		errmsg_warnx("custom: missing gamedata entries for this engine");
 		return false;
 	}
 

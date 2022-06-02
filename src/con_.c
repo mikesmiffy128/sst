@@ -399,6 +399,9 @@ static void helpuserhelpus(int pluginver, char ifaceverchar) {
 	con_msg("\n");
 }
 
+// note: for now at least, not using errmsg_*() macros here because it doesn't
+// really make sense for these messages to be coming from "con"
+
 static void warnoe(void) {
 	con_warn("sst: error: this engine version is not yet supported\n");
 }

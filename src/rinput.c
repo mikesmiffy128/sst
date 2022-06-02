@@ -22,6 +22,7 @@
 
 #include "con_.h"
 #include "hook.h"
+#include "errmsg.h"
 #include "intdefs.h"
 
 // We reimplement m_rawinput by hooking cursor functions in the same way as
@@ -30,8 +31,6 @@
 // either block it from being loaded redundantly, or be blocked if it's already
 // loaded. If m_rawinput already exists, we do nothing; people should use the
 // game's native raw input instead in that case.
-
-#define ERR "rinput: error: "
 
 #define USAGEPAGE_MOUSE 1
 #define USAGE_MOUSE 2
@@ -106,18 +105,18 @@ bool rinput_init(void) {
 	orig_GetCursorPos = (GetCursorPos_func)hook_inline((void *)&GetCursorPos,
 			(void *)&hook_GetCursorPos);
 	if (!orig_GetCursorPos) {
-		con_warn(ERR "couldn't hook GetCursorPos\n");
+		errmsg_errorsys("couldn't hook %s", "GetCursorPos");
 		goto e0;
 	}
 	orig_SetCursorPos = (SetCursorPos_func)hook_inline((void *)&SetCursorPos,
 			(void *)&hook_SetCursorPos);
 	if (!orig_SetCursorPos) {
-		con_warn(ERR "couldn't hook SetCursorPos\n");
+		errmsg_errorsys("couldn't hook %s", "SetCursorPos");
 		goto e1;
 	}
 	inwin = CreateWindowExW(0, L"RInput", L"RInput", 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	if (!inwin) {
-		con_warn(ERR " couldn't create input window\n");
+		errmsg_errorsys("couldn't create input window");
 		goto e2;
 	}
 	RAWINPUTDEVICE rd = {
@@ -126,7 +125,7 @@ bool rinput_init(void) {
 		.usUsage = USAGE_MOUSE
 	};
 	if (!RegisterRawInputDevices(&rd, 1, sizeof(rd))) {
-		con_warn(ERR " couldn't create raw mouse device\n");
+		errmsg_errorsys("couldn't create raw mouse device");
 		goto e3;
 	}
 

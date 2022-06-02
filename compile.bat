@@ -30,47 +30,63 @@ goto :main
 
 :cc
 for /F %%b in ("%1") do set basename=%%~nb
+set dmodname= -DMODULE_NAME=%basename%
+:: ugly annoying special cases
+if "%dmodname%"==" -DMODULE_NAME=con_" set dmodname= -DMODULE_NAME=con
+if "%dmodname%"==" -DMODULE_NAME=sst" set dmodname=
 set objs=%objs% .build/%basename%.o
 %CC% -m32 -c -flto %cflags% %warnings% -I.build/include -D_CRT_SECURE_NO_WARNINGS -D_DLL ^
--DWIN32_LEAN_AND_MEAN -DNOMINMAX -DFILE_BASENAME=%basename% -o .build/%basename%.o %1 || exit /b
+-DWIN32_LEAN_AND_MEAN -DNOMINMAX%dmodname% -o .build/%basename%.o %1 || exit /b
+goto :eof
+
+:src
 goto :eof
 
 :main
+
+set src=
+:: funny hack to build a list conveniently, lol.
+setlocal EnableDelayedExpansion
+for /f "tokens=2" %%f in ('findstr /B /C:":+ " "%~nx0"') do set src=!src! src/%%f
+setlocal DisableDelayedExpansion
+:+ autojump.c
+:+ con_.c
+:+ demorec.c
+:+ engineapi.c
+:+ ent.c
+:+ errmsg.c
+:+ extmalloc.c
+:+ fixes.c
+:+ fov.c
+:+ gamedata.c
+:+ gameinfo.c
+:+ hook.c
+:+ kv.c
+:+ l4dwarp.c
+:+ nosleep.c
+:+ portalcolours.c
+:+ rinput.c
+:+ sst.c
+:+ x86.c
+:: just tack these on, whatever
+if "%dbg%"=="1" (
+	set src=%src% src/dbg.c
+	set src=%src% src/udis86.c
+)
+
 %HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS ^
 -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c || exit /b
 %HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS ^
 -o .build/mkgamedata.exe src/build/mkgamedata.c src/kv.c || exit /b
 %HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -ladvapi32 ^
 -o .build/mkentprops.exe src/build/mkentprops.c src/kv.c || exit /b
-.build\codegen.exe src/autojump.c src/con_.c src/demorec.c src/engineapi.c src/ent.c src/extmalloc.c src/fixes.c src/fov.c ^
-src/gamedata.c src/gameinfo.c src/hook.c src/kv.c src/l4dwarp.c src/nosleep.c src/portalcolours.c src/rinput.c src/sst.c src/x86.c || exit /b
+.build\codegen.exe%src% || exit /b
 .build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv || exit /b
 .build\mkentprops.exe gamedata/entprops.kv || exit /b
 llvm-rc /FO .build\dll.res src\dll.rc || exit /b
 %CC% -shared -O0 -w -o .build/tier0.dll src/stubs/tier0.c
 %CC% -shared -O0 -w -o .build/vstdlib.dll src/stubs/vstdlib.c
-call :cc src/autojump.c || exit /b
-call :cc src/con_.c || exit /b
-call :cc src/demorec.c || exit /b
-call :cc src/engineapi.c || exit /b
-call :cc src/ent.c || exit /b
-call :cc src/extmalloc.c || exit /b
-call :cc src/fixes.c || exit /b
-call :cc src/fov.c || exit /b
-call :cc src/gamedata.c || exit /b
-call :cc src/gameinfo.c || exit /b
-call :cc src/hook.c || exit /b
-call :cc src/kv.c || exit /b
-call :cc src/l4dwarp.c || exit /b
-call :cc src/nosleep.c || exit /b
-call :cc src/portalcolours.c || exit /b
-call :cc src/rinput.c || exit /b
-call :cc src/sst.c || exit /b
-call :cc src/x86.c || exit /b
-if "%dbg%"=="1" (
-	call :cc src/dbg.c || exit /b
-	call :cc src/udis86.c || exit /b
-)
+for %%b in (%src%) do ( call :cc %%b || exit /b )
 if "%dbg%"=="1" (
 	:: ugh, microsoft.
 	set clibs=-lmsvcrtd -lvcruntimed -lucrtd

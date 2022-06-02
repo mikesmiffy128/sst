@@ -21,6 +21,7 @@
 
 #include "con_.h"
 #include "engineapi.h"
+#include "errmsg.h"
 #include "gametype.h"
 #include "intdefs.h"
 #include "kv.h"
@@ -72,8 +73,7 @@ static void trygamelib(const os_char *path, os_char *outpath) {
 		os_strcpy(outpath, path);
 	}
 	else if (errno != ENOENT) {
-		con_warn("gameinfo: failed to access %" fS ": %s\n", path,
-				strerror(errno));
+		errmsg_warnstd("failed to access %" fS, path);
 	}
 }
 
@@ -132,7 +132,7 @@ static inline void dolibsearch(const char *p, uint len, bool isgamebin,
 	int fmtspace = spaceleft - (sizeof("client" OS_DLSUFFIX) - 1);
 	int ret = os_snprintf(outp, fmtspace, fmt, len, p);
 	if (ret >= fmtspace) {
-toobig: con_warn("gameinfo: skipping an overly long search path\n");
+toobig: errmsg_warnx("skipping an overly long search path");
 		return;
 	}
 	outp += ret;
@@ -227,8 +227,7 @@ static void kv_cb(enum kv_token type, const char *p, uint len, void *_ctxt) {
 			if (ctxt->dontcarelvl) --ctxt->dontcarelvl; else --ctxt->nestlvl;
 			break;
 		case KV_COND_PREFIX: case KV_COND_SUFFIX:
-			con_warn("gameinfo: warning: just ignoring conditional \"%.*s\"",
-					len, p);
+			errmsg_warnx("just ignoring conditional \"%.*s\"", len, p);
 	}
 	#undef MATCH
 }
@@ -237,7 +236,7 @@ DECL_VFUNC_DYN(const char *, GetGameDirectory)
 
 bool gameinfo_init(void) {
 	if (!has_vtidx_GetGameDirectory) {
-		con_warn("gameinfo: unsupported VEngineClient interface\n");
+		errmsg_errorx("unsupported VEngineClient interface");
 		return false;
 	}
 
@@ -245,13 +244,12 @@ bool gameinfo_init(void) {
 	// base dir is just cwd
 	os_char cwd[PATH_MAX];
 	if (!os_getcwd(cwd, sizeof(cwd) / sizeof(*cwd))) {
-		con_warn("gameinfo: couldn't get working directory: %s\n",
-				strerror(errno));
+		errmsg_errorstd("couldn't get working directory");
 		return false;
 	}
 	int len = os_strlen(cwd);
 	if (len + sizeof("/bin") > sizeof(bindir) / sizeof(*bindir)) {
-		con_warn("gameinfo: working directory path is too long!\n");
+		errmsg_errorx("working directory path is too long!");
 		return false;
 	}
 	memcpy(bindir, cwd, len * sizeof(*cwd));
@@ -261,7 +259,7 @@ bool gameinfo_init(void) {
 	int gamedirlen = _snwprintf(gamedir, sizeof(gamedir) / sizeof(*gamedir),
 			L"%S", VCALL(engclient, GetGameDirectory));
 	if (gamedirlen < 0) { // encoding error??? ugh...
-		con_warn("gameinfo: invalid game directory path!\n");
+		errmsg_errorx("invalid game directory path!");
 		return false;
 	}
 #else
@@ -271,7 +269,7 @@ bool gameinfo_init(void) {
 #endif
 	if (gamedirlen + sizeof("/gameinfo.txt") > sizeof(gamedir) /
 			sizeof(*gamedir)) {
-		con_warn("gameinfo: game directory path is too long!\n");
+		errmsg_errorx("game directory path is too long!");
 		return false;
 	}
 	os_char gameinfopath[PATH_MAX];
@@ -281,7 +279,7 @@ bool gameinfo_init(void) {
 			14 * sizeof(os_char));
 	int fd = os_open(gameinfopath, O_RDONLY);
 	if (fd == -1) {
-		con_warn("gameinfo: couldn't open gameinfo.txt: %s\n", strerror(errno));
+		errmsg_errorstd("couldn't open gameinfo.txt");
 		return false;
 	}
 	char buf[1024];
@@ -290,8 +288,7 @@ bool gameinfo_init(void) {
 	int nread;
 	while (nread = read(fd, buf, sizeof(buf))) {
 		if (nread == -1) {
-			con_warn("gameinfo: couldn't read gameinfo.txt: %s\n",
-					strerror(errno));
+			errmsg_errorstd("couldn't read gameinfo.txt");
 			goto e;
 		}
 		if (!kv_parser_feed(&kvp, buf, nread, &kv_cb, &ctxt)) goto ep;
@@ -303,8 +300,8 @@ bool gameinfo_init(void) {
 	if (GAMETYPE_MATCHES(L4DS)) gameinfo_title = "Left 4 Dead: Survivors";
 	return true;
 
-ep:	con_warn("gameinfo: couldn't parse gameinfo.txt (%d:%d): %s\n",
-			kvp.line, kvp.col, kvp.errmsg);
+ep:	errmsg_errorx("couldn't parse gameinfo.txt (%d:%d): %s", kvp.line, kvp.col,
+		kvp.errmsg);
 e:	close(fd);
 	return false;
 }

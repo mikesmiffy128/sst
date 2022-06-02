@@ -21,6 +21,7 @@
 
 #include "con_.h"
 #include "engineapi.h"
+#include "errmsg.h"
 #include "ent.h"
 #include "gametype.h"
 #include "hook.h"
@@ -57,7 +58,8 @@ static bool find_SetDefaultFOV(struct con_cmd *fov) {
 		}
 		int len = x86_len(p);
 		if (len == -1) {
-			con_warn("fov: find_SetDefaultFOV: unknown or invalid instruction\n");
+			errmsg_errorx("unknown or invalid instruction looking for %s",
+					"SetDefaultFOV");
 			return false;
 		}
 		p += len;
@@ -100,13 +102,13 @@ bool fov_init(bool has_ent) {
 		real_fov_desired = fov_desired;
 	}
 	if (!find_SetDefaultFOV(cmd_fov)) {
-		con_warn("fov: couldn't find SetDefaultFOV function\n");
+		errmsg_errorx("couldn't find SetDefaultFOV function");
 		return false;
 	}
 	orig_SetDefaultFOV = (SetDefaultFOV_func)hook_inline(
 			(void *)orig_SetDefaultFOV, (void *)&hook_SetDefaultFOV);
 	if (!orig_SetDefaultFOV) {
-		con_warn("fov: couldn't hook SetDefaultFOV function\n");
+		errmsg_errorsys("couldn't hook SetDefaultFOV function");
 		return false;
 	}
 
