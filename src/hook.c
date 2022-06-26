@@ -29,14 +29,20 @@
 
 #if defined(_WIN32) && !defined(_WIN64)
 
+#if defined(__GNUC__) || defined(__clang__)
 __attribute__((aligned(4096)))
+#elif defined(_MSC_VER)
+__declspec(align(4096))
+#else
+#error no way to align stuff!
+#endif
 static uchar trampolines[4096];
 static uchar *nexttrampoline = trampolines;
-__attribute__((constructor))
-static void setrwx(void) {
-	// PE doesn't support rwx sections, not sure about ELF. Eh, just hack it in
-	// a constructor instead. If this fails and we segfault later, too bad!
-	os_mprot(trampolines, sizeof(trampolines), PAGE_EXECUTE_READWRITE);
+
+bool hook_init(void) {
+	// PE doesn't support rwx sections, not sure about ELF. Meh, just set it
+	// here instead.
+	return os_mprot(trampolines, sizeof(trampolines), PAGE_EXECUTE_READWRITE);
 }
 
 void *hook_inline(void *func_, void *target) {

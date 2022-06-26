@@ -17,7 +17,11 @@
 #ifndef INC_HOOK_H
 #define INC_HOOK_H
 
+#include <stdbool.h>
+
 #include "intdefs.h"
+
+bool hook_init(void);
 
 /*
  * Replaces a vtable entry with a target function and returns the original

@@ -198,6 +198,11 @@ static bool already_loaded = false, skip_unload = false;
 
 #define RGBA(r, g, b, a) (&(struct con_colour){(r), (g), (b), (a)})
 
+// auto-update message. see below in do_featureinit()
+static const char *updatenotes = "\
+* various internal cleanup\n\
+";
+
 static void do_featureinit(void) {
 	has_autojump = autojump_init();
 	has_demorec = demorec_init();
@@ -217,6 +222,24 @@ static void do_featureinit(void) {
 			LONGNAME " v" VERSION " successfully loaded");
 	con_colourmsg(RGBA(255, 255, 255, 255), " for game ");
 	con_colourmsg(RGBA(0, 255, 255, 255), "%s\n", gameinfo_title);
+
+	// if we're autoloaded and the external autoupdate script downloaded a new
+	// version, let the user know about the cool new stuff!
+	if (getenv("SST_UPDATED")) {
+		// avoid displaying again if we're unloaded and reloaded in one session
+#ifdef _WIN32
+		SetEnvironmentVariableA("SST_UPDATED", 0);
+#else
+		unsetenv("SST_UPDATED");
+#endif
+		struct con_colour gold = {255, 210, 0, 255};
+		struct con_colour white = {255, 255, 255, 255};
+		con_colourmsg(&white, "\n" NAME " was just ");
+		con_colourmsg(&gold, "UPDATED");
+		con_colourmsg(&white, " to version ");
+		con_colourmsg(&gold, "%s", VERSION);
+		con_colourmsg(&white, "!\n\nNew in this version:\n%s\n", updatenotes);
+	}
 }
 
 static void *vgui;
@@ -268,6 +291,11 @@ e:	con_warn("!!! SOME FEATURES MAY BE BROKEN !!!\n");
 }
 
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
+	if (!hook_init()) {
+		errmsg_warnsys("couldn't set up memory for function hooking");
+		return false;
+	}
+
 	factory_engine = enginef; factory_server = serverf;
 	if (!engineapi_init(ifacever)) return false;
 

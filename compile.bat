@@ -93,8 +93,8 @@ if "%dbg%"=="1" (
 ) else (
 	set clibs=-lmsvcrt -lvcruntime -lucrt
 )
-%CC% -shared -flto %ldflags% -Wl,/IMPLIB:.build/sst.lib,/Brepro,/nodefaultlib:libcmt ^
--L.build %clibs% -luser32 -ladvapi32 -lshlwapi -ld3d9 -ltier0 -lvstdlib -o sst.dll%objs% .build/dll.res || exit /b
+%CC% -shared -flto %ldflags% -Wl,/IMPLIB:.build/sst.lib,/Brepro,/nodefaultlib ^
+-L.build %clibs% -lkernel32 -luser32 -ladvapi32 -lshlwapi -ld3d9 -ltier0 -lvstdlib -o sst.dll%objs% .build/dll.res || exit /b
 :: get rid of another useless file (can we just not create this???)
 del .build\sst.lib
 
