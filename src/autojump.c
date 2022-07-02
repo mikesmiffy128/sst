@@ -20,6 +20,7 @@
 #include "engineapi.h"
 #include "errmsg.h"
 #include "gamedata.h"
+#include "gametype.h"
 #include "intdefs.h"
 #include "hook.h"
 #include "mem.h"
@@ -97,6 +98,16 @@ bool autojump_init(void) {
 			vtidx_CheckJumpButton, (void *)&hookcl);
 
 	sst_autojump->base.flags &= ~CON_HIDDEN;
+	if (GAMETYPE_MATCHES(Portal1)) {
+		// this is a stupid, stupid policy that doesn't make any sense, but I've
+		// tried arguing about it already and with how long it takes to convince
+		// the Portal guys of anything I'd rather concede for now and maybe try
+		// and revert this later if anyone eventually decides to be sensible.
+		// the alternative is nobody's allowed to use SST in runs - except of
+		// course the couple of people who just roll the dice anyway, and
+		// thusfar haven't actually been told to stop. yeah, whatever.
+		sst_autojump->base.flags |= CON_CHEAT;
+	}
 	return true;
 }
 
