@@ -21,6 +21,8 @@
 #include <shlwapi.h>
 #endif
 
+#include "ac.h"
+#include "alias.h"
 #include "autojump.h"
 #include "con_.h"
 #include "demorec.h"
@@ -188,8 +190,8 @@ static const void *const *const plugin_obj;
 // figures out the dependencies at build time and generates all the init glue
 // but we want to actually release the plugin this decade so for now I'm just
 // plonking some bools here and worrying about it later. :^)
-static bool has_autojump = false, has_demorec = false, has_fov = false,
-		has_nosleep = false, has_portalcolours = false;
+static bool has_ac = false,  has_autojump = false, has_demorec = false,
+		has_fov = false, has_nosleep = false, has_portalcolours = false;
 #ifdef _WIN32
 static bool has_rinput = false;
 #endif
@@ -204,6 +206,8 @@ static const char *updatenotes = "\
 ";
 
 static void do_featureinit(void) {
+	has_ac = ac_init();
+	bool has_alias = alias_init();
 	has_autojump = autojump_init();
 	has_demorec = demorec_init();
 	// not enabling demorec_custom yet - kind of incomplete and currently unused
@@ -409,6 +413,7 @@ static void do_unload(void) {
 	}
 #endif
 
+	if (has_ac) ac_end();
 	if (has_autojump) autojump_end();
 	if (has_demorec) demorec_end();
 	if (has_fov) fov_end(); // dep on ent

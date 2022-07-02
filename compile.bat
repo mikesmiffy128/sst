@@ -49,6 +49,8 @@ set src=
 setlocal EnableDelayedExpansion
 for /f "tokens=2" %%f in ('findstr /B /C:":+ " "%~nx0"') do set src=!src! src/%%f
 setlocal DisableDelayedExpansion
+:+ ac.c
+:+ alias.c
 :+ autojump.c
 :+ con_.c
 :+ demorec.c
@@ -68,11 +70,9 @@ setlocal DisableDelayedExpansion
 :+ rinput.c
 :+ sst.c
 :+ x86.c
-:: just tack these on, whatever
-if "%dbg%"=="1" (
-	set src=%src% src/dbg.c
-	set src=%src% src/udis86.c
-)
+:: just tack these on, whatever (repeated condition because of expansion memes)
+if "%dbg%"=="1" set src=%src% src/dbg.c
+if "%dbg%"=="1" set src=%src% src/udis86.c
 
 %HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS ^
 -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c || exit /b

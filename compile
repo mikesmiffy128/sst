@@ -42,6 +42,8 @@ ld() {
 }
 
 src="\
+	ac.c
+	alias.c
 	autojump.c
 	con_.c
 	demorec.c

@@ -165,7 +165,7 @@ static void hook_stop_cb(const struct con_cmdargs *args) {
 
 // This finds the "demorecorder" global variable (the engine-wide CDemoRecorder
 // instance).
-static inline bool find_demorecorder(struct con_cmd *cmd_stop) {
+static inline bool find_demorecorder(void) {
 #ifdef _WIN32
 	// The "stop" command calls the virtual function demorecorder.IsRecording(),
 	// so just look for the load of the "this" pointer into ECX
@@ -224,7 +224,7 @@ bool demorec_init(void) {
 		return false;
 	}
 	orig_stop_cb = con_getcmdcb(cmd_stop);
-	if (!find_demorecorder(cmd_stop)) {
+	if (!find_demorecorder()) {
 		errmsg_errorx("couldn't find demo recorder instance");
 		return false;
 	}
@@ -245,8 +245,8 @@ bool demorec_init(void) {
 	orig_StopRecording = (StopRecording_func)hook_vtable(vtable,
 			vtidx_StopRecording, (void *)&hook_StopRecording);
 
-	orig_record_cb = cmd_record->cb; cmd_record->cb = &hook_record_cb;
-	orig_stop_cb = cmd_stop->cb; cmd_stop->cb = &hook_stop_cb;
+	cmd_record->cb = &hook_record_cb;
+	cmd_stop->cb = &hook_stop_cb;
 
 	sst_autorecord->base.flags &= ~CON_HIDDEN;
 	return true;
