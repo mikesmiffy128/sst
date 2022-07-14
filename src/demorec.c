@@ -209,7 +209,7 @@ static inline bool find_recmembers(void *stoprecording) {
 
 bool demorec_init(void) {
 	if (!has_vtidx_StopRecording) {
-		errmsg_warnx("missing gamedata entries for this engine");
+		errmsg_errorx("missing gamedata entries for this engine");
 		return false;
 	}
 	cmd_record = con_findcmd("record");
@@ -346,7 +346,7 @@ DECL_VFUNC_DYN(int, GetEngineBuildNumber)
 
 bool demorec_custom_init(void) {
 	if (!has_vtidx_GetEngineBuildNumber || !has_vtidx_RecordPacket) {
-		errmsg_warnx("custom: missing gamedata entries for this engine");
+		errmsg_errorx("custom: missing gamedata entries for this engine");
 		return false;
 	}
 

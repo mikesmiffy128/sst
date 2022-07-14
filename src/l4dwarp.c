@@ -51,7 +51,7 @@ DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you",
 bool l4dwarp_init(void) {
 	if (!GAMETYPE_MATCHES(L4Dx)) return false;
 	if (!has_off_entpos || !has_off_eyeang || !has_vtidx_Teleport) {
-		errmsg_warnx("missing gamedata entries for this engine");
+		errmsg_errorx("missing gamedata entries for this engine");
 		return false;
 	}
 	con_reg(sst_l4d_testwarp);

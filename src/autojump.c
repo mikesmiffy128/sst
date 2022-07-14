@@ -72,11 +72,11 @@ static bool unprot(void *gm) {
 bool autojump_init(void) {
 	// TODO(featgen): auto-check these factories
 	if (!factory_client || !factory_server) {
-		errmsg_warnx("missing required factories");
+		errmsg_errorx("missing required factories");
 		return false;
 	}
 	if (!has_vtidx_CheckJumpButton || !has_off_mv) {
-		errmsg_warnx("missing gamedata entries for this engine");
+		errmsg_errorx("missing gamedata entries for this engine");
 		return false;
 	}
 

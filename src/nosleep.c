@@ -42,11 +42,11 @@ bool nosleep_init(void) {
 	con_reg(engine_no_focus_sleep);
 	// TODO(featgen): auto-check these factories
 	if (!factory_inputsystem) {
-		errmsg_warnx("missing required factories");
+		errmsg_errorx("missing required factories");
 		return false;
 	}
 	if (!has_vtidx_SleepUntilInput) {
-		errmsg_warnx("missing gamedata entries for this engine");
+		errmsg_errorx("missing gamedata entries for this engine");
 		return false;
 	}
 	void *insys = factory_inputsystem("InputSystemVersion001", 0);
