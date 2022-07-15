@@ -55,7 +55,8 @@ static noreturn die(const char *s) {
  * then it should be obvious. :^)
  *
  * Note: if `default` isn't given in a conditional block, that piece of gamedata
- * is considered unavailable and modules that use it won't get initialised/used.
+ * is considered unavailable and modules that use it won't get initialised/used
+ * unless all the conditions are met.
  */
 struct vec_ent VEC(struct ent *);
 struct ent {
@@ -176,14 +177,13 @@ static void inits(FILE *out, const char *var, struct vec_ent *v, bool needhas,
 		int indent) {
 	for (struct ent *const *pp = v->data; pp - v->data < v->sz; ++pp) {
 Fi("if (GAMETYPE_MATCHES(%s)) {", (*pp)->name)
-		bool has = needhas && (*pp)->defexpr;
-		if (has) {
-Fi("	has_%s = true;", var);
-		}
 		if ((*pp)->defexpr) {
+			if (needhas) {
+Fi("	has_%s = true;", var);
+			}
 Fi("	%s = %s;", var, (*pp)->defexpr);
 		}
-		inits(out, var, &(*pp)->subents, !has, indent + 1);
+		inits(out, var, &(*pp)->subents, needhas && !(*pp)->defexpr, indent + 1);
 _i("}")
 	}
 }
