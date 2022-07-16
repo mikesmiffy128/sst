@@ -34,9 +34,15 @@ vtidx_GetGameDirectory {
 vtidx_GetEngineBuildNumber {
 	L4D2 {
 		Client013 99
-		//Client014 ??? // TODO(compat): find out what this (maybe 136?)
+		//Client014 ??? // TODO(compat): find out what this is (maybe 136?)
 	}
 }
+
+// IGameUIFuncs
+vtidx_GetDesktopResolution 5
+
+// IGame/CGame
+vtidx_DispatchAllStoredGameMessages 16
 
 // VEngineServer
 vtidx_PEntityOfEntIndex { OrangeBox 19 } // probably OE too but???

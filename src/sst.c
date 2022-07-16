@@ -208,7 +208,7 @@ static const char *updatenotes = "\
 
 static void do_featureinit(void) {
 	bool has_bind = bind_init();
-	has_ac = ac_init();
+	if (has_bind) has_ac = ac_init();
 	bool has_alias = alias_init();
 	has_autojump = autojump_init();
 	has_demorec = demorec_init();
