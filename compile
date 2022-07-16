@@ -43,6 +43,7 @@ ld() {
 
 src="\
 	ac.c
+	bind.c
 	alias.c
 	autojump.c
 	con_.c

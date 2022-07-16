@@ -32,6 +32,7 @@
 #include "ppmagic.h"
 #include "vcall.h"
 #include "x86.h"
+#include "x86util.h"
 
 DEF_CVAR(sst_autorecord, "Continuously record demos even after reconnecting", 1,
 		CON_ARCHIVE | CON_HIDDEN)
@@ -151,17 +152,6 @@ static void hook_stop_cb(const struct con_cmdargs *args) {
 	orig_stop_cb(args);
 	wantstop = false;
 }
-
-// XXX: probably want some general foreach-instruction macro once we start doing
-// this kind of hackery in multiple different places
-#define NEXT_INSN(p, tgt) do { \
-	int _len = x86_len(p); \
-	if (_len == -1) { \
-		errmsg_errorx("unknown or invalid instruction looking for %s", tgt); \
-		return false; \
-	} \
-	(p) += _len; \
-} while (0)
 
 // This finds the "demorecorder" global variable (the engine-wide CDemoRecorder
 // instance).

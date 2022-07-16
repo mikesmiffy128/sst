@@ -50,6 +50,7 @@ setlocal EnableDelayedExpansion
 for /f "tokens=2" %%f in ('findstr /B /C:":+ " "%~nx0"') do set src=!src! src/%%f
 setlocal DisableDelayedExpansion
 :+ ac.c
+:+ bind.c
 :+ alias.c
 :+ autojump.c
 :+ con_.c

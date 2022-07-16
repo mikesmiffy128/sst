@@ -25,6 +25,7 @@
 #include "gametype.h"
 #include "mem.h"
 #include "x86.h"
+#include "x86util.h"
 
 struct alias **_alias_head;
 
@@ -67,16 +68,6 @@ DEF_CCMD_HERE(sst_alias_clear, "Remove all command aliases", 0) {
 	}
 	alias_nuke();
 }
-
-// XXX: same as in demorec, might want some abstraction for this
-#define NEXT_INSN(p, tgt) do { \
-	int _len = x86_len(p); \
-	if (_len == -1) { \
-		errmsg_errorx("unknown or invalid instruction looking for %s", tgt); \
-		return false; \
-	} \
-	(p) += _len; \
-} while (0)
 
 static bool find_alias_head(con_cmdcb alias_cb) {
 #ifdef _WIN32
