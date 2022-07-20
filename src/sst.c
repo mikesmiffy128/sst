@@ -26,6 +26,7 @@
 #include "alias.h"
 #include "autojump.h"
 #include "con_.h"
+#include "democustom.h"
 #include "demorec.h"
 #include "engineapi.h"
 #include "errmsg.h"
@@ -209,11 +210,10 @@ static const char *updatenotes = "\
 static void do_featureinit(void) {
 	bool has_bind = bind_init();
 	if (has_bind) has_ac = ac_init();
-	bool has_alias = alias_init();
+	alias_init();
 	has_autojump = autojump_init();
 	has_demorec = demorec_init();
-	// not enabling demorec_custom yet - kind of incomplete and currently unused
-	//if (has_demorec) demorec_custom_init();
+	if (has_demorec) democustom_init();
 	bool has_ent = ent_init();
 	has_fov = fov_init(has_ent);
 	if (has_ent) l4dwarp_init();

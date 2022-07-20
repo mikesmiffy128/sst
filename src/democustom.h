@@ -1,6 +1,5 @@
 /*
- * Copyright © 2021 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,16 +14,21 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef INC_DEMOREC_H
-#define INC_DEMOREC_H
+#ifndef INC_DEMOCUSTOM_H
+#define INC_DEMOCUSTOM_H
 
 #include <stdbool.h>
 
-/* For internal use by democustom */
-extern void *demorecorder;
+/* maximum length of a custom demo message, in bytes */
+#define DEMOCUSTOM_MSG_MAX 253
 
-bool demorec_init(void);
-void demorec_end(void);
+/*
+ * Write a block of up to DEMOWRITER_MSG_MAX bytes into the currently recording
+ * demo - NOT bounds checked, caller MUST ensure length is okay!
+ */
+void democustom_write(const void *buf, int len);
+
+bool democustom_init(void);
 
 #endif
 
