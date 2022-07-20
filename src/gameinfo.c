@@ -90,9 +90,8 @@ static inline void dolibsearch(const char *p, uint len, bool isgamebin,
 	// quick note about windows encoding conversion: this MIGHT clobber the
 	// encoding of non-ascii mod names, but it's unclear if/how source handles
 	// that anyway, so we just have to assume there *are no* non-ascii mod
-	// names, since they'd also be clobbered, probably. if I'm wrong this can
-	// just change later to an explicit charset conversion, so... it's kinda
-	// whatever, I guess
+	// names, since they'd also be clobbered, probably. NOTE that this
+	// assumption does NOT apply to the absolute base path; see further down.
 	const os_char *fmt = isgamebin ?
 		OS_LIT("/%.*") Fs OS_LIT("/") :
 		OS_LIT("/%.*") Fs OS_LIT("/bin/");
@@ -256,10 +255,16 @@ bool gameinfo_init(void) {
 	memcpy(bindir + len, PATHSEP OS_LIT("bin"), 5 * sizeof(os_char));
 
 #ifdef _WIN32
-	int gamedirlen = _snwprintf(gamedir, sizeof(gamedir) / sizeof(*gamedir),
-			L"%S", VCALL(engclient, GetGameDirectory));
-	if (gamedirlen < 0) { // encoding error??? ugh...
-		errmsg_errorx("invalid game directory path!");
+	// Although the engine itself uses Unicode-incompatible stuff everywhere so
+	// supporting arbitrary paths is basically a no-go, turns out we still have
+	// to respect the system code page setting, otherwise some users using e.g.
+	// Cyrillic folder names and successfully loading their speedgames won't be
+	// able to load SST. Thanks Windows!
+	const char *lcpgamedir = VCALL(engclient, GetGameDirectory);
+	int gamedirlen = MultiByteToWideChar(CP_ACP, 0, lcpgamedir,
+			strlen(lcpgamedir), gamedir, sizeof(gamedir) / sizeof(*gamedir));
+	if (!gamedirlen) {
+		errmsg_errorsys("couldn't convert game directory path character set");
 		return false;
 	}
 #else
