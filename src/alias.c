@@ -22,6 +22,7 @@
 #include "dbg.h"
 #include "errmsg.h"
 #include "extmalloc.h"
+#include "gametype.h"
 #include "mem.h"
 #include "x86.h"
 
@@ -97,6 +98,9 @@ static bool find_alias_head(con_cmdcb alias_cb) {
 }
 
 bool alias_init(void) {
+	// TODO(compat): no idea why sst_alias_clear crashes in p2, figure out later
+	if (GAMETYPE_MATCHES(Portal2)) return false;
+
 	struct con_cmd *cmd_alias = con_findcmd("alias");
 	if (!cmd_alias) {
 		errmsg_warnx("couldn't find \"alias\" command");

@@ -326,6 +326,7 @@ void con_reg(void *cmd_or_var) {
 }
 
 void con_init(void) {
+	// FIXME: ConsoleColorPrintf isn't working in Portal 2, possible regression?
 	_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf);
 	dllid = VCALL(_con_iface, AllocateDLLIdentifier);
 
