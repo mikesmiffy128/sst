@@ -39,6 +39,18 @@ void cmeta_includes(const struct cmeta *cm,
 void cmeta_conmacros(const struct cmeta *cm,
 		void (*cb)(const char *name, bool isvar, bool unreg));
 
+/*
+ * Iterates through all event-related macros and takes note of which events are
+ * defined, giving a callback for each.
+ */
+void cmeta_evdefmacros(const struct cmeta *cm, void (*cb)(const char *name));
+
+/*
+ * Iterates through all event-related macros and gives a callback for each event
+ * that is handled by the given module.
+ */
+void cmeta_evhandlermacros(const struct cmeta *cm, const char *modname,
+		void (*cb)(const char *evname, const char *modname));
 #endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

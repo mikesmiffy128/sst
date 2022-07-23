@@ -76,7 +76,7 @@ setlocal DisableDelayedExpansion
 if "%dbg%"=="1" set src=%src% src/dbg.c
 if "%dbg%"=="1" set src=%src% src/udis86.c
 
-%HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS ^
+%HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -ladvapi32 ^
 -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c || exit /b
 %HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS ^
 -o .build/mkgamedata.exe src/build/mkgamedata.c src/kv.c || exit /b

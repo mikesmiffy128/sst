@@ -266,4 +266,36 @@ void cmeta_conmacros(const struct cmeta *cm,
 	}
 }
 
+void cmeta_evdefmacros(const struct cmeta *cm, void (*cb_def)(const char *name)) {
+	Token *tp = (Token *)cm;
+	if (!tp || !tp->next || !tp->next->next) return; // DEF_EVENT, (, name
+	while (tp) {
+		if (equal(tp, "DEF_EVENT") && equal(tp->next, "(")) {
+			tp = tp->next->next;
+			char *name = malloc(tp->len + 1);
+			if (!name) die1("couldn't allocate memory");
+			memcpy(name, tp->loc, tp->len);
+			name[tp->len] = '\0';
+			cb_def(name);
+		}
+		tp = tp->next;
+	}
+}
+
+void cmeta_evhandlermacros(const struct cmeta *cm, const char *modname,
+		void (*cb_handler)(const char *evname, const char *modname)) {
+	Token *tp = (Token *)cm;
+	while (tp) {
+		if (equal(tp, "HANDLE_EVENT") && equal(tp->next, "(")) {
+			tp = tp->next->next;
+			char *name = malloc(tp->len + 1);
+			if (!name) die1("couldn't allocate memory");
+			memcpy(name, tp->loc, tp->len);
+			name[tp->len] = '\0';
+			cb_handler(name, modname);
+		}
+		tp = tp->next;
+	}
+}
+
 // vi: sw=4 ts=4 noet tw=80 cc=80

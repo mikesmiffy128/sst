@@ -23,10 +23,12 @@
 #include "engineapi.h"
 #include "errmsg.h"
 #include "ent.h"
+#include "event.h"
 #include "gametype.h"
 #include "hook.h"
 #include "intdefs.h"
 #include "mem.h"
+#include "sst.h"
 #include "vcall.h"
 #include "x86.h"
 
@@ -74,7 +76,7 @@ static void fovcb(struct con_var *v) {
 }
 
 // called by sst.c in ClientActive to ensure fov is applied on load
-void fov_onload(void) {
+HANDLE_EVENT(ClientActive) {
 	if (real_fov_desired == fov_desired) {
 		void *player = ent_get(1); // "
 		if (player) orig_SetDefaultFOV(player, con_getvari(fov_desired));

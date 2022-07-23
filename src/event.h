@@ -14,13 +14,21 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef INC_FOV_H
-#define INC_FOV_H
+#ifndef INC_EVENT_H
+#define INC_EVENT_H
 
-#include <stdbool.h>
+#define _EVENT_CAT4_(a, b, c, d) a##b##c##d
+#define _EVENT_CAT4(a, b, c, d) _EVENT_CAT4_(a, b, c, d)
 
-bool fov_init(bool has_ent);
-void fov_end(void);
+#define DECL_EVENT(evname) void _evemit_##evname(void);
+#define DEF_EVENT(evname) \
+	DECL_EVENT(evname) \
+	static inline void _evown_##evname(void) { _evemit_##evname(); }
+#define EMIT_EVENT(evname) _evown_##evname();
+
+#define HANDLE_EVENT(evname) \
+	void _EVENT_CAT4(_evhandler_, MODULE_NAME, _, evname)(void) \
+	/* function body here */
 
 #endif
 

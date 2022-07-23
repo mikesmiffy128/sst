@@ -31,6 +31,7 @@
 #include "engineapi.h"
 #include "errmsg.h"
 #include "ent.h"
+#include "event.h"
 #include "fov.h"
 #include "fixes.h"
 #include "gameinfo.h"
@@ -473,11 +474,13 @@ DECL_VFUNC_DYN(void, ServerCommand, const char *)
 DEF_CVAR(_sst_onload_echo, "EXPERIMENTAL! Don't rely on this existing!", "",
 		CON_HIDDEN)
 
+DEF_EVENT(ClientActive)
+
 static void VCALLCONV ClientActive(void *this, struct edict *player) {
 	// XXX: it's kind of dumb that we get handed the edict here then go look it
 	// up again in fov.c but I can't be bothered refactoring any further now
 	// that this finally works, do something later lol
-	if (has_fov) fov_onload();
+	EMIT_EVENT(ClientActive)
 
 	// continuing dumb portal hack. didn't even seem worth adding a feature for
 	if (has_vtidx_ServerCommand && con_getvarstr(_sst_onload_echo)[0]) {
@@ -529,5 +532,8 @@ EXPORT const void *CreateInterface(const char *name, int *ret) {
 	if (ret) *ret = 1;
 	return 0;
 }
+
+// no better place to put this lol
+#include <evglue.gen.h>
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

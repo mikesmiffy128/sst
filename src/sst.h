@@ -14,13 +14,12 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef INC_FOV_H
-#define INC_FOV_H
+#ifndef INC_SST_H
+#define INC_SST_H
 
-#include <stdbool.h>
+#include "event.h"
 
-bool fov_init(bool has_ent);
-void fov_end(void);
+DECL_EVENT(ClientActive)
 
 #endif
 
