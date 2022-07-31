@@ -19,6 +19,7 @@
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"
+#include "feature.h"
 #include "gamedata.h"
 #include "gametype.h"
 #include "intdefs.h"
@@ -26,6 +27,11 @@
 #include "mem.h"
 #include "os.h"
 #include "vcall.h"
+
+FEATURE("autojump")
+REQUIRE_GAMEDATA(off_mv)
+REQUIRE_GAMEDATA(vtidx_CheckJumpButton)
+REQUIRE_GLOBAL(factory_client) // note: server will never be null
 
 DEF_CVAR(sst_autojump, "Jump upon hitting the ground while holding space", 0,
 		CON_REPLICATE | CON_DEMO | CON_HIDDEN)
@@ -69,17 +75,7 @@ static bool unprot(void *gm) {
 	return ret;
 }
 
-bool autojump_init(void) {
-	// TODO(featgen): auto-check these factories
-	if (!factory_client || !factory_server) {
-		errmsg_errorx("missing required factories");
-		return false;
-	}
-	if (!has_vtidx_CheckJumpButton || !has_off_mv) {
-		errmsg_errorx("missing gamedata entries for this engine");
-		return false;
-	}
-
+INIT {
 	gmsv = factory_server("GameMovement001", 0);
 	if (!gmsv) {
 		errmsg_errorx("couldn't get server-side game movement interface");
@@ -111,7 +107,7 @@ bool autojump_init(void) {
 	return true;
 }
 
-void autojump_end(void) {
+END {
 	unhook_vtable(*(void ***)gmsv, vtidx_CheckJumpButton, (void *)origsv);
 	unhook_vtable(*(void ***)gmcl, vtidx_CheckJumpButton, (void *)origcl);
 }

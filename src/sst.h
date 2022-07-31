@@ -19,7 +19,12 @@
 
 #include "event.h"
 
+/* misc stuff that doesn't belong anywhere else */
+
 DECL_EVENT(ClientActive)
+DECL_EVENT(Tick)
+
+extern void *clientlib;
 
 #endif
 

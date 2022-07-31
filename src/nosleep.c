@@ -14,15 +14,18 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h>
-
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"
+#include "feature.h"
 #include "gamedata.h"
 #include "hook.h"
 #include "os.h"
 #include "vcall.h"
+
+FEATURE("inactive window sleep adjustment")
+REQUIRE_GAMEDATA(vtidx_SleepUntilInput)
+REQUIRE_GLOBAL(factory_inputsystem)
 
 DEF_CVAR_UNREG(engine_no_focus_sleep,
 		"Delay while tabbed out (SST reimplementation)", 50,
@@ -36,19 +39,13 @@ static void VCALLCONV hook_SleepUntilInput(void *this, int timeout) {
 	orig_SleepUntilInput(this, con_getvari(engine_no_focus_sleep));
 }
 
-bool nosleep_init(void) {
-	struct con_var *v = con_findvar("engine_no_focus_sleep");
-	if (v) return false; // no need!
+PREINIT {
+	if (con_findvar("engine_no_focus_sleep")) return false;
 	con_reg(engine_no_focus_sleep);
-	// TODO(featgen): auto-check these factories
-	if (!factory_inputsystem) {
-		errmsg_errorx("missing required factories");
-		return false;
-	}
-	if (!has_vtidx_SleepUntilInput) {
-		errmsg_errorx("missing gamedata entries for this engine");
-		return false;
-	}
+	return true;
+}
+
+INIT {
 	void *insys = factory_inputsystem("InputSystemVersion001", 0);
 	if (!insys) {
 		errmsg_errorx("couldn't get input system interface");
@@ -66,7 +63,7 @@ bool nosleep_init(void) {
 	return true;
 }
 
-void nosleep_end(void) {
+END {
 	unhook_vtable(vtable, vtidx_SleepUntilInput, (void *)orig_SleepUntilInput);
 }
 

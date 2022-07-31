@@ -1,0 +1,3 @@
+Feature setup code generation
+====
+It's done! See feature.h, event.h and the various stuff in codegen.c.

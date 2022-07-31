@@ -19,11 +19,14 @@
 #include "con_.h"
 #include "dbg.h"
 #include "errmsg.h"
+#include "feature.h"
 #include "hook.h"
 #include "intdefs.h"
 #include "mem.h"
 #include "x86.h"
 #include "x86util.h"
+
+FEATURE()
 
 struct keyinfo {
 	char *binding;
@@ -53,7 +56,7 @@ static bool find_keyinfo(con_cmdcb klbc_cb) {
 	return false;
 }
 
-bool bind_init(void) {
+INIT {
 	struct con_cmd *cmd_key_listboundkeys = con_findcmd("key_listboundkeys");
 	if (!cmd_key_listboundkeys) {
 		errmsg_errorx("couldn't find key_listboundkeys command");

@@ -17,11 +17,7 @@
 #ifndef INC_BIND_H
 #define INC_BIND_H
 
-#include <stdbool.h>
-
 const char *bind_get(int keycode);
-
-bool bind_init(void);
 
 #endif
 

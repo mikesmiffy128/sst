@@ -24,6 +24,7 @@
 #include "errmsg.h"
 #include "ent.h"
 #include "event.h"
+#include "feature.h"
 #include "gametype.h"
 #include "hook.h"
 #include "intdefs.h"
@@ -31,8 +32,11 @@
 #include "sst.h"
 #include "vcall.h"
 #include "x86.h"
+#include "x86util.h"
 
-bool changedmax = false;
+FEATURE("extended FOV range")
+REQUEST(ent)
+
 DEF_CVAR_MINMAX_UNREG(fov_desired,
 		"Set the base field of view (SST reimplementation)", 75, 75, 120,
 		CON_HIDDEN | CON_ARCHIVE)
@@ -58,13 +62,7 @@ static bool find_SetDefaultFOV(struct con_cmd *fov) {
 					mem_loadoffset(p + 1));
 			return true;
 		}
-		int len = x86_len(p);
-		if (len == -1) {
-			errmsg_errorx("unknown or invalid instruction looking for %s",
-					"SetDefaultFOV");
-			return false;
-		}
-		p += len;
+		NEXT_INSN(p, "SetDefaultFOV");
 	}
 	return false;
 }
@@ -75,7 +73,7 @@ static void fovcb(struct con_var *v) {
 	if (player) orig_SetDefaultFOV(player, con_getvari(v));
 }
 
-// called by sst.c in ClientActive to ensure fov is applied on load
+// ensure FOV is applied on load, if the engine wouldn't do that itself
 HANDLE_EVENT(ClientActive) {
 	if (real_fov_desired == fov_desired) {
 		void *player = ent_get(1); // "
@@ -85,14 +83,15 @@ HANDLE_EVENT(ClientActive) {
 
 static struct con_cmd *cmd_fov;
 
-bool fov_init(bool has_ent) {
+PREINIT {
 	// could work for other games, but generally only portal 1 people want this
 	// (the rest of us consider this cheating and a problem for runs...)
-	if (!GAMETYPE_MATCHES(Portal1)) { return false; }
+	return GAMETYPE_MATCHES(Portal1);
+}
 
+INIT {
 	cmd_fov = con_findcmd("fov");
 	if (!cmd_fov) return false; // shouldn't really happen but just in case!
-
 	if (real_fov_desired = con_findvar("fov_desired")) {
 		// latest steampipe already goes up to 120 fov
 		if (real_fov_desired->parent->maxval == 120) return false;
@@ -122,7 +121,7 @@ bool fov_init(bool has_ent) {
 	return true;
 }
 
-void fov_end(void) {
+END {
 	if (real_fov_desired && real_fov_desired != fov_desired) {
 		real_fov_desired->parent->maxval = 90;
 		if (con_getvarf(real_fov_desired) > 90) {

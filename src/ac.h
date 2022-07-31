@@ -17,10 +17,7 @@
 #ifndef INC_AC_H
 #define INC_AC_H
 
-#include <stdbool.h>
-
-bool ac_init(void);
-void ac_end(void);
+// TODO(rta): keeping this header here as I expect to expose some functions...
 
 #endif
 

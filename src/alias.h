@@ -17,8 +17,6 @@
 #ifndef INC_ALIAS_H
 #define INC_ALIAS_H
 
-#include <stdbool.h>
-
 struct alias {
 	struct alias *next;
 	char name[32]; // TIL this has a hard limit :^)
@@ -27,10 +25,8 @@ struct alias {
 extern struct alias **_alias_head;
 #define alias_head (*_alias_head) // act as a global
 
-void alias_rm(const char *name);
 void alias_nuke(void);
-
-bool alias_init(void);
+void alias_rm(const char *name);
 
 #endif
 

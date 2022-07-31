@@ -57,7 +57,7 @@ void *hook_inline(void *func_, void *target) {
 		// FIXME: these cases may result in somewhat dodgy error messaging. They
 		// shouldn't happen anyway though. Maybe if we're confident we just
 		// compile 'em out of release builds some day, but that sounds a little
-		// scary. For now prefering confusing messages over crashes, I guess.
+		// scary. For now preferring confusing messages over crashes, I guess.
 		if (func[len] == X86_CALL) {
 			con_warn("hook_inline: can't trampoline call instructions\n");
 			return 0;

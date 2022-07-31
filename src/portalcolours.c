@@ -21,12 +21,17 @@
 #include "engineapi.h"
 #include "errmsg.h"
 #include "gametype.h"
+#include "feature.h"
 #include "hook.h"
 #include "intdefs.h"
 #include "mem.h"
 #include "os.h"
 #include "ppmagic.h"
+#include "sst.h"
 #include "vcall.h"
+
+FEATURE("portal gun colour customisation")
+REQUIRE_GLOBAL(clientlib)
 
 // It's like the thing Portal Tools does, but at runtime!
 
@@ -119,8 +124,11 @@ static bool find_UTIL_Portal_Color(void *base) {
 	return false;
 }
 
-bool portalcolours_init(void *clientlib) { // ... should libs be globals?
-	if (!GAMETYPE_MATCHES(Portal)) return false;
+PREINIT {
+	return GAMETYPE_MATCHES(Portal1);
+}
+
+INIT {
 #ifdef _WIN32
 	if (!find_UTIL_Portal_Color(clientlib)) {
 		errmsg_errorx("couldn't find UTIL_Portal_Color");
@@ -145,7 +153,7 @@ bool portalcolours_init(void *clientlib) { // ... should libs be globals?
 #endif
 }
 
-void portalcolours_end(void) {
+END {
 	unhook_inline((void *)orig_UTIL_Portal_Color);
 }
 

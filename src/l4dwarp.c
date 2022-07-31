@@ -16,17 +16,22 @@
 
 #define _USE_MATH_DEFINES // ... windows.
 #include <math.h>
-#include <stdbool.h>
 
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"
 #include "ent.h"
+#include "feature.h"
 #include "gamedata.h"
 #include "gametype.h"
 #include "intdefs.h"
 #include "mem.h"
 #include "vcall.h"
+
+FEATURE("Left 4 Dead warp testing")
+REQUIRE_GAMEDATA(off_entpos)
+REQUIRE_GAMEDATA(off_eyeang)
+REQUIRE_GAMEDATA(vtidx_Teleport)
 
 DECL_VFUNC_DYN(void *, GetBaseEntity)
 DECL_VFUNC_DYN(void, Teleport, const struct vec3f *pos, const struct vec3f *ang,
@@ -48,12 +53,11 @@ DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you",
 			org->y + shift * sin(yaw), org->z}, 0, &(struct vec3f){0, 0, 0});
 }
 
-bool l4dwarp_init(void) {
-	if (!GAMETYPE_MATCHES(L4Dx)) return false;
-	if (!has_off_entpos || !has_off_eyeang || !has_vtidx_Teleport) {
-		errmsg_errorx("missing gamedata entries for this engine");
-		return false;
-	}
+PREINIT {
+	return GAMETYPE_MATCHES(L4Dx);
+}
+
+INIT {
 	con_reg(sst_l4d_testwarp);
 	return true;
 }

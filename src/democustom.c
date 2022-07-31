@@ -22,11 +22,17 @@
 #include "demorec.h"
 #include "engineapi.h"
 #include "errmsg.h"
+#include "feature.h"
 #include "gamedata.h"
 #include "intdefs.h"
 #include "mem.h"
 #include "ppmagic.h"
 #include "vcall.h"
+
+FEATURE()
+REQUIRE(demorec)
+REQUIRE_GAMEDATA(vtidx_GetEngineBuildNumber)
+REQUIRE_GAMEDATA(vtidx_RecordPacket)
 
 static int nbits_msgtype, nbits_datalen;
 
@@ -107,12 +113,7 @@ static bool find_WriteMessages(void) {
 
 DECL_VFUNC_DYN(int, GetEngineBuildNumber)
 
-bool democustom_init(void) {
-	if (!has_vtidx_GetEngineBuildNumber || !has_vtidx_RecordPacket) {
-		errmsg_errorx("missing gamedata entries for this engine");
-		return false;
-	}
-
+INIT {
 	// More UncraftedkNowledge:
 	// > yeah okay so [the usermessage length is] 11 bits if the demo protocol
 	// > is 11 or if the game is l4d2 and the network protocol is 2042.

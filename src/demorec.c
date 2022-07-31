@@ -21,6 +21,7 @@
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"
+#include "feature.h"
 #include "gamedata.h"
 #include "gameinfo.h"
 #include "hook.h"
@@ -31,6 +32,9 @@
 #include "vcall.h"
 #include "x86.h"
 #include "x86util.h"
+
+FEATURE("improved demo recording")
+REQUIRE_GAMEDATA(vtidx_StopRecording)
 
 DEF_CVAR(sst_autorecord, "Continuously record demos even after reconnecting", 1,
 		CON_ARCHIVE | CON_HIDDEN)
@@ -187,7 +191,7 @@ static inline bool find_recmembers(void *stoprecording) {
 			recording = mem_offset(demorecorder, mem_load32(p + 2));
 		}
 		if (recording && demonum) return true; // blegh
-		NEXT_INSN(p, "state variables");
+		NEXT_INSN(p, "recording state variables");
 	}
 #else // linux is probably different here idk
 #warning TODO(linux): implement linux equivalent (???)
@@ -195,11 +199,7 @@ static inline bool find_recmembers(void *stoprecording) {
 	return false;
 }
 
-bool demorec_init(void) {
-	if (!has_vtidx_StopRecording) {
-		errmsg_errorx("missing gamedata entries for this engine");
-		return false;
-	}
+INIT {
 	cmd_record = con_findcmd("record");
 	if (!cmd_record) { // can *this* even happen? I hope not!
 		errmsg_errorx("couldn't find \"record\" command");
@@ -240,7 +240,7 @@ bool demorec_init(void) {
 	return true;
 }
 
-void demorec_end(void) {
+END {
 	// avoid dumb edge case if someone somehow records and immediately unloads
 	if (*recording && *demonum == 0) *demonum = 1;
 	void **vtable = *(void ***)demorecorder;

@@ -17,8 +17,6 @@
 #ifndef INC_DEMOCUSTOM_H
 #define INC_DEMOCUSTOM_H
 
-#include <stdbool.h>
-
 /* maximum length of a custom demo message, in bytes */
 #define DEMOCUSTOM_MSG_MAX 253
 
@@ -27,8 +25,6 @@
  * demo - NOT bounds checked, caller MUST ensure length is okay!
  */
 void democustom_write(const void *buf, int len);
-
-bool democustom_init(void);
 
 #endif
 

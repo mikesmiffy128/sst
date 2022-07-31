@@ -17,13 +17,15 @@
 // NOTE: compiled on Windows only. All Linux Source releases are new enough to
 // have raw input already.
 
-#include <stdbool.h>
 #include <Windows.h>
 
 #include "con_.h"
 #include "hook.h"
 #include "errmsg.h"
+#include "feature.h"
 #include "intdefs.h"
+
+FEATURE("raw mouse input")
 
 // We reimplement m_rawinput by hooking cursor functions in the same way as
 // RInput (it's way easier than replacing all the mouse-handling internals of
@@ -76,11 +78,14 @@ static int __stdcall hook_SetCursorPos(int x, int y) {
 	return orig_SetCursorPos(x, y);
 }
 
-bool rinput_init(void) {
+PREINIT {
 	if (con_findvar("m_rawinput")) return false; // no need!
 	// create cvar hidden so if we fail to init, setting can still be preserved
 	con_reg(m_rawinput);
+	return true;
+}
 
+INIT {
 	WNDCLASSEXW wc = {
 		.cbSize = sizeof(wc),
 		// cast because inproc is binary-compatible but doesn't use stupid
@@ -139,7 +144,7 @@ e0:	UnregisterClassW(L"RInput", 0);
 	return false;
 }
 
-void rinput_end(void) {
+END {
 	RAWINPUTDEVICE rd = {
 		.dwFlags = RIDEV_REMOVE,
 		.hwndTarget = 0,

@@ -20,6 +20,7 @@
 
 #include "../intdefs.h"
 #include "../os.h"
+#include "cmeta.h"
 
 /*
  * This file does C metadata parsing/scraping for the build system. This
@@ -31,10 +32,12 @@
  * time. Don't worry about it too much.
  */
 
-// too lazy to write a C tokenizer at the moment, so let's just yoink some code
-// from a hacked-up copy of chibicc, a nice minimal C compiler with code that's
-// pretty easy to work with. it does leak memory by design, but build stuff is
-// all one-shot so that's fine.
+// lazy inlined 3rd party stuff {{{
+// too lazy to write a C tokenizer at the moment, or indeed probably ever, so
+// let's just yoink some code from a hacked-up copy of chibicc, a nice minimal C
+// compiler with code that's pretty easy to work with. it does leak memory by
+// design, but build stuff is all one-shot so that's fine.
+#include "../3p/chibicc/chibicc.h"
 #include "../3p/chibicc/unicode.c"
 // type sentinels from type.c (don't bring in the rest of type.c because it
 // circularly depends on other stuff and we really only want tokenize here)
@@ -88,6 +91,7 @@ static char *join_tokens(Token *tok, Token *end) {
   buf[pos] = '\0';
   return buf;
 }
+// }}}
 
 #ifdef _WIN32
 #include "../3p/openbsd/asprintf.c" // missing from libc; plonked here for now
@@ -266,7 +270,74 @@ void cmeta_conmacros(const struct cmeta *cm,
 	}
 }
 
-void cmeta_evdefmacros(const struct cmeta *cm, void (*cb_def)(const char *name)) {
+const char *cmeta_findfeatmacro(const struct cmeta *cm) {
+	Token *tp = (Token *)cm;
+	if (!tp || !tp->next) return 0; // FEATURE, (
+	while (tp) {
+		if (equal(tp, "FEATURE") && equal(tp->next, "(")) {
+			if (equal(tp->next->next, ")")) return ""; // no arg = no desc
+			if (!tp->next->next || tp->next->next->kind != TK_STR) {
+				return 0; // it's invalid, whatever, just return...
+			}
+			return tp->next->next->str;
+		}
+		tp = tp->next;
+	}
+	return 0;
+}
+
+void cmeta_featinfomacros(const struct cmeta *cm, void (*cb)(
+		enum cmeta_featmacro type, const char *param, void *ctxt), void *ctxt) {
+	Token *tp = (Token *)cm;
+	if (!tp || !tp->next) return;
+	while (tp) {
+		int type = -1;
+		if (equal(tp, "PREINIT")) {
+			type = CMETA_FEAT_PREINIT;
+		}
+		else if (equal(tp, "INIT")) {
+			type = CMETA_FEAT_INIT;
+		}
+		else if (equal(tp, "END")) {
+			type = CMETA_FEAT_END;
+		}
+		if (type != - 1) {
+			if (equal(tp->next, "{")) {
+				cb(type, 0, ctxt);
+				tp = tp->next;
+			}
+			tp = tp->next;
+			continue;
+		}
+		if (equal(tp, "REQUIRE")) {
+			type = CMETA_FEAT_REQUIRE;
+		}
+		else if (equal(tp, "REQUIRE_GAMEDATA")) {
+			type = CMETA_FEAT_REQUIREGD;
+		}
+		else if (equal(tp, "REQUIRE_GLOBAL")) {
+			type = CMETA_FEAT_REQUIREGLOBAL;
+		}
+		else if (equal(tp, "REQUEST")) {
+			type = CMETA_FEAT_REQUEST;
+		}
+		if (type != -1) {
+			if (equal(tp->next, "(") && tp->next->next) {
+				tp = tp->next->next;
+				char *param = malloc(tp->len + 1);
+				if (!param) die1("couldn't allocate memory");
+				memcpy(param, tp->loc, tp->len);
+				param[tp->len] = '\0';
+				cb(type, param, ctxt);
+				tp = tp->next;
+			}
+		}
+		tp = tp->next;
+	}
+}
+
+void cmeta_evdefmacros(const struct cmeta *cm,
+		void (*cb_def)(const char *name)) {
 	Token *tp = (Token *)cm;
 	if (!tp || !tp->next || !tp->next->next) return; // DEF_EVENT, (, name
 	while (tp) {
@@ -298,4 +369,4 @@ void cmeta_evhandlermacros(const struct cmeta *cm, const char *modname,
 	}
 }
 
-// vi: sw=4 ts=4 noet tw=80 cc=80
+// vi: sw=4 ts=4 noet tw=80 cc=80 fdm=marker

@@ -40,6 +40,39 @@ void cmeta_conmacros(const struct cmeta *cm,
 		void (*cb)(const char *name, bool isvar, bool unreg));
 
 /*
+ * Looks for a feature description macro in file, returning the description
+ * string if it exists, an empty string if the feature is defined without a
+ * user-facing description, and null if source file does not define a feature.
+ */
+const char *cmeta_findfeatmacro(const struct cmeta *cm);
+
+/*
+ * the various kinds of feature specficiation macros, besides the feature
+ * declaration macro itself
+ */
+enum cmeta_featmacro {
+	CMETA_FEAT_REQUIRE,
+	CMETA_FEAT_REQUIREGD,
+	CMETA_FEAT_REQUIREGLOBAL,
+	CMETA_FEAT_REQUEST,
+	CMETA_FEAT_PREINIT,
+	CMETA_FEAT_INIT,
+	CMETA_FEAT_END
+};
+
+/*
+ * Iterates through all feature dependency macros and init/end/preinit
+ * indicators, passing each bit of information to the callback cb.
+ *
+ * PREINT, INIT and END macros don't pass anything to param.
+ *
+ * This one takes a context pointer, while the others don't, because this is all
+ * cobbled together without much consistent abstraction.
+ */
+void cmeta_featinfomacros(const struct cmeta *cm, void (*cb)(
+		enum cmeta_featmacro type, const char *param, void *ctxt), void *ctxt);
+
+/*
  * Iterates through all event-related macros and takes note of which events are
  * defined, giving a callback for each.
  */

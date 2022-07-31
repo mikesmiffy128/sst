@@ -18,11 +18,14 @@
 
 #include "engineapi.h"
 #include "errmsg.h"
+#include "feature.h"
 #include "gamedata.h"
 #include "gametype.h"
 #include "intdefs.h"
 #include "mem.h"
 #include "vcall.h"
+
+FEATURE()
 
 DECL_VFUNC_DYN(void *, PEntityOfEntIndex, int)
 static struct edict **edicts = 0;
@@ -44,7 +47,7 @@ void *ent_get(int idx) {
 	return e->ent_unknown;
 }
 
-bool ent_init(void) {
+INIT {
 	// for PEntityOfEntIndex we don't really have to do any more init, we
 	// can just call the function later.
 	if (has_vtidx_PEntityOfEntIndex) return true;

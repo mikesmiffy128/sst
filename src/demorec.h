@@ -18,13 +18,8 @@
 #ifndef INC_DEMOREC_H
 #define INC_DEMOREC_H
 
-#include <stdbool.h>
-
 /* For internal use by democustom */
 extern void *demorecorder;
-
-bool demorec_init(void);
-void demorec_end(void);
 
 #endif
 

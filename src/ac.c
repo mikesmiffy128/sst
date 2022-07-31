@@ -23,13 +23,22 @@
 #include "hook.h"
 #include "engineapi.h"
 #include "errmsg.h"
+#include "event.h"
+#include "feature.h"
 #include "intdefs.h"
 #include "mem.h"
 #include "os.h"
 #include "ppmagic.h"
+#include "sst.h"
 #include "vcall.h"
 #include "x86.h"
 #include "x86util.h"
+
+FEATURE()
+REQUIRE(bind)
+REQUIRE(democustom)
+REQUIRE_GAMEDATA(vtidx_GetDesktopResolution)
+REQUIRE_GAMEDATA(vtidx_DispatchAllStoredGameMessages)
 
 static bool lockdown = false;
 
@@ -62,18 +71,10 @@ static ssize __stdcall mproc(int code, UINT_PTR wp, ssize lp) {
 static ulong __stdcall inhookthrmain(void *unused) {
 	if (!SetWindowsHookExW(WH_KEYBOARD_LL, &kproc, 0, 0) ||
 			!SetWindowsHookExW(WH_MOUSE_LL, &mproc, 0, 0)) {
-		// intentionally vague message
-		con_warn("sst: RTA mode is unavailable due to an error\n");
 		return -1;
 	}
 	MSG m; int ret;
 	while ((ret = GetMessageW(&m, inhookwin, 0, 0)) > 0) DispatchMessage(&m);
-	if (ret == -1) {
-		// XXX: if this ever happens, it's a disaster! users might not notice
-		// their run just dying all of a sudden. with any luck it won't matter
-		// in practice but... this kind of sucks.
-		con_warn("** sst: ERROR in message loop, abandoning RTA mode! **");
-	}
 	return ret;
 }
 
@@ -92,12 +93,15 @@ static void inhook_start(void) {
 	inhookthr = CreateThread(0, 0, &inhookthrmain, 0, 0, &inhooktid);
 }
 
-// TODO(rta): run this check every tick (or at least X amount of time)
 static void inhook_check(void) {
 	if (WaitForSingleObject(inhookthr, 0) == WAIT_OBJECT_0) {
 		ulong status;
 		GetExitCodeThread(inhookthr, &status);
-		if (status != 0) {
+		if (status) {
+			// XXX: if this ever happens, it's a disaster! users might not
+			// notice their run just dying all of a sudden. with any luck it
+			// won't matter in practice but... this kind of sucks.
+			con_warn("** sst: ERROR in message loop, abandoning RTA mode! **");
 			// TODO(rta): stop demos, and stuff.
 			lockdown = false;
 		}
@@ -109,6 +113,13 @@ static void inhook_stop(void) {
 	if (WaitForSingleObject(inhookthr, INFINITE) == WAIT_FAILED) {
 		errmsg_warnsys("couldn't wait for thread, status unknown");
 		// XXX: now what!?
+	}
+	// assume WAIT_OBJECT_0
+	ulong status;
+	GetExitCodeThread(inhookthr, &status);
+	if (status) {
+		// not much else we can do now!
+		con_warn("warning: RTA mode message loop had an error during shutdown");
 	}
 }
 
@@ -129,6 +140,14 @@ static void startlockdown(void) {
 	// going okay...
 	lockdown = true;
 	// TODO(rta): start demos, etc
+}
+
+HANDLE_EVENT(Tick) {
+#ifdef _WIN32
+	static int fewticks = 0;
+	// just check this every so often (roughly 0.1-0.3s depending on game)
+	if (lockdown && !(++fewticks & 7)) inhook_check();
+#endif
 }
 
 static void endlockdown(void) {
@@ -227,12 +246,7 @@ ok:	DispatchAllStoredGameMessages_func DispatchAllStoredGameMessages =
 	return false;
 }
 
-bool ac_init(void) {
-	if (!has_vtidx_GetDesktopResolution ||
-			!has_vtidx_DispatchAllStoredGameMessages) {
-		errmsg_errorx("missing gamedata entries for this engine");
-		return false;
-	}
+INIT {
 #if defined(_WIN32)
 	if (!win32_init()) return false;
 #elif defined(__linux__)
@@ -248,7 +262,7 @@ bool ac_init(void) {
 	return true;
 }
 
-void ac_end(void) {
+END {
 	endlockdown();
 	unhook_inline((void *)orig_DispatchInputEvent);
 }

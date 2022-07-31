@@ -22,26 +22,15 @@
 #endif
 
 #include "ac.h"
-#include "bind.h"
-#include "alias.h"
-#include "autojump.h"
 #include "con_.h"
-#include "democustom.h"
-#include "demorec.h"
 #include "engineapi.h"
 #include "errmsg.h"
-#include "ent.h"
 #include "event.h"
-#include "fov.h"
 #include "fixes.h"
 #include "gameinfo.h"
 #include "gametype.h"
 #include "hook.h"
-#include "l4dwarp.h"
-#include "nosleep.h"
-#include "portalcolours.h"
 #include "os.h"
-#include "rinput.h"
 #include "vcall.h"
 #include "version.h"
 
@@ -53,8 +42,9 @@
 
 static int ifacever;
 
-// we need to keep this reference to dlclose() it later - see below
-static void *clientlib = 0;
+// XXX: exposing this clumsily to portalcolours. we should have a better way of
+// exposing lib handles in general, probably.
+void *clientlib = 0;
 
 #ifdef _WIN32
 extern long __ImageBase; // this is actually the PE header struct but don't care
@@ -189,16 +179,6 @@ static void VCALLCONV SetCommandClient(void *this, int i) { con_cmdclient = i; }
 static const void **vtable_firstdiff;
 static const void *const *const plugin_obj;
 
-// TODO(featgen): I wanted some nice fancy automatic feature system that
-// figures out the dependencies at build time and generates all the init glue
-// but we want to actually release the plugin this decade so for now I'm just
-// plonking some bools here and worrying about it later. :^)
-static bool has_ac = false, has_autojump = false, has_demorec = false,
-		has_fov = false, has_nosleep = false, has_portalcolours = false;
-#ifdef _WIN32
-static bool has_rinput = false;
-#endif
-
 static bool already_loaded = false, skip_unload = false;
 
 #define RGBA(r, g, b, a) (&(struct con_colour){(r), (g), (b), (a)})
@@ -208,27 +188,11 @@ static const char *updatenotes = "\
 * various internal cleanup\n\
 ";
 
-static void do_featureinit(void) {
-	bool has_bind = bind_init();
-	if (has_bind) has_ac = ac_init();
-	alias_init();
-	has_autojump = autojump_init();
-	has_demorec = demorec_init();
-	if (has_demorec) democustom_init();
-	bool has_ent = ent_init();
-	has_fov = fov_init(has_ent);
-	if (has_ent) l4dwarp_init();
-	has_nosleep = nosleep_init();
-	if (clientlib) has_portalcolours = portalcolours_init(clientlib);
-#ifdef _WIN32
-	has_rinput = rinput_init();
-#endif
-	fixes_apply();
+#include <featureinit.gen.h>
 
-	con_colourmsg(RGBA(64, 255, 64, 255),
-			LONGNAME " v" VERSION " successfully loaded");
-	con_colourmsg(RGBA(255, 255, 255, 255), " for game ");
-	con_colourmsg(RGBA(0, 255, 255, 255), "%s\n", gameinfo_title);
+static void do_featureinit(void) {
+	initfeatures();
+	fixes_apply();
 
 	// if we're autoloaded and the external autoupdate script downloaded a new
 	// version, let the user know about the cool new stuff!
@@ -416,16 +380,7 @@ static void do_unload(void) {
 	}
 #endif
 
-	if (has_ac) ac_end();
-	if (has_autojump) autojump_end();
-	if (has_demorec) demorec_end();
-	if (has_fov) fov_end(); // dep on ent
-	if (has_nosleep) nosleep_end();
-	if (has_portalcolours) portalcolours_end();
-#ifdef _WIN32
-	if (has_rinput) rinput_end();
-#endif
-
+	endfeatures();
 #ifdef __linux__
 	if (clientlib) dlclose(clientlib);
 #endif
@@ -475,12 +430,19 @@ DEF_CVAR(_sst_onload_echo, "EXPERIMENTAL! Don't rely on this existing!", "",
 		CON_HIDDEN)
 
 DEF_EVENT(ClientActive)
+DEF_EVENT(Tick)
+
+// Quick and easy server tick event. Eventually, we might want a deeper hook
+// for anything timing-sensitive, but this will do for our current needs.
+static void VCALLCONV GameFrame(void *this, bool simulating) {
+	EMIT_EVENT(Tick);
+}
 
 static void VCALLCONV ClientActive(void *this, struct edict *player) {
 	// XXX: it's kind of dumb that we get handed the edict here then go look it
 	// up again in fov.c but I can't be bothered refactoring any further now
 	// that this finally works, do something later lol
-	EMIT_EVENT(ClientActive)
+	EMIT_EVENT(ClientActive);
 
 	// continuing dumb portal hack. didn't even seem worth adding a feature for
 	if (has_vtidx_ServerCommand && con_getvarstr(_sst_onload_echo)[0]) {
@@ -510,7 +472,7 @@ static const void *vtable[MAX_VTABLE_FUNCS] = {
 	(void *)&GetPluginDescription,
 	(void *)&nop_p_v,	// LevelInit
 	(void *)&nop_pii_v,	// ServerActivate
-	(void *)&nop_b_v,	// GameFrame
+	(void *)&GameFrame,	// GameFrame
 	(void *)&nop_v_v,	// LevelShutdown
 	(void *)&ClientActive
 	// At this point, Alien Swarm and Portal 2 add ClientFullyConnect, so we

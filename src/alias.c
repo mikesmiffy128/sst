@@ -19,15 +19,26 @@
 
 #include "alias.h"
 #include "con_.h"
-#include "dbg.h"
 #include "errmsg.h"
 #include "extmalloc.h"
+#include "feature.h"
 #include "gametype.h"
 #include "mem.h"
 #include "x86.h"
 #include "x86util.h"
 
+FEATURE("alias management")
+
 struct alias **_alias_head;
+
+void alias_nuke(void) {
+	for (struct alias *p = alias_head; p;) {
+		struct alias *next = p->next;
+		extfree(p->value); extfree(p);
+		p = next;
+	}
+	alias_head = 0;
+}
 
 void alias_rm(const char *name) {
 	for (struct alias **p = _alias_head; *p; p = &(*p)->next) {
@@ -40,7 +51,15 @@ void alias_rm(const char *name) {
 	}
 }
 
-DEF_CCMD_HERE(sst_alias_remove, "Remove a command alias", 0) {
+DEF_CCMD_HERE_UNREG(sst_alias_clear, "Remove all command aliases", 0) {
+	if (cmd->argc != 1) {
+		con_warn("usage: sst_alias_clear");
+		return;
+	}
+	alias_nuke();
+}
+
+DEF_CCMD_HERE_UNREG(sst_alias_remove, "Remove a command alias", 0) {
 	if (cmd->argc != 2) {
 		con_warn("usage: sst_alias_remove name");
 		return;
@@ -50,23 +69,6 @@ DEF_CCMD_HERE(sst_alias_remove, "Remove a command alias", 0) {
 		return;
 	}
 	alias_rm(cmd->argv[1]);
-}
-
-void alias_nuke(void) {
-	for (struct alias *p = alias_head; p;) {
-		struct alias *next = p->next;
-		extfree(p->value); extfree(p);
-		p = next;
-	}
-	alias_head = 0;
-}
-
-DEF_CCMD_HERE(sst_alias_clear, "Remove all command aliases", 0) {
-	if (cmd->argc != 1) {
-		con_warn("usage: sst_alias_clear");
-		return;
-	}
-	alias_nuke();
 }
 
 static bool find_alias_head(con_cmdcb alias_cb) {
@@ -88,7 +90,7 @@ static bool find_alias_head(con_cmdcb alias_cb) {
 	return false;
 }
 
-bool alias_init(void) {
+INIT {
 	// TODO(compat): no idea why sst_alias_clear crashes in p2, figure out later
 	if (GAMETYPE_MATCHES(Portal2)) return false;
 
@@ -101,6 +103,8 @@ bool alias_init(void) {
 		errmsg_warnx("couldn't find alias list");
 		return false;
 	};
+	con_reg(sst_alias_clear);
+	con_reg(sst_alias_remove);
 	return true;
 }
 

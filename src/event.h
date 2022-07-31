@@ -24,7 +24,7 @@
 #define DEF_EVENT(evname) \
 	DECL_EVENT(evname) \
 	static inline void _evown_##evname(void) { _evemit_##evname(); }
-#define EMIT_EVENT(evname) _evown_##evname();
+#define EMIT_EVENT(evname) _evown_##evname()
 
 #define HANDLE_EVENT(evname) \
 	void _EVENT_CAT4(_evhandler_, MODULE_NAME, _, evname)(void) \

@@ -14,8 +14,8 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h> // used in generated code
-#include <stdlib.h> // "
+#include <stdbool.h>
+#include <stdlib.h> // used in generated code
 #include <string.h> // "
 
 #include "con_.h"
