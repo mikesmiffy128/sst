@@ -51,6 +51,7 @@ for /f "tokens=2" %%f in ('findstr /B /C:":+ " "%~nx0"') do set src=!src! src/%%
 setlocal DisableDelayedExpansion
 :+ ac.c
 :+ bind.c
+:+ crypto.c
 :+ alias.c
 :+ autojump.c
 :+ con_.c

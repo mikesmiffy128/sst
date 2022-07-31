@@ -2,7 +2,7 @@ These are imported 3rd party library sources, wrangled for ease of plonking into
 the build (e.g. relative #includes, etc.).
 
 Used in SST itself:
-  [none currently, stuff will probably be added later]
+  - monocypher
 
 Used in debug builds, but not compiled into releases:
   - udis86

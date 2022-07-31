@@ -27,13 +27,14 @@ fi
 
 objs=
 cc() {
-	objs="$objs .build/${1%%.c}.o"
-	_mn=" -DMODULE_NAME=${1%%.c}"
+	_bn="`basename "$1"`"
+	objs="$objs .build/${_bn%%.c}.o"
+	_mn=" -DMODULE_NAME=${_bn%%.c}"
 	# ugly annoying special case
 	if [ "$_mn" = " -DMODULE_NAME=con_" ]; then _mn=" -DMODULE_NAME=con"
 	elif [ "$_mn" = "-DMODULE_NAME=sst" ]; then _mn=; fi
 	$CC -m32 -c -flto -fpic $cflags $warnings -I.build/include \
-		-D_FILE_OFFSET_BITS=64$_mn -o ".build/${1%%.c}.o" "src/$1"
+		-D_FILE_OFFSET_BITS=64$_mn -o ".build/${_bn%%.c}.o" "src/$1"
 }
 
 ld() {
@@ -44,6 +45,7 @@ ld() {
 src="\
 	ac.c
 	bind.c
+	crypto.c
 	alias.c
 	autojump.c
 	con_.c
