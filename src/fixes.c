@@ -34,6 +34,11 @@ static void unhide(const char *name) {
 	chflags(name, CON_HIDDEN | CON_DEVONLY, 0);
 }
 
+static void chcmdflags(const char *name, int unset, int set) {
+	struct con_cmd *v = con_findcmd(name);
+	if (v) v->base.flags = v->base.flags & ~unset | set;
+}
+
 static void generalfixes(void) {
 	// Expose all the demo stuff, for games like L4D that hide it for some
 	// reason.
@@ -138,6 +143,18 @@ static void l4d2specific(void) {
 	IDirect3D9_Release(d3d9);
 e:;
 #endif
+
+	// There's a rare, inexplicable issue where the game will drop to an
+	// unplayable framerate - a similar thing sometimes happens in CSGO,
+	// incidentally. People used to fix it by recording a demo, but that can't
+	// be done if *already* recording a demo. So there's a couple of things we
+	// still need to try to see if they actually solve the issue: one is
+	// `logaddress_add 1`, which works in CSGO; another is `cl_fullupdate`,
+	// which is cheat protected. We're preemptively removing its cheat flag
+	// here, so if it turns out to be absolutely necessary, people can use it.
+	// If it turns out logaddress_add or some other option works, this can get
+	// reverted later.
+	chcmdflags("cl_fullupdate", CON_CHEAT, 0);
 }
 
 static void l4d1specific(void) {
@@ -153,6 +170,9 @@ static void l4d1specific(void) {
 	if (v) con_setvari(v, 0);
 	v = con_findvar("mm_l4d_debug");
 	if (v) con_setvari(v, 0);
+
+	// same thing as above, seemed easier to just dupe :)
+	chcmdflags("cl_fullupdate", CON_CHEAT, 0);
 }
 
 void fixes_apply(void) {
