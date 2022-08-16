@@ -84,7 +84,7 @@ static void kv_cb(enum kv_token type, const char *p, uint len, void *ctxt) {
 		case KV_NEST_END: badparse(state, "unexpected closing brace");
 		case KV_VAL: case KV_VAL_QUOTED:;
 			struct prop *prop = malloc(sizeof(*prop));
-			if (!p) die("couldn't allocate memory");
+			if (!prop) die("couldn't allocate memory");
 			prop->varname = state->lastvar;
 			char *classname = malloc(len + 1);
 			if (!classname) die("couldn't allocate memory");
