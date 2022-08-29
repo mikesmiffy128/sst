@@ -91,8 +91,9 @@ static void generalfixes(void) {
 			// prevent breaking the engine
 			v->parent->hasmax = true; v->parent->maxval = 1000;
 		}
-		// also show the lower limit in help. engine should enforce anyway
+		// also show the lower limit in help, and prevent 0 (which is unlimited)
 		v->parent->hasmin = true; v->parent->minval = 30;
+		con_setvarf(v, con_getvarf(v)); // hack: reapply limit if we loaded late
 	}
 }
 
