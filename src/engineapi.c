@@ -14,7 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h>
 #include <stdlib.h> // used in generated code
 #include <string.h> // "
 
@@ -42,7 +41,6 @@ DECL_VFUNC(void *, GetGlobalVars, 1)
 void *globalvars;
 
 DECL_VFUNC_DYN(void *, GetAllServerClasses)
-DECL_VFUNC_DYN(int, GetEngineBuildNumber)
 
 DECL_VFUNC(int, GetEngineBuildNumber_newl4d2, 99) // duping gamedata entry, yuck
 
@@ -71,7 +69,7 @@ bool engineapi_init(int pluginver) {
 	// }
 
 	void *pim = factory_server("PlayerInfoManager002", 0);
-	if (pim) globalvars = VCALL(pim, GetGlobalVars);
+	if (pim) globalvars = GetGlobalVars(pim);
 
 	void *srvdll;
 	// TODO(compat): add this back when there's gamedata for 009 (no point atm)
@@ -93,7 +91,7 @@ bool engineapi_init(int pluginver) {
 	// till gamedata is set up, so we have to have a bit of redundant logic here
 	// to bootstrap things.
 	if (GAMETYPE_MATCHES(L4D2) && GAMETYPE_MATCHES(Client013) &&
-			VCALL(engclient, GetEngineBuildNumber_newl4d2) >= 2200) {
+			GetEngineBuildNumber_newl4d2(engclient) >= 2200) {
 		_gametype_tag |= _gametype_tag_TheLastStand;
 	}
 
@@ -104,7 +102,7 @@ bool engineapi_init(int pluginver) {
 	if (!gameinfo_init()) { con_disconnect(); return false; }
 	if (has_vtidx_GetAllServerClasses && has_sz_SendProp &&
 			has_off_SP_varname && has_off_SP_offset) {
-		initentprops(VCALL(srvdll, GetAllServerClasses));
+		initentprops(GetAllServerClasses(srvdll));
 	}
 	return true;
 }

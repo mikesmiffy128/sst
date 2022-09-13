@@ -15,7 +15,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h>
 #include <stdlib.h>
 
 #include "bind.h"
@@ -144,7 +143,7 @@ static void startlockdown(void) {
 
 HANDLE_EVENT(Tick) {
 #ifdef _WIN32
-	static int fewticks = 0;
+	static uint fewticks = 0;
 	// just check this every so often (roughly 0.1-0.3s depending on game)
 	if (lockdown && !(++fewticks & 7)) inhook_check();
 #endif
@@ -198,7 +197,7 @@ static void VCALLCONV hook_DispatchInputEvent(void *this,
 
 static bool find_DispatchInputEvent(void) {
 #ifdef _WIN32
-	// Crazy pointer-chasing path to get to DispachInputEvent (to log keypresses
+	// Crazy pointer-chasing path to get to DispatchInputEvent (to log keypresses
 	// and their associated binds):
 	// IGameUIFuncs interface
 	// -> CGameUIFuncs::GetDesktopResolution vfunc

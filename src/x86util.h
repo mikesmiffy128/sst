@@ -17,8 +17,6 @@
 #ifndef INC_X86UTIL_H
 #define INC_X86UTIL_H
 
-#include <stdbool.h>
-
 #include "errmsg.h"
 #include "x86.h"
 
@@ -35,3 +33,5 @@
 } while (0)
 
 #endif
+
+// vi: sw=4 ts=4 noet tw=80 cc=80

@@ -14,13 +14,13 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "../intdefs.h"
 #include "../os.h"
 #include "cmeta.h"
+#include "vec.h"
 
 /*
  * This file does C metadata parsing/scraping for the build system. This
@@ -73,16 +73,16 @@ Type *array_of(Type *base, int len) {
 #include "../3p/chibicc/tokenize.c"
 // one more copypaste from preprocess.c for #include <filename> and then I'm
 // done I promise
-static char *join_tokens(Token *tok, Token *end) {
+static char *join_tokens(const Token *tok, const Token *end) {
   int len = 1;
-  for (Token *t = tok; t != end && t->kind != TK_EOF; t = t->next) {
+  for (const Token *t = tok; t != end && t->kind != TK_EOF; t = t->next) {
     if (t != tok && t->has_space)
       len++;
     len += t->len;
   }
   char *buf = calloc(1, len);
   int pos = 0;
-  for (Token *t = tok; t != end && t->kind != TK_EOF; t = t->next) {
+  for (const Token *t = tok; t != end && t->kind != TK_EOF; t = t->next) {
     if (t != tok && t->has_space)
       buf[pos++] = ' ';
     strncpy(buf + pos, t->loc, t->len);
@@ -166,7 +166,7 @@ const struct cmeta *cmeta_loadfile(const os_char *f) {
 // picks it anyway, and gives far better diagnostics.
 void cmeta_includes(const struct cmeta *cm,
 		void (*cb)(const char *f, bool issys, void *ctxt), void *ctxt) {
-	Token *tp = (Token *)cm;
+	const Token *tp = (const Token *)cm;
 	if (!tp || !tp->next || !tp->next->next) return; // #, include, "string"
 	while (tp) {
 		if (!tp->at_bol || !equal(tp, "#")) { tp = tp->next; continue; }
@@ -187,7 +187,7 @@ void cmeta_includes(const struct cmeta *cm,
 		else if (equal(tp, "<")) {
 			tp = tp->next;
 			if (!tp) break;
-			Token *end = tp;
+			const Token *end = tp;
 			while (!equal(end, ">")) {
 				end = end->next;
 				if (!end) return; // shouldn't happen in valid source obviously
@@ -210,7 +210,7 @@ void cmeta_includes(const struct cmeta *cm,
 // we're not writing something weird. Don't write something weird!
 void cmeta_conmacros(const struct cmeta *cm,
 		void (*cb)(const char *, bool, bool)) {
-	Token *tp = (Token *)cm;
+	const Token *tp = (const Token *)cm;
 	if (!tp || !tp->next || !tp->next->next) return; // DEF_xyz, (, name
 	while (tp) {
 		bool isplusminus = false, isvar = false;
@@ -271,7 +271,7 @@ void cmeta_conmacros(const struct cmeta *cm,
 }
 
 const char *cmeta_findfeatmacro(const struct cmeta *cm) {
-	Token *tp = (Token *)cm;
+	const Token *tp = (const Token *)cm;
 	if (!tp || !tp->next) return 0; // FEATURE, (
 	while (tp) {
 		if (equal(tp, "FEATURE") && equal(tp->next, "(")) {
@@ -288,7 +288,7 @@ const char *cmeta_findfeatmacro(const struct cmeta *cm) {
 
 void cmeta_featinfomacros(const struct cmeta *cm, void (*cb)(
 		enum cmeta_featmacro type, const char *param, void *ctxt), void *ctxt) {
-	Token *tp = (Token *)cm;
+	const Token *tp = (const Token *)cm;
 	if (!tp || !tp->next) return;
 	while (tp) {
 		int type = -1;
@@ -336,26 +336,73 @@ void cmeta_featinfomacros(const struct cmeta *cm, void (*cb)(
 	}
 }
 
-void cmeta_evdefmacros(const struct cmeta *cm,
-		void (*cb_def)(const char *name)) {
-	Token *tp = (Token *)cm;
+struct vec_str VEC(const char *);
+
+static void pushmacroarg(const Token *last, const char *start,
+		struct vec_str *list) {
+	int len = last->loc - start + last->len;
+	char *dup = malloc(len + 1);
+	if (!dup) die1("couldn't allocate memory");
+	memcpy(dup, start, len);
+	dup[len] = '\0';
+	if (!vec_push(list, dup)) die1("couldn't append to array");
+}
+
+// XXX: maybe this should be used for the other functions too. it'd be less ugly
+// and handle closing parentheses better, but alloc for tokens we don't care
+// about. probably a worthy tradeoff?
+static const Token *macroargs(const Token *t, struct vec_str *list) {
+	int paren = 1;
+	const Token *last; // avoids copying extra ws/comments in
+	for (const char *start = t->loc; t; last = t, t = t->next) {
+		if (equal(t, "(")) {
+			++paren;
+		}
+		else if (equal(t, ")")) {
+			if (!--paren) {
+				pushmacroarg(last, start, list);
+				return t->next;
+			}
+		}
+		else if (paren == 1 && equal(t, ",")) {
+			pushmacroarg(last, start, list);
+			t = t->next;
+			if (t) start = t->loc; // slightly annoying...
+		}
+	}
+	// I guess we handle this here.
+	fprintf(stderr, "cmeta: fatal: unexpected EOF in %s\n", t->filename);
+	exit(2);
+}
+
+void cmeta_evdefmacros(const struct cmeta *cm, void (*cb)(const char *name,
+		const char *const *params, int nparams, bool predicate)) {
+	const Token *tp = (const Token *)cm;
 	if (!tp || !tp->next || !tp->next->next) return; // DEF_EVENT, (, name
 	while (tp) {
+		bool predicate = true;
 		if (equal(tp, "DEF_EVENT") && equal(tp->next, "(")) {
-			tp = tp->next->next;
-			char *name = malloc(tp->len + 1);
-			if (!name) die1("couldn't allocate memory");
-			memcpy(name, tp->loc, tp->len);
-			name[tp->len] = '\0';
-			cb_def(name);
+			predicate = false;
 		}
-		tp = tp->next;
+		else if (!equal(tp, "DEF_PREDICATE") || !equal(tp->next, "(")) {
+			tp = tp->next;
+			continue;
+		}
+		tp = tp->next->next;
+		struct vec_str args = {0};
+		tp = macroargs(tp, &args);
+		if (args.sz == 0) {
+			fprintf(stderr, "cmeta: fatal: missing event parameters in %s\n",
+					tp->filename);
+			exit(2);
+		}
+		cb(args.data[0], args.data + 1, args.sz - 1, predicate);
 	}
 }
 
 void cmeta_evhandlermacros(const struct cmeta *cm, const char *modname,
 		void (*cb_handler)(const char *evname, const char *modname)) {
-	Token *tp = (Token *)cm;
+	const Token *tp = (const Token *)cm;
 	while (tp) {
 		if (equal(tp, "HANDLE_EVENT") && equal(tp->next, "(")) {
 			tp = tp->next->next;

@@ -17,8 +17,6 @@
 #ifndef INC_BITBUF_H
 #define INC_BITBUF_H
 
-#include <stdbool.h>
-
 #include "intdefs.h"
 
 // NOTE: This code assumes it's running on a little endian machine, because,

@@ -17,8 +17,6 @@
 #ifndef INC_KV_H
 #define INC_KV_H
 
-#include <stdbool.h>
-
 #include "intdefs.h"
 
 /*

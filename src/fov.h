@@ -17,8 +17,6 @@
 #ifndef INC_FOV_H
 #define INC_FOV_H
 
-#include <stdbool.h>
-
 bool fov_init(bool has_ent);
 void fov_end(void);
 

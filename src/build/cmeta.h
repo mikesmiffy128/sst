@@ -17,8 +17,6 @@
 #ifndef INC_CMETA_H
 #define INC_CMETA_H
 
-#include <stdbool.h>
-
 #include "../os.h"
 
 struct cmeta;
@@ -76,8 +74,8 @@ void cmeta_featinfomacros(const struct cmeta *cm, void (*cb)(
  * Iterates through all event-related macros and takes note of which events are
  * defined, giving a callback for each.
  */
-void cmeta_evdefmacros(const struct cmeta *cm, void (*cb)(const char *name));
-
+void cmeta_evdefmacros(const struct cmeta *cm, void (*cb)(const char *name,
+		const char *const *params, int nparams, bool predicate));
 /*
  * Iterates through all event-related macros and gives a callback for each event
  * that is handled by the given module.

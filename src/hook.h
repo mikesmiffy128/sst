@@ -17,8 +17,6 @@
 #ifndef INC_HOOK_H
 #define INC_HOOK_H
 
-#include <stdbool.h>
-
 #include "intdefs.h"
 
 bool hook_init(void);

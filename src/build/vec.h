@@ -4,7 +4,6 @@
 #define INC_VEC_H
 
 #include <errno.h>
-#include <stdbool.h>
 #include <stdlib.h>
 
 #include "../intdefs.h"

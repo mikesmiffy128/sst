@@ -14,8 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h>
-
 #include "bitbuf.h"
 #include "con_.h"
 #include "democustom.h"
@@ -121,7 +119,7 @@ INIT {
 	// > there might be some other l4d2 versions where it's 11 but idk
 	// So here we have to figure out the network protocol version!
 	// NOTE: assuming engclient != null as GEBN index relies on client version
-	int buildnum = VCALL(engclient, GetEngineBuildNumber);
+	int buildnum = GetEngineBuildNumber(engclient);
 	// condition is redundant until other GetEngineBuildNumber offsets are added
 	// if (GAMETYPE_MATCHES(L4D2)) {
 		nbits_msgtype = 6;

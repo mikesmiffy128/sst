@@ -35,8 +35,13 @@ set dmodname= -DMODULE_NAME=%basename%
 if "%dmodname%"==" -DMODULE_NAME=con_" set dmodname= -DMODULE_NAME=con
 if "%dmodname%"==" -DMODULE_NAME=sst" set dmodname=
 set objs=%objs% .build/%basename%.o
+:: note: we use a couple of C23 things now because otherwise we'd have to wait a
+:: year to get anything done. typeof=__typeof prevents pedantic warnings caused
+:: by typeof still technically being an extension, and stdbool gives us
+:: predefined bool/true/false before compilers start doing that by default
 %CC% -m32 -c -flto %cflags% %warnings% -I.build/include -D_CRT_SECURE_NO_WARNINGS -D_DLL ^
--DWIN32_LEAN_AND_MEAN -DNOMINMAX%dmodname% -o .build/%basename%.o %1 || exit /b
+-DWIN32_LEAN_AND_MEAN -DNOMINMAX%dmodname% -Dtypeof=__typeof -include stdbool.h ^
+-o .build/%basename%.o %1 || exit /b
 goto :eof
 
 :src
@@ -77,11 +82,11 @@ setlocal DisableDelayedExpansion
 if "%dbg%"=="1" set src=%src% src/dbg.c
 if "%dbg%"=="1" set src=%src% src/udis86.c
 
-%HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -ladvapi32 ^
+%HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h -ladvapi32 ^
 -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c || exit /b
-%HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS ^
+%HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
 -o .build/mkgamedata.exe src/build/mkgamedata.c src/kv.c || exit /b
-%HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -ladvapi32 ^
+%HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h -ladvapi32 ^
 -o .build/mkentprops.exe src/build/mkentprops.c src/kv.c || exit /b
 .build\codegen.exe%src% || exit /b
 .build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv || exit /b

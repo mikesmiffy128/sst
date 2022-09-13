@@ -14,8 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h>
-
 #include "engineapi.h"
 #include "errmsg.h"
 #include "feature.h"
@@ -37,7 +35,7 @@ void *ent_getedict(int idx) {
 		return mem_offset(*edicts, sz_edict * idx);
 	}
 	else {
-		return VCALL(engserver, PEntityOfEntIndex, idx);
+		return PEntityOfEntIndex(engserver, idx);
 	}
 }
 

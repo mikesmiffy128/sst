@@ -14,8 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h>
-
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"

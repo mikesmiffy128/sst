@@ -15,7 +15,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h>
 #include <stddef.h> // should be implied by stdlib but glibc is dumb (offsetof)
 #include <stdlib.h>
 #include <stdio.h>
@@ -64,8 +63,12 @@ DECL_VFUNC_DYN(struct con_var *, FindVar, const char *)
 DECL_VFUNC_DYN(struct con_cmd *, FindCommand, const char *)
 DECL_VFUNC_DYN(void, CallGlobalChangeCallbacks, struct con_var *, const char *,
 		float)
-DECL_VFUNC_CDECLDYN(void, ConsoleColorPrintf, const struct con_colour *,
-		const char *, ...)
+// sad: since adding the cool abstraction, we can't do varargs (because you
+// can't pass varargs to other varargs of course). we only get a pointer to it
+// via VFUNC so just declare the typedef here - I don't wanna write any more
+// macros today.
+typedef void (*ConsoleColorPrintf_func)(void *, const struct con_colour *,
+		const char *, ...);
 
 static inline void initval(struct con_var *v) {
 	// v->strlen is set to defaultval len in _DEF_CVAR so we don't need to call
@@ -81,7 +84,7 @@ static inline void initval(struct con_var *v) {
 // required, we call the Internal* virtual functions by actual virtual lookup.
 // since the vtables are filled dynamically (below), we store this index; other
 // indices are just offset from this one since the 3-or-4 functions are all
-// right next to each other. the #defines allow us to still use the nice VCALL
+// right next to each other. the #defines allow us to still use the nice vcall
 // stuff.
 static int vtidx_InternalSetValue;
 #define vtidx_InternalSetFloatValue (vtidx_InternalSetValue + 1)
@@ -180,10 +183,10 @@ static void VCALLCONV ChangeStringValue(struct con_var *this, const char *s,
 	// do need callbacks for at least one feature, so do our own minimal thing
 	if (this->cb) this->cb(this);
 	// also call global callbacks, as is polite.
-	VCALL(_con_iface, CallGlobalChangeCallbacks, this, old, oldf);
+	CallGlobalChangeCallbacks(_con_iface, this, old, oldf);
 }
 
-static void VCALLCONV InternalSetValue(struct con_var *this, const char *v) {
+static void VCALLCONV InternalSetValue_impl(struct con_var *this, const char *v) {
 	float oldf = this->fval;
 	float newf = atof(v);
 	char tmp[32];
@@ -198,7 +201,7 @@ static void VCALLCONV InternalSetValue(struct con_var *this, const char *v) {
 	if (!(this->base.flags & CON_NOPRINT)) ChangeStringValue(this, v, oldf);
 }
 
-static void VCALLCONV InternalSetFloatValue(struct con_var *this, float v) {
+static void VCALLCONV InternalSetFloatValue_impl(struct con_var *this, float v) {
 	if (v == this->fval) return;
 	ClampValue(this, &v);
 	float old = this->fval;
@@ -210,7 +213,7 @@ static void VCALLCONV InternalSetFloatValue(struct con_var *this, float v) {
 	}
 }
 
-static void VCALLCONV InternalSetIntValue(struct con_var *this, int v) {
+static void VCALLCONV InternalSetIntValue_impl(struct con_var *this, int v) {
 	if (v == this->ival) return;
 	float f = (float)v;
 	if (ClampValue(this, &f)) v = (int)f;
@@ -233,22 +236,22 @@ DECL_VFUNC_DYN(void, InternalSetColorValue, struct con_colour)
 static void VCALLCONV SetValue_str_thunk(void *thisoff, const char *v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	VCALL(&this->parent->base, InternalSetValue, v);
+	InternalSetValue(&this->parent->base, v);
 }
 static void VCALLCONV SetValue_f_thunk(void *thisoff, float v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	VCALL(&this->parent->base, InternalSetFloatValue, v);
+	InternalSetFloatValue(&this->parent->base, v);
 }
 static void VCALLCONV SetValue_i_thunk(void *thisoff, int v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	VCALL(&this->parent->base, InternalSetIntValue, v);
+	InternalSetIntValue(&this->parent->base, v);
 }
 static void VCALLCONV SetValue_colour_thunk(void *thisoff, struct con_colour v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	VCALL(&this->parent->base, InternalSetColorValue, v);
+	InternalSetColorValue(&this->parent->base, v);
 }
 
 // more misc thunks, hopefully these just compile to a sub and a jmp
@@ -322,13 +325,13 @@ void *_con_vtab_iconvar[7] = {
 };
 
 void con_reg(void *cmd_or_var) {
-	VCALL(_con_iface, RegisterConCommand, cmd_or_var);
+	RegisterConCommand(_con_iface, cmd_or_var);
 }
 
 void con_init(void) {
 	// FIXME: ConsoleColorPrintf isn't working in Portal 2, possible regression?
 	_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf);
-	dllid = VCALL(_con_iface, AllocateDLLIdentifier);
+	dllid = AllocateDLLIdentifier(_con_iface);
 
 	void **pc = _con_vtab_cmd + 3 + NVDTOR, **pv = _con_vtab_var + 3 + NVDTOR,
 			**pi = _con_vtab_iconvar
@@ -362,13 +365,13 @@ void con_init(void) {
 	*pv++ = (void *)&Init;
 	// var-specific
 	vtidx_InternalSetValue = pv - _con_vtab_var;
-	*pv++ = (void *)&InternalSetValue;
-	*pv++ = (void *)&InternalSetFloatValue;
-	*pv++ = (void *)&InternalSetIntValue;
+	*pv++ = (void *)&InternalSetValue_impl;
+	*pv++ = (void *)&InternalSetFloatValue_impl;
+	*pv++ = (void *)&InternalSetIntValue_impl;
 	if (GAMETYPE_MATCHES(L4D2x) || GAMETYPE_MATCHES(Portal2)) { // ugh, annoying
 		// This is InternalSetColorValue, but that's basically the same thing,
 		// when you think about it.
-		*pv++ = (void *)&InternalSetIntValue;
+		*pv++ = (void *)&InternalSetIntValue_impl;
 	}
 	*pv++ = (void *)&ClampValue;;
 	*pv++ = (void *)&ChangeStringValue;
@@ -415,15 +418,15 @@ bool con_detect(int pluginver) {
 		// *actually* calls the const-overloaded FindVar on other branches,
 		// which just happens to still work fine. From there, we can figure out
 		// the actual ABI to use to avoid spectacular crashes.
-		if (VCALL(_con_iface, FindCommandBase_p2, "portal2_square_portals")) {
+		if (FindCommandBase_p2(_con_iface, "portal2_square_portals")) {
 			_gametype_tag |= _gametype_tag_Portal2;
 			return true;
 		}
-		if (VCALL(_con_iface, FindCommand_nonp2, "l4d2_snd_adrenaline")) {
+		if (FindCommand_nonp2(_con_iface, "l4d2_snd_adrenaline")) {
 			// while we're here, also distinguish Survivors, the stupid Japanese
 			// arcade game a few people seem to care about for some reason
 			// (which for some other reason also has some vtable changes)
-			if (VCALL(_con_iface, FindVar_nonp2, "avatarbasemodel")) {
+			if (FindVar_nonp2(_con_iface, "avatarbasemodel")) {
 				_gametype_tag |= _gametype_tag_L4DS;
 			}
 			else {
@@ -431,7 +434,7 @@ bool con_detect(int pluginver) {
 			}
 			return true;
 		}
-		if (VCALL(_con_iface, FindVar_nonp2, "z_difficulty")) {
+		if (FindVar_nonp2(_con_iface, "z_difficulty")) {
 			_gametype_tag |= _gametype_tag_L4D1;
 			return true;
 		}
@@ -463,16 +466,16 @@ bool con_detect(int pluginver) {
 }
 
 void con_disconnect(void) {
-	VCALL(_con_iface, UnregisterConCommands, dllid);
+	UnregisterConCommands(_con_iface, dllid);
 	freevars();
 }
 
 struct con_var *con_findvar(const char *name) {
-	return VCALL(_con_iface, FindVar, name);
+	return FindVar(_con_iface, name);
 }
 
 struct con_cmd *con_findcmd(const char *name) {
-	return VCALL(_con_iface, FindCommand, name);
+	return FindCommand(_con_iface, name);
 }
 
 #define GETTER(T, N, M) T N(const struct con_var *v) { return v->parent->M; }

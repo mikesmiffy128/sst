@@ -17,8 +17,6 @@
 // TODO(linux): theoretically, probably ifdef out the cvar-replacement stuff; we
 // expect any game that's been ported to linux to already have fov_desired
 
-#include <stdbool.h>
-
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"
@@ -74,10 +72,9 @@ static void fovcb(struct con_var *v) {
 }
 
 // ensure FOV is applied on load, if the engine wouldn't do that itself
-HANDLE_EVENT(ClientActive) {
-	if (real_fov_desired == fov_desired) {
-		void *player = ent_get(1); // "
-		if (player) orig_SetDefaultFOV(player, con_getvari(fov_desired));
+HANDLE_EVENT(ClientActive, struct edict *player) {
+	if (player && real_fov_desired == fov_desired) {
+		orig_SetDefaultFOV(player, con_getvari(fov_desired));
 	}
 }
 

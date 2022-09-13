@@ -14,8 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h>
-
 #include "gametype.h"
 
 // same as gamedata.h, not worth putting in its own thing

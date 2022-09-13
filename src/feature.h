@@ -17,8 +17,6 @@
 #ifndef INC_FEATURE_H
 #define INC_FEATURE_H
 
-#include <stdbool.h>
-
 #define _FEATURE_CAT1(a, b) a##b
 #define _FEATURE_CAT(a, b) _FEATURE_CAT1(a, b)
 

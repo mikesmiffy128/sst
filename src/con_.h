@@ -18,8 +18,6 @@
 #ifndef INC_CON_H
 #define INC_CON_H
 
-#include <stdbool.h>
-
 #include "intdefs.h"
 
 #if defined(__GNUC__) || defined(__clang__)

@@ -17,8 +17,6 @@
 #ifndef INC_OS_H
 #define INC_OS_H
 
-#include <stdbool.h>
-
 /*
  * Here we declare an absolute ton of wrappers, macros, compatibility shims,
  * reimplementations and so on to try in vain to sweep the inconsistencies

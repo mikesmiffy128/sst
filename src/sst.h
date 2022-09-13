@@ -21,8 +21,8 @@
 
 /* misc stuff that doesn't belong anywhere else */
 
-DECL_EVENT(ClientActive)
-DECL_EVENT(Tick)
+DECL_EVENT(ClientActive, struct edict */*player*/)
+DECL_EVENT(Tick, bool /*simulating*/)
 
 extern void *clientlib;
 

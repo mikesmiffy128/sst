@@ -14,7 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -139,12 +138,15 @@ push:		if (!vec_push(vecp, param)) die("couldn't allocate memory");
 
 DECL_SKIPLIST(static, event, struct event, const char *, 4)
 	struct event {
-	const char *name;
+	usize name; // string, but tagged pointer - see below
+	const char *const *params;
+	int nparams;
+	//char pad[4];
 	struct vec_usize handlers; // strings, but with tagged pointers - see below
 	struct skiplist_hdr_event hdr;
 };
 static inline int cmp_event(struct event *e, const char *s) {
-	return strcmp(e->name, s);
+	return strcmp((const char *)(e->name & ~1ull), s);
 }
 static inline struct skiplist_hdr_event *hdr_event(struct event *e) {
 	return &e->hdr;
@@ -152,12 +154,15 @@ static inline struct skiplist_hdr_event *hdr_event(struct event *e) {
 DEF_SKIPLIST(static, event, cmp_event, hdr_event)
 static struct skiplist_hdr_event events = {0};
 
-static void onevdef(const char *name) {
+static void onevdef(const char *name, const char *const *params, int nparams,
+		bool predicate) {
 	struct event *e = skiplist_get_event(&events, name);
 	if (!e) {
 		struct event *e = malloc(sizeof(*e));
 		if (!e) die("couldn't allocate memory");
-		e->name = name;
+		// hack: using unused pointer bit to distinguish the two types of event
+		e->name = (usize)name | predicate;
+		e->params = params; e->nparams = nparams;
 		e->handlers = (struct vec_usize){0};
 		e->hdr = (struct skiplist_hdr_event){0};
 		skiplist_insert_event(&events, name, e);
@@ -445,19 +450,70 @@ _( "")
 	H_()
 	for (const struct event *e = events.x[0]; e; e = e->hdr.x[0]) {
 _( "")
-F( "void _evemit_%s(void) {", e->name)
-		for (usize *pp = e->handlers.data;
-				pp - e->handlers.data < e->handlers.sz; ++pp) {
-		const char *modname = (const char *)(*pp & ~1ull);
-F( "	void _evhandler_%s_%s(void);", modname, e->name) // blegh.
-		if (*pp & 1ull) {
-			// note: has_* variables are already included by this point (above)
-F( "	if (has_%s) _evhandler_%s_%s();", modname, modname, e->name)
+		// gotta break from the string emit macros for a sec in order to do the
+		// somewhat more complicated task sometimes referred to as a "for loop"
+		fprintf(out, "%s_%s(", e->name & 1 ? "bool CHECK" : "void EMIT",
+				(const char *)(e->name & ~1ull));
+		for (int n = 0; n < (int)e->nparams - 1; ++n) {
+			fprintf(out, "typeof(%s) a%d, ", e->params[n], n + 1);
+		}
+		if (e->nparams && strcmp(e->params[0], "void")) {
+			fprintf(out, "typeof(%s) a%d", e->params[e->nparams -  1],
+					e->nparams);
 		}
 		else {
-F( "	_evhandler_%s_%s();", modname, e->name)
+			// just unilaterally doing void for now. when we're fully on C23
+			// eventually we can unilaterally do nothing instead
+			fputs("void", out);
 		}
+_( ") {")
+		for (usize *pp = e->handlers.data;
+				pp - e->handlers.data < e->handlers.sz; ++pp) {
+			const char *modname = (const char *)(*pp & ~1ull);
+			fprintf(out, "\t%s _evhandler_%s_%s(", e->name & 1 ? "bool" : "void",
+					modname, (const char *)(e->name & ~1ull));
+			for (int n = 0; n < (int)e->nparams - 1; ++n) {
+				fprintf(out, "typeof(%s) a%d, ", e->params[n], n + 1);
+			}
+			if (e->nparams && strcmp(e->params[0], "void")) {
+				fprintf(out, "typeof(%s) a%d", e->params[e->nparams -  1],
+						e->nparams);
+			}
+			else {
+				fputs("void", out);
+			}
+			fputs(");\n\t", out);
+			// conditional and non-conditional cases - in theory could be
+			// unified a bit but this is easier to make output relatively pretty
+			// note: has_* variables are already included by this point (above)
+			if (e->name & 1) {
+				if (*pp & 1) fprintf(out, "if (has_%s && !", modname);
+				else fprintf(out, "if (!");
+				fprintf(out, "_evhandler_%s_%s(", modname,
+						(const char *)(e->name & ~1ull));
+				// XXX: much repetitive drivel here
+				for (int n = 0; n < (int)e->nparams - 1; ++n) {
+					fprintf(out, "a%d,", n + 1);
+				}
+				if (e->nparams && strcmp(e->params[0], "void")) {
+					fprintf(out, "a%d", e->nparams);
+				}
+				fputs(")) return false;\n", out);
+			}
+			else {
+				if (*pp & 1) fprintf(out, "if (has_%s) ", modname);
+				fprintf(out, "_evhandler_%s_%s(", modname,
+						(const char *)(e->name & ~1ull));
+				for (int n = 0; n < (int)e->nparams - 1; ++n) {
+					fprintf(out, "a%d,", n + 1);
+				}
+				if (e->nparams && strcmp(e->params[0], "void")) {
+					fprintf(out, "a%d", e->nparams);
+				}
+				fputs(");\n", out);
+			}
 		}
+		if (e->name & 1) fputs("\treturn true;\n", out);
 _( "}")
 	}
 	if (fclose(out) == EOF) die("couldn't fully write evglue.gen.h");

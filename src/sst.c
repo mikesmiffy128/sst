@@ -14,7 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h>
 #include <string.h>
 
 #ifdef _WIN32
@@ -429,20 +428,17 @@ DECL_VFUNC_DYN(void, ServerCommand, const char *)
 DEF_CVAR(_sst_onload_echo, "EXPERIMENTAL! Don't rely on this existing!", "",
 		CON_HIDDEN)
 
-DEF_EVENT(ClientActive)
-DEF_EVENT(Tick)
+DEF_EVENT(ClientActive, struct edict */*player*/)
+DEF_EVENT(Tick, bool /*simulating*/)
 
 // Quick and easy server tick event. Eventually, we might want a deeper hook
 // for anything timing-sensitive, but this will do for our current needs.
 static void VCALLCONV GameFrame(void *this, bool simulating) {
-	EMIT_EVENT(Tick);
+	EMIT_Tick(simulating);
 }
 
 static void VCALLCONV ClientActive(void *this, struct edict *player) {
-	// XXX: it's kind of dumb that we get handed the edict here then go look it
-	// up again in fov.c but I can't be bothered refactoring any further now
-	// that this finally works, do something later lol
-	EMIT_EVENT(ClientActive);
+	EMIT_ClientActive(player);
 
 	// continuing dumb portal hack. didn't even seem worth adding a feature for
 	if (has_vtidx_ServerCommand && con_getvarstr(_sst_onload_echo)[0]) {
@@ -454,7 +450,7 @@ static void VCALLCONV ClientActive(void *this, struct edict *player) {
 			memcpy(s + 6, con_getvarstr(_sst_onload_echo),
 					_sst_onload_echo->strlen);
 			memcpy(s + 6 + _sst_onload_echo->strlen - 1, "\"\n", 3);
-			VCALL(engserver, ServerCommand, s);
+			ServerCommand(engserver, s);
 			free(s);
 		}
 	}

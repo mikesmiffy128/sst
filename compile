@@ -3,9 +3,13 @@
 
 case "`uname -s`" in
 	# weird people using Windows Bash might type ./compile, help them out :)
-	*NT*)
-		echo "You're on Windows, idiot! Running compile.bat for you."
+	*NT*) # msys2 or busybox-w32
+		echo "You're on Windows, idiot! Running compile.bat for you.">&2
 		exec cmd /c compile.bat ;;
+esac
+case "`uname -r`" in
+	*Microsoft*)
+		echo "NOTE: building inside WSL. Use compile.bat to build for Windows!">&2
 esac
 
 mkdir -p .build/include
@@ -33,8 +37,10 @@ cc() {
 	# ugly annoying special case
 	if [ "$_mn" = " -DMODULE_NAME=con_" ]; then _mn=" -DMODULE_NAME=con"
 	elif [ "$_mn" = "-DMODULE_NAME=sst" ]; then _mn=; fi
+	# note: using typeof and bool from C23 - see detailed comment in compile.bat
 	$CC -m32 -c -flto -fpic $cflags $warnings -I.build/include \
-		-D_FILE_OFFSET_BITS=64$_mn -o ".build/${_bn%%.c}.o" "src/$1"
+		-D_FILE_OFFSET_BITS=64 -D_TIME_BITS=64$_mn \
+		-Dtypeof=__typeof -include stdbool.h -o ".build/${_bn%%.c}.o" "src/$1"
 }
 
 ld() {
@@ -71,12 +77,12 @@ if [ "$dbg" = 1 ]; then src="$src \
 	udis86.c"
 fi
 
-$HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/codegen \
-		src/build/codegen.c src/build/cmeta.c
-$HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/mkgamedata \
-		src/build/mkgamedata.c src/kv.c
-$HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -o .build/mkentprops \
-		src/build/mkentprops.c src/kv.c
+$HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -include stdbool.h \
+		-o .build/codegen src/build/codegen.c src/build/cmeta.c
+$HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -include stdbool.h \
+		-o .build/mkgamedata src/build/mkgamedata.c src/kv.c
+$HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -include stdbool.h \
+		-o .build/mkentprops src/build/mkentprops.c src/kv.c
 .build/codegen `for s in $src; do echo "src/$s"; done`
 .build/mkgamedata gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv
 .build/mkentprops gamedata/entprops.kv

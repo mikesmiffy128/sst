@@ -14,7 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h>
 #ifdef _WIN32
 #include <shlwapi.h>
 #endif
@@ -260,7 +259,7 @@ bool gameinfo_init(void) {
 	// to respect the system code page setting, otherwise some users using e.g.
 	// Cyrillic folder names and successfully loading their speedgames won't be
 	// able to load SST. Thanks Windows!
-	const char *lcpgamedir = VCALL(engclient, GetGameDirectory);
+	const char *lcpgamedir = GetGameDirectory(engclient);
 	int gamedirlen = MultiByteToWideChar(CP_ACP, 0, lcpgamedir,
 			strlen(lcpgamedir), gamedir, sizeof(gamedir) / sizeof(*gamedir));
 	if (!gamedirlen) {

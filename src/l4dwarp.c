@@ -34,14 +34,14 @@ REQUIRE_GAMEDATA(off_eyeang)
 REQUIRE_GAMEDATA(vtidx_Teleport)
 
 DECL_VFUNC_DYN(void *, GetBaseEntity)
-DECL_VFUNC_DYN(void, Teleport, const struct vec3f *pos, const struct vec3f *ang,
-		const struct vec3f *vel)
+DECL_VFUNC_DYN(void, Teleport, const struct vec3f */*pos*/,
+		const struct vec3f */*pos*/, const struct vec3f */*vel*/)
 
 DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you",
 		CON_SERVERSIDE | CON_CHEAT) {
 	struct edict *ed = ent_getedict(con_cmdclient + 1);
 	if (!ed) { errmsg_errorx("couldn't access player entity"); return; }
-	void *e = VCALL(ed->ent_unknown, GetBaseEntity); // is this call required?
+	void *e = GetBaseEntity(ed->ent_unknown); // is this call required?
 	struct vec3f *org = mem_offset(e, off_entpos);
 	struct vec3f *ang = mem_offset(e, off_eyeang);
 	// L4D idle warps go up to 10 units behind relative to whatever angle the
@@ -49,7 +49,7 @@ DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you",
 	// displacing vertically
 	float pitch = ang->x * M_PI / 180, yaw = ang->y * M_PI / 180;
 	float shift = -10 * cos(pitch);
-	VCALL(e, Teleport, &(struct vec3f){org->x + shift * cos(yaw),
+	Teleport(e, &(struct vec3f){org->x + shift * cos(yaw),
 			org->y + shift * sin(yaw), org->z}, 0, &(struct vec3f){0, 0, 0});
 }
 

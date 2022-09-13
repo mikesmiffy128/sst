@@ -7,7 +7,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdarg.h>
-#include <stdbool.h>
+//#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,7 +93,7 @@ _Noreturn void error(char *fmt, ...) __attribute__((format(printf, 1, 2)));
 _Noreturn void error_at(char *loc, char *fmt, ...) __attribute__((format(printf, 2, 3)));
 _Noreturn void error_tok(Token *tok, char *fmt, ...) __attribute__((format(printf, 2, 3)));
 void warn_tok(Token *tok, char *fmt, ...) __attribute__((format(printf, 2, 3)));
-bool equal(Token *tok, char *op);
+bool equal(const Token *tok, const char *op);
 Token *skip(Token *tok, char *op);
 bool consume(Token **rest, Token *tok, char *str);
 void convert_pp_tokens(Token *tok);

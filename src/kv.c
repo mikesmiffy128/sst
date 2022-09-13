@@ -14,8 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdbool.h>
-
 #include "intdefs.h"
 #include "kv.h"
 #include "unreachable.h"

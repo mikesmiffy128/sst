@@ -36,25 +36,17 @@ IMPORT void *g_pMemAlloc;
 // affected by naming (overloads are grouped, and *reversed* inside of a
 // group!?), we get this amusing ABI difference between platforms:
 #ifdef _WIN32
-DECL_VFUNC(void *, Alloc, 1, usize sz)
-DECL_VFUNC(void *, Realloc, 3, void *mem, usize sz)
-DECL_VFUNC(void, Free, 5, void *mem)
+DECL_VFUNC(void *, Alloc, 1, usize)
+DECL_VFUNC(void *, Realloc, 3, void *, usize)
+DECL_VFUNC(void, Free, 5, void *)
 #else
-DECL_VFUNC(void *, Alloc, 0, usize sz)
-DECL_VFUNC(void *, Realloc, 1, void *mem, usize sz)
-DECL_VFUNC(void, Free, 2, void *mem)
+DECL_VFUNC(void *, Alloc, 0, usize)
+DECL_VFUNC(void *, Realloc, 1, void *, usize)
+DECL_VFUNC(void, Free, 2, void *)
 #endif
 
-void *extmalloc(usize sz) {
-	return VCALL(g_pMemAlloc, Alloc, sz);
-}
-
-void *extrealloc(void *mem, usize sz) {
-	return VCALL(g_pMemAlloc, Realloc, mem, sz);
-}
-
-void extfree(void *mem) {
-	VCALL(g_pMemAlloc, Free, mem);
-}
+void *extmalloc(usize sz) { return Alloc(g_pMemAlloc, sz); }
+void *extrealloc(void *mem, usize sz) { return Realloc(g_pMemAlloc, mem, sz); }
+void extfree(void *mem) { Free(g_pMemAlloc, mem); }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

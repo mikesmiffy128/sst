@@ -17,8 +17,6 @@
 #ifndef INC_GAMEDATA_H
 #define INC_GAMEDATA_H
 
-#include <stdbool.h>
-
 #ifdef _WIN32
 #define NVDTOR 1
 #else
