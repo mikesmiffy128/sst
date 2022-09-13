@@ -52,7 +52,7 @@ void alias_rm(const char *name) {
 
 DEF_CCMD_HERE_UNREG(sst_alias_clear, "Remove all command aliases", 0) {
 	if (cmd->argc != 1) {
-		con_warn("usage: sst_alias_clear");
+		con_warn("usage: sst_alias_clear\n");
 		return;
 	}
 	alias_nuke();
@@ -60,11 +60,11 @@ DEF_CCMD_HERE_UNREG(sst_alias_clear, "Remove all command aliases", 0) {
 
 DEF_CCMD_HERE_UNREG(sst_alias_remove, "Remove a command alias", 0) {
 	if (cmd->argc != 2) {
-		con_warn("usage: sst_alias_remove name");
+		con_warn("usage: sst_alias_remove name\n");
 		return;
 	}
 	if (strlen(cmd->argv[1]) > 31) {
-		con_warn("invalid alias name (too long)");
+		con_warn("invalid alias name (too long)\n");
 		return;
 	}
 	alias_rm(cmd->argv[1]);

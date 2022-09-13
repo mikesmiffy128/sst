@@ -159,7 +159,6 @@ IMPORT void *KeyValuesSystem(void);
 
 // most plugin callbacks are unused - define dummy functions for each signature
 static void VCALLCONV nop_v_v(void *this) {}
-static void VCALLCONV nop_b_v(void *this, bool b) {}
 static void VCALLCONV nop_p_v(void *this, void *p) {}
 static void VCALLCONV nop_pp_v(void *this, void *p1, void *p2) {}
 static void VCALLCONV nop_pii_v(void *this, void *p, int i1, int i2) {}
