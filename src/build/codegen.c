@@ -183,6 +183,7 @@ static void onevhandler(const char *evname, const char *modname) {
 	}
 	usize taggedptr = (usize)modname;
 	struct feature *f = skiplist_get_feature(&features, modname);
+	f->has_evhandlers = true;
 	// hack: using unused pointer bit to determine whether a handler is tied to
 	// a feature and thus conditional. relies on malloc alignment!
 	if (f) taggedptr |= 1ull;
