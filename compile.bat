@@ -78,6 +78,7 @@ setlocal DisableDelayedExpansion
 :+ gameinfo.c
 :+ gameserver.c
 :+ hook.c
+:+ hud.c
 :+ kvsys.c
 :+ l4dmm.c
 :+ l4dreset.c
@@ -100,7 +101,8 @@ if "%dbg%"=="0" set src=%src% src/wincrt.c
 %HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h -ladvapi32 ^
 -o .build/mkentprops.exe src/build/mkentprops.c src/kv.c || exit /b
 .build\codegen.exe%src% || exit /b
-.build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv gamedata/matchmaking.kv || exit /b
+.build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv ^
+gamedata/matchmaking.kv gamedata/vgui2.kv gamedata/vguimatsurface.kv || exit /b
 .build\mkentprops.exe gamedata/entprops.kv || exit /b
 llvm-rc /FO .build\dll.res src\dll.rc || exit /b
 %CC% -fuse-ld=lld -shared -O0 -w -o .build/tier0.dll src/stubs/tier0.c
