@@ -72,9 +72,9 @@ static void fovcb(struct con_var *v) {
 }
 
 // ensure FOV is applied on load, if the engine wouldn't do that itself
-HANDLE_EVENT(ClientActive, struct edict *player) {
-	if (player && real_fov_desired == fov_desired) {
-		orig_SetDefaultFOV(player, con_getvari(fov_desired));
+HANDLE_EVENT(ClientActive, struct edict *e) {
+	if (real_fov_desired == fov_desired) {
+		orig_SetDefaultFOV(e->ent_unknown, con_getvari(fov_desired));
 	}
 }
 
