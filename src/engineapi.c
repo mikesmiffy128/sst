@@ -40,6 +40,8 @@ struct VEngineServer *engserver;
 DECL_VFUNC(void *, GetGlobalVars, 1)
 void *globalvars;
 
+void *inputsystem;
+
 DECL_VFUNC_DYN(void *, GetAllServerClasses)
 
 DECL_VFUNC(int, GetEngineBuildNumber_newl4d2, 99) // duping gamedata entry, yuck
@@ -70,6 +72,8 @@ bool engineapi_init(int pluginver) {
 
 	void *pim = factory_server("PlayerInfoManager002", 0);
 	if (pim) globalvars = GetGlobalVars(pim);
+
+	inputsystem = factory_inputsystem("InputSystemVersion001", 0);
 
 	void *srvdll;
 	// TODO(compat): add this back when there's gamedata for 009 (no point atm)

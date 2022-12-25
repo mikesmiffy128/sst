@@ -20,12 +20,13 @@
 #include "feature.h"
 #include "gamedata.h"
 #include "hook.h"
+#include "mem.h"
 #include "os.h"
 #include "vcall.h"
 
 FEATURE("inactive window sleep adjustment")
 REQUIRE_GAMEDATA(vtidx_SleepUntilInput)
-REQUIRE_GLOBAL(factory_inputsystem)
+REQUIRE_GLOBAL(inputsystem)
 
 DEF_CVAR_UNREG(engine_no_focus_sleep,
 		"Delay while tabbed out (SST reimplementation)", 50,
@@ -46,12 +47,7 @@ PREINIT {
 }
 
 INIT {
-	void *insys = factory_inputsystem("InputSystemVersion001", 0);
-	if (!insys) {
-		errmsg_errorx("couldn't get input system interface");
-		return false;
-	}
-	vtable = *(void ***)insys;
+	vtable = mem_loadptr(inputsystem);
 	if (!os_mprot(vtable + vtidx_SleepUntilInput, sizeof(void *),
 			PAGE_READWRITE)) {
 		errmsg_errorx("couldn't make virtual table writable");

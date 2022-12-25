@@ -16,16 +16,22 @@
 
 // NOTE: compiled on Windows only. All Linux Source releases are new enough to
 // have raw input already.
+// TODO(linux): actually, we DO want the scaling on Linux, so we need offsets
+// for GetRawMouseAccumulators, etc.
 
 #include <Windows.h>
 
 #include "con_.h"
+#include "gamedata.h"
 #include "hook.h"
+#include "engineapi.h"
 #include "errmsg.h"
 #include "feature.h"
 #include "intdefs.h"
+#include "mem.h"
+#include "vcall.h"
 
-FEATURE("raw mouse input")
+FEATURE("scalable raw mouse input")
 
 // We reimplement m_rawinput by hooking cursor functions in the same way as
 // RInput (it's way easier than replacing all the mouse-handling internals of
@@ -33,15 +39,30 @@ FEATURE("raw mouse input")
 // either block it from being loaded redundantly, or be blocked if it's already
 // loaded. If m_rawinput already exists, we do nothing; people should use the
 // game's native raw input instead in that case.
+//
+// As an *additional* feature, we also implement hardware input scaling, meaning
+// that some number of counts are required from the mouse in order to move the
+// cursor a single unit in game. This is useful for doing "minisnaps" (imprecise
+// but accurate mouse movements at high sensitivity) on mice which don't allow
+// their CPI to be lowered very far. It's implemented either in our own raw
+// input functionality, or by hooking the game's, as required.
 
 #define USAGEPAGE_MOUSE 1
 #define USAGE_MOUSE 2
 
-static long dx = 0, dy = 0;
-static void *inwin;
+static int cx, cy, rx = 0, ry = 0; // cursor xy, remainder xy
+static union { // cheeky space saving
+	void *inwin;
+	void **vtable_insys;
+} u1;
+#define inwin u1.inwin
+#define vtable_insys u1.vtable_insys
 
 DEF_CVAR_UNREG(m_rawinput, "Use Raw Input for mouse input (SST reimplementation)",
 		0, CON_ARCHIVE | CON_HIDDEN)
+
+DEF_CVAR_MINMAX(sst_mouse_factor, "Number of hardware mouse counts per step",
+		1, 1, 20, /*CON_ARCHIVE |*/ CON_HIDDEN)
 
 static ssize __stdcall inproc(void *wnd, uint msg, ssize wp, ssize lp) {
 	switch (msg) {
@@ -52,8 +73,10 @@ static ssize __stdcall inproc(void *wnd, uint msg, ssize wp, ssize lp) {
 					sizeof(RAWINPUTHEADER)) != -1) {
 				RAWINPUT *ri = (RAWINPUT *)buf;
 				if (ri->header.dwType == RIM_TYPEMOUSE) {
-					dx += ri->data.mouse.lLastX;
-					dy += ri->data.mouse.lLastY;
+					int d = con_getvari(sst_mouse_factor);
+					int dx = rx + ri->data.mouse.lLastX;
+					int dy = ry + ri->data.mouse.lLastY;
+					cx += dx / d; cy += dy / d; rx = dx % d; ry = dy % d;
 				}
 			}
 			return 0;
@@ -65,27 +88,59 @@ static ssize __stdcall inproc(void *wnd, uint msg, ssize wp, ssize lp) {
 }
 
 typedef int (*__stdcall GetCursorPos_func)(POINT *p);
-static GetCursorPos_func orig_GetCursorPos;
+typedef uint (*VCALLCONV GetRawMouseAccumulators_func)(void *, int *, int *);
+static union { // more cheeky space saving
+	GetCursorPos_func orig_GetCursorPos;
+	GetRawMouseAccumulators_func orig_GetRawMouseAccumulators;
+} u2;
+#define orig_GetCursorPos u2.orig_GetCursorPos
+#define orig_GetRawMouseAccumulators u2.orig_GetRawMouseAccumulators
+
 static int __stdcall hook_GetCursorPos(POINT *p) {
 	if (!con_getvari(m_rawinput)) return orig_GetCursorPos(p);
-	p->x = dx; p->y = dy;
+	p->x = cx; p->y = cy;
 	return 1;
 }
+
 typedef int (*__stdcall SetCursorPos_func)(int x, int y);
-static SetCursorPos_func orig_SetCursorPos;
+static SetCursorPos_func orig_SetCursorPos = 0;
 static int __stdcall hook_SetCursorPos(int x, int y) {
-	dx = x; dy = y;
+	cx = x; cy = y;
 	return orig_SetCursorPos(x, y);
 }
 
-PREINIT {
-	if (con_findvar("m_rawinput")) return false; // no need!
-	// create cvar hidden so if we fail to init, setting can still be preserved
-	con_reg(m_rawinput);
-	return true;
+static uint VCALLCONV hook_GetRawMouseAccumulators(void *this, int *x, int *y) {
+	int dx, dy;
+	uint ret = orig_GetRawMouseAccumulators(this, &dx, &dy);
+	int d = con_getvari(sst_mouse_factor);
+	dx += rx; dy += ry;
+	*x = dx / d; *y = dy / d; rx = dx % d; ry = dy % d;
+	// NOTE! This is usually void, but apparently returns a bool in the 2013
+	// SDK, for reasons I didn't bother researching. In any case, we can just
+	// unconditionally preserve EAX and it won't do any harm.
+	return ret;
 }
 
 INIT {
+	bool has_rawinput = !!con_findvar("m_rawinput");
+	if (has_rawinput) {
+		if (!has_vtidx_GetRawMouseAccumulators) return false;
+		if (!inputsystem) return false;
+		vtable_insys = mem_loadptr(inputsystem);
+		// XXX: this is kind of duping nosleep, but that won't always init...
+		if (!os_mprot(vtable_insys + vtidx_GetRawMouseAccumulators,
+				sizeof(void *), PAGE_READWRITE)) {
+			errmsg_errorx("couldn't make virtual table writable");
+			return false;
+		}
+		orig_GetRawMouseAccumulators = (GetRawMouseAccumulators_func)hook_vtable(
+				vtable_insys, vtidx_GetRawMouseAccumulators,
+				(void *)&hook_GetRawMouseAccumulators);
+	}
+	else {
+		// create cvar hidden so config is still preserved if we fail to init
+		con_reg(m_rawinput);
+	}
 	WNDCLASSEXW wc = {
 		.cbSize = sizeof(wc),
 		// cast because inproc is binary-compatible but doesn't use stupid
@@ -102,9 +157,25 @@ INIT {
 				"Consider launching without that and using ");
 		con_colourmsg(&gold, "m_rawinput 1");
 		con_colourmsg(&blue, " instead!\n");
-		con_colourmsg(&white, "This option carries over to newer game versions "
-				"that have it built-in. No need for external programs :)\n");
+		if (has_rawinput) {
+			con_colourmsg(&white, "This is built into this version of game, and"
+					" will also get provided by SST in older versions. ");
+		}
+		else {
+			con_colourmsg(&white, "This option carries over to newer game "
+				"versions that have it built-in. ");
+		}
+		con_colourmsg(&white, "No need for external programs :)\n");
+		con_colourmsg(&gold, "Additionally");
+		con_colourmsg(&blue, ", you can scale down the sensor input with ");
+		con_colourmsg(&gold, "sst_mouse_factor");
+		con_colourmsg(&blue, "!\n");
 		return false;
+	}
+	if (has_rawinput) {
+		// no real reason to keep this around receiving useless window messages
+		UnregisterClassW(L"RInput", 0);
+		goto ok;
 	}
 
 	orig_GetCursorPos = (GetCursorPos_func)hook_inline((void *)&GetCursorPos,
@@ -134,7 +205,8 @@ INIT {
 		goto e3;
 	}
 
-	m_rawinput->base.flags &= ~CON_HIDDEN;
+ok:	m_rawinput->base.flags &= ~CON_HIDDEN;
+	sst_mouse_factor->base.flags &= ~CON_HIDDEN;
 	return true;
 
 e3:	DestroyWindow(inwin);
@@ -145,18 +217,23 @@ e0:	UnregisterClassW(L"RInput", 0);
 }
 
 END {
-	RAWINPUTDEVICE rd = {
-		.dwFlags = RIDEV_REMOVE,
-		.hwndTarget = 0,
-		.usUsagePage = USAGEPAGE_MOUSE,
-		.usUsage = USAGE_MOUSE
-	};
-	RegisterRawInputDevices(&rd, 1, sizeof(rd));
-	DestroyWindow(inwin);
-	UnregisterClassW(L"RInput", 0);
-
-	unhook_inline((void *)orig_GetCursorPos);
-	unhook_inline((void *)orig_SetCursorPos);
+	if (orig_SetCursorPos) { // if null, we didn't init our own implementation
+		RAWINPUTDEVICE rd = {
+			.dwFlags = RIDEV_REMOVE,
+			.hwndTarget = 0,
+			.usUsagePage = USAGEPAGE_MOUSE,
+			.usUsage = USAGE_MOUSE
+		};
+		RegisterRawInputDevices(&rd, 1, sizeof(rd));
+		DestroyWindow(inwin);
+		UnregisterClassW(L"RInput", 0);
+		unhook_inline((void *)orig_GetCursorPos);
+		unhook_inline((void *)orig_SetCursorPos);
+	}
+	else {
+		unhook_vtable(vtable_insys, vtidx_GetRawMouseAccumulators,
+				(void *)orig_GetRawMouseAccumulators);
+	}
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

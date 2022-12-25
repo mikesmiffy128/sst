@@ -266,38 +266,6 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	}
 
 	factory_engine = enginef; factory_server = serverf;
-	if (!engineapi_init(ifacever)) return false;
-
-	const void **p = vtable_firstdiff;
-	if (GAMETYPE_MATCHES(Portal2)) *p++ = (void *)&nop_p_v; // ClientFullyConnect
-	*p++ = (void *)&nop_p_v;		  // ClientDisconnect
-	*p++ = (void *)&nop_pp_v;		  // ClientPutInServer
-	*p++ = (void *)&SetCommandClient; // SetCommandClient
-	*p++ = (void *)&nop_p_v;		  // ClientSettingsChanged
-	*p++ = (void *)&nop_5pi_i;		  // ClientConnect
-	*p++ = ifacever > 1 ? (void *)&nop_pp_i : (void *)&nop_p_i; // ClientCommand
-	// remaining stuff here is backwards compatible, so added unconditionally
-	*p++ = (void *)&nop_pp_i;		  // NetworkIDValidated
-	*p++ = (void *)&nop_ipipp_v;	  // OnQueryCvarValueFinished (002+)
-	*p++ = (void *)&nop_p_v;		  // OnEdictAllocated
-	*p   = (void *)&nop_p_v;		  // OnEdictFreed
-
-#ifdef _WIN32
-	clientlib = GetModuleHandleW(gameinfo_clientlib);
-#else
-	// Apparently on Linux, the client library isn't actually loaded yet here,
-	// so RTLD_NOLOAD won't actually find it. We have to just dlopen it
-	// normally - and then remember to decrement the refcount again later in
-	// do_unload() so nothing gets leaked!
-	clientlib = dlopen(gameinfo_clientlib, RTLD_NOW);
-#endif
-	if (!clientlib) {
-		errmsg_warndl("couldn't get the game's client library");
-	}
-	else if (!(factory_client = (ifacefactory)os_dlsym(clientlib,
-			"CreateInterface"))) {
-		errmsg_warndl("couldn't get client's CreateInterface");
-	}
 #ifdef _WIN32
 	void *inputsystemlib = GetModuleHandleW(L"inputsystem.dll");
 #else
@@ -314,6 +282,37 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 			"CreateInterface"))) {
 		errmsg_warndl("couldn't get input system's CreateInterface");
 	}
+	if (!engineapi_init(ifacever)) return false;
+#ifdef _WIN32
+	clientlib = GetModuleHandleW(gameinfo_clientlib);
+#else
+	// Apparently on Linux, the client library isn't actually loaded yet here,
+	// so RTLD_NOLOAD won't actually find it. We have to just dlopen it
+	// normally - and then remember to decrement the refcount again later in
+	// do_unload() so nothing gets leaked!
+	clientlib = dlopen(gameinfo_clientlib, RTLD_NOW);
+#endif
+	if (!clientlib) {
+		errmsg_warndl("couldn't get the game's client library");
+	}
+	else if (!(factory_client = (ifacefactory)os_dlsym(clientlib,
+			"CreateInterface"))) {
+		errmsg_warndl("couldn't get client's CreateInterface");
+	}
+
+	const void **p = vtable_firstdiff;
+	if (GAMETYPE_MATCHES(Portal2)) *p++ = (void *)&nop_p_v; // ClientFullyConnect
+	*p++ = (void *)&nop_p_v;		  // ClientDisconnect
+	*p++ = (void *)&nop_pp_v;		  // ClientPutInServer
+	*p++ = (void *)&SetCommandClient; // SetCommandClient
+	*p++ = (void *)&nop_p_v;		  // ClientSettingsChanged
+	*p++ = (void *)&nop_5pi_i;		  // ClientConnect
+	*p++ = ifacever > 1 ? (void *)&nop_pp_i : (void *)&nop_p_i; // ClientCommand
+	// remaining stuff here is backwards compatible, so added unconditionally
+	*p++ = (void *)&nop_pp_i;		  // NetworkIDValidated
+	*p++ = (void *)&nop_ipipp_v;	  // OnQueryCvarValueFinished (002+)
+	*p++ = (void *)&nop_p_v;		  // OnEdictAllocated
+	*p   = (void *)&nop_p_v;		  // OnEdictFreed
 
 	// NOTE: this is technically redundant for early versions but I CBA writing
 	// a version check; it's easier to just do this unilaterally.
@@ -467,7 +466,7 @@ static const void *vtable[MAX_VTABLE_FUNCS] = {
 	(void *)&GetPluginDescription,
 	(void *)&nop_p_v,	// LevelInit
 	(void *)&nop_pii_v,	// ServerActivate
-	(void *)&GameFrame,	// GameFrame
+	(void *)&GameFrame,
 	(void *)&nop_v_v,	// LevelShutdown
 	(void *)&ClientActive
 	// At this point, Alien Swarm and Portal 2 add ClientFullyConnect, so we
