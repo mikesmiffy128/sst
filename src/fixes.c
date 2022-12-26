@@ -148,13 +148,12 @@ e:;
 	// There's a rare, inexplicable issue where the game will drop to an
 	// unplayable framerate - a similar thing sometimes happens in CSGO,
 	// incidentally. People used to fix it by recording a demo, but that can't
-	// be done if *already* recording a demo. So there's a couple of things we
-	// still need to try to see if they actually solve the issue: one is
-	// `logaddress_add 1`, which works in CSGO; another is `cl_fullupdate`,
-	// which is cheat protected. We're preemptively removing its cheat flag
-	// here, so if it turns out to be absolutely necessary, people can use it.
-	// If it turns out logaddress_add or some other option works, this can get
-	// reverted later.
+	// be done if *already* recording a demo. We've since also tried doing
+	// `logaddress_add 1`, which works in CSGO, but that doesn't seem to work in
+	// L4D games. So, another idea is `cl_fullupdate`, but it's cheat protected.
+	// We're preemptively removing its cheat flag here, so if it turns out to be
+	// absolutely necessary, people can use it. If it doesn't work, or some
+	// other workaround is found, this might get reverted.
 	chcmdflags("cl_fullupdate", CON_CHEAT, 0);
 }
 
