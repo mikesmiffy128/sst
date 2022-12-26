@@ -40,7 +40,7 @@ struct VEngineServer *engserver;
 DECL_VFUNC(void *, GetGlobalVars, 1)
 void *globalvars;
 
-void *inputsystem;
+void *inputsystem, *vgui;
 
 DECL_VFUNC_DYN(void *, GetAllServerClasses)
 
@@ -74,6 +74,7 @@ bool engineapi_init(int pluginver) {
 	if (pim) globalvars = GetGlobalVars(pim);
 
 	inputsystem = factory_inputsystem("InputSystemVersion001", 0);
+	vgui = factory_engine("VEngineVGui001", 0);
 
 	void *srvdll;
 	// TODO(compat): add this back when there's gamedata for 009 (no point atm)

@@ -211,14 +211,16 @@ static void do_featureinit(void) {
 	}
 }
 
-static void *vgui;
-typedef void (*VCALLCONV VGuiConnect_func)(void);
+typedef void (*VCALLCONV VGuiConnect_func)(void *this);
 static VGuiConnect_func orig_VGuiConnect;
-static void VCALLCONV hook_VGuiConnect(void) {
-	orig_VGuiConnect();
+static void VCALLCONV hook_VGuiConnect(void *this) {
+	orig_VGuiConnect(this);
 	do_featureinit();
-	unhook_vtable(*(void ***)vgui, vtidx_VGuiConnect, (void *)orig_VGuiConnect);
+	unhook_vtable(*(void ***)vgui, vtidx_VGuiConnect,
+			(void *)orig_VGuiConnect);
 }
+
+DECL_VFUNC_DYN(bool, VGuiIsInitialized)
 
 // --- Magical deferred load order hack nonsense! ---
 // The engine loads VDF plugins basically right after server.dll, but long
@@ -227,23 +229,22 @@ static void VCALLCONV hook_VGuiConnect(void) {
 // in before config.cfg, which is needed for any kind of configuration to work
 // correctly.
 //
-// So here, we hook CEngineVGui::Connect() which is pretty much the last thing
-// that gets called on init, and defer feature init till afterwards. That allows
-// us to touch pretty much any engine stuff without worrying about load order
-// nonsense.
-//
-// In do_load() below, we check to see whether we're loading early by checking
-// whether gameui.dll is loaded yet; this is one of several possible arbitrary
-// checks. If it's loaded already, we assume we're getting loaded late via the
-// console and just init everything immediately.
+// So here, we hook CEngineVGui::Connect() which is one the very last things
+// to get called on startup, and use that hook to defer feature init till after
+// most of the rest of the game is up and running. That allows us to touch
+// pretty much any engine stuff without worrying about load order nonsense.
 //
 // Route credit to Bill for helping figure a lot of this out - mike
-static void deferinit(void) {
-	vgui = factory_engine("VEngineVGui001", 0);
+static bool deferinit(void) {
 	if (!vgui) {
-		errmsg_warnx("couldn't get VEngineVGui for deferred feature setup");
+		errmsg_warnx("can't use VEngineVGui for deferred feature setup");
 		goto e;
 	}
+	// Arbitrary check to infer whether we've been early- or late-loaded.
+	// We used to just see whether gameui.dll/libgameui.so was loaded, but
+	// Portal 2 does away with the separate gameui library, so now we just call
+	// CEngineVGui::IsInitialized() which works everywhere.
+	if (VGuiIsInitialized(vgui)) return false;
 	if (!os_mprot(*(void ***)vgui + vtidx_VGuiConnect, sizeof(void *),
 			PAGE_READWRITE)) {
 		errmsg_warnsys("couldn't make CEngineVGui vtable writable for deferred "
@@ -252,11 +253,11 @@ static void deferinit(void) {
 	}
 	orig_VGuiConnect = (VGuiConnect_func)hook_vtable(*(void ***)vgui,
 			vtidx_VGuiConnect, (void *)&hook_VGuiConnect);
-	return;
+	return true;
 
 e:	con_warn("!!! SOME FEATURES MAY BE BROKEN !!!\n");
-	// I think this is the lesser of two evils! Unlikely to happen anyway.
-	do_featureinit();
+	// Lesser of two evils: just init features now. Unlikely to happen anyway.
+	return false;
 }
 
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
@@ -329,14 +330,7 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 		}
 	}
 
-#ifdef _WIN32
-	bool isvdf = !GetModuleHandleW(L"gameui.dll");
-#else
-	void *gameuilib = dlopen("bin/libgameui.so", RTLD_NOW | RLTD_NOLOAD);
-	bool isvdf = !gameuilib;
-	if (gameuilib) dlclose(gameuilib);
-#endif
-	if (isvdf) deferinit(); else do_featureinit();
+	if (!deferinit()) do_featureinit();
 	return true;
 }
 
