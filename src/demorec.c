@@ -1,6 +1,6 @@
 /*
  * Copyright © 2021 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -107,7 +107,7 @@ static void hook_record_cb(const struct con_cmdargs *args) {
 			int gdlen = os_strlen(gameinfo_gamedir);
 			if (gdlen + 1 + argdirlen < PATH_MAX) { // if not, too bad
 				os_char dir[PATH_MAX], *q = dir;
-				memcpy(q, gameinfo_gamedir, gdlen * sizeof(gameinfo_gamedir));
+				memcpy(q, gameinfo_gamedir, gdlen * sizeof(*gameinfo_gamedir));
 				q += gdlen;
 				*q++ = OS_LIT('/');
 				// ascii->wtf16 (probably turns into memcpy() on linux)
