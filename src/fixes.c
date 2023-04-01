@@ -1,6 +1,6 @@
 /*
  * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
- * Copyright © 2022 Hayden K <imaciidz@gmail.com>
+ * Copyright © 2023 Hayden K <imaciidz@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -52,6 +52,7 @@ static void generalfixes(void) {
 	unhide("demo_pauseatservertick");
 	unhide("demo_quitafterplayback");
 	unhide("demo_interpolateview");
+	unhide("cl_showdemooverlay");
 
 	// some handy console stuff
 	unhide("con_filter_enable");
