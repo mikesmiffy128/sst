@@ -114,7 +114,7 @@ static void hook_record_cb(const struct con_cmdargs *args) {
 				for (const char *p = arg; p - arg < argdirlen; ++p, ++q) {
 					*q = (uchar)*p;
 				}
-				q[argdirlen] = OS_LIT('\0');
+				*q = OS_LIT('\0');
 				// this is pretty ugly. the error cases would be way tidier if
 				// we could use open(O_DIRECTORY), but that's not a thing on
 				// windows, of course.

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -271,12 +271,12 @@ bool gameinfo_init(void) {
 	gameinfo_gamedir = GetGameDirectory(engclient);
 	int gamedirlen = strlen(gameinfo_gamedir);
 #endif
-	if (gamedirlen + sizeof("/gameinfo.txt") > sizeof(gamedir) /
-			sizeof(*gamedir)) {
+	os_char gameinfopath[PATH_MAX];
+	if (gamedirlen + sizeof("/gameinfo.txt") > sizeof(gameinfopath) /
+			sizeof(*gameinfopath)) {
 		errmsg_errorx("game directory path is too long!");
 		return false;
 	}
-	os_char gameinfopath[PATH_MAX];
 	memcpy(gameinfopath, gameinfo_gamedir, gamedirlen *
 			sizeof(*gameinfo_gamedir));
 	memcpy(gameinfopath + gamedirlen, PATHSEP OS_LIT("gameinfo.txt"),

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -76,7 +76,7 @@ static bool find_alias_head(con_cmdcb alias_cb) {
 		// alias command with no args calls ConMsg() then loads the head pointer
 		// that asm looks like: call <reg>; mov <reg>, dword ptr [x]
 		// (we don't care about the exact registers)
-		if (p[0] == X86_MISCMW && (p[1] & 0xF0) == 0xD0 &&
+		if (p[0] == X86_MISCMW && (p[1] & 0xF8) == 0xD0 &&
 				p[2] == X86_MOVRMW && (p[3] & 0xC7) == 0x05) {
 			_alias_head = mem_loadptr(p + 4);
 			return true;
