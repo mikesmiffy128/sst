@@ -174,6 +174,11 @@ static void l4d1specific(void) {
 
 	// same thing as above, seemed easier to just dupe :)
 	chcmdflags("cl_fullupdate", CON_CHEAT, 0);
+
+	// These commands lack CLIENTCMD_CAN_EXECUTE, so enabling/disabling addons
+	// doesn't work without manually running these in the console afterwards.
+	chcmdflags("mission_reload", 0, CON_CCMDEXEC);
+	chcmdflags("update_addon_paths", 0, CON_CCMDEXEC);
 }
 
 void fixes_apply(void) {
