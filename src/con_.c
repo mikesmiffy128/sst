@@ -1,6 +1,6 @@
 /* THIS FILE SHOULD BE CALLED `con.c` BUT WINDOWS IS STUPID */
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -328,6 +328,16 @@ void con_reg(void *cmd_or_var) {
 	RegisterConCommand(_con_iface, cmd_or_var);
 }
 
+// XXX: these should use vcall/gamedata stuff as they're only used for the
+// setter API after everything is brought up. however that will require some
+// kind of windows/linux conditionals in the gamedata system! this solution is
+// just hacked in for now to get things working because it was broken before...
+#ifdef _WIN32
+static int vtidx_SetValue_str = 2, vtidx_SetValue_f = 1, vtidx_SetValue_i = 0;
+#else
+enum { vtidx_SetValue_str = 0, vtidx_SetValue_f = 1, vtidx_SetValue_i = 2 };
+#endif
+
 void con_init(void) {
 	_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf);
 	dllid = AllocateDLLIdentifier(_con_iface);
@@ -377,6 +387,12 @@ void con_init(void) {
 	*pv++ = (void *)&Create_var;
 	if (GAMETYPE_MATCHES(L4D2x) || GAMETYPE_MATCHES(Portal2)) {
 		*pi++ = (void *)&SetValue_colour_thunk;
+#ifdef _WIN32
+		// stupid hack for above mentioned crazy overload ordering
+		++vtidx_SetValue_str;
+		++vtidx_SetValue_i;
+		++vtidx_SetValue_f;
+#endif
 	}
 #ifdef _WIN32
 	// see above: these aren't prefilled due the the reverse order
@@ -484,22 +500,15 @@ GETTER(int, con_getvari, ival)
 #undef GETTER
 
 // XXX: move this to vcall/gamedata (will require win/linux conditionals first!)
+// see also above comment on the vtidx definitions
 #define SETTER(T, I, N) \
 	void N(struct con_var *v, T x) { \
 		((void (*VCALLCONV)(void *, T))(v->vtable_iconvar[I]))( \
 				&v->vtable_iconvar, x); \
 	}
-// vtable indices for str/int/float are consistently at the start, hooray.
-// unfortunately the windows overload ordering meme still applies...
-#ifdef _WIN32
-SETTER(const char *, 2, con_setvarstr)
-SETTER(float, 1, con_setvarf)
-SETTER(int, 0, con_setvari)
-#else
-SETTER(const char *, 0, con_setvarstr)
-SETTER(float, 1, con_setvarf)
-SETTER(int, 2, con_setvari)
-#endif
+SETTER(const char *, vtidx_SetValue_str, con_setvarstr)
+SETTER(float, vtidx_SetValue_f, con_setvarf)
+SETTER(int, vtidx_SetValue_i, con_setvari)
 #undef SETTER
 
 con_cmdcb con_getcmdcb(const struct con_cmd *cmd) {
