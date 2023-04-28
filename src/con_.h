@@ -240,15 +240,15 @@ extern void *_con_vtab_iconvar[];
 		.vtable_iconvar = _con_vtab_iconvar, \
 		.parent = &_cvar_##name_, /* bizarre, but how the engine does it */ \
 		.defaultval = _Generic(value, char *: value, int: #value, \
-				float: #value), \
+				double: #value), \
 		/* N.B. the NOLINT comment below isn't for you, the reader, it's for the
 		   computer, because clangd decided the only way to turn off a bogus
 		   warning is to write a bogus comment. Also note, this comment you're
 		   reading now isn't very useful either, I'm just angry. */ \
 		.strlen = _Generic(value, char *: sizeof(value), /*NOLINT*/ \
 				default: sizeof(#value)), \
-		.fval = _Generic(value, char *: 0, int: value, float: value), \
-		.ival = _Generic(value, char *: 0, int: value, float: (int)value), \
+		.fval = _Generic(value, char *: 0, int: value, double: value), \
+		.ival = _Generic(value, char *: 0, int: value, double: (int)value), \
 		.hasmin = hasmin_, .minval = (min), .hasmax = hasmax_, .maxval = (max) \
 	}; \
 	struct con_var *name_ = &_cvar_##name_;
