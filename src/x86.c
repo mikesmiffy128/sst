@@ -17,23 +17,31 @@
 #include "intdefs.h"
 #include "x86.h"
 
-static int mrm(uchar b, int addrlen) {
-	// I won't lie: I don't *entirely* understand this particular logic. I
-	// largely based it on some public domain code I found on the internet.
-	// See: https://github.com/Nomade040/length-disassembler/blob/e8b34546/ldisasm.cpp#L14
-	// Bonus route credit goes to Bill for spotting some bugs in prior versions.
-	if (addrlen == 4 || b & 0xC0) {
-		int sib = addrlen == 4 && b < 0xC0 && (b & 7) == 4;
-		switch (b & 0xC0) {
+static int mrmsib(const uchar *p, int addrlen) {
+	// I won't lie: I thought I almost understood this, but after Bill walked me
+	// through correcting a bunch of wrong cases I now realise that I don't
+	// really understand it at all. If it helps, I used this as a reference:
+	// https://github.com/Nomade040/length-disassembler/blob/e8b34546/ldisasm.cpp#L14
+	// But it's confusingly-written enough that the code I wrote before didn't
+	// work, so with any luck nobody will need to refer to it again and this is
+	// actually correct now. Fingers crossed.
+	if (addrlen == 4 || *p & 0xC0) {
+		int sib = addrlen == 4 && *p < 0xC0 && (*p & 7) == 4;
+		switch (*p & 0xC0) {
 			// disp8
 			case 0x40: return 2 + sib;
 			// disp16/32
-			case 0: if ((b & 7) != 5) return 1 + sib;
+			case 0:
+				if ((*p & 7) != 5) {
+					// disp8/32 via SIB
+					if (sib && (p[1] & 7) == 5) return *p & 0x40 ? 3 : 6;
+					return 1 + sib;
+				}
 			case 0x80: return 1 + addrlen + sib;
 		}
 	}
-	if (addrlen == 2 && b == 0x26) return 3;
-	return 1; // NOTE: include the mrm itself in the byte count
+	if (addrlen == 2 && *p == 0x26) return 3;
+	return 1; // note: include the mrm itself in the byte count
 }
 
 int x86_len(const void *insn_) {
@@ -58,15 +66,15 @@ P:		X86_SEG_PREFIXES(CASES)
 		X86_OPS_1BYTE_I8(CASES) operandlen = 1;
 		X86_OPS_1BYTE_IW(CASES) return pfxlen + 1 + operandlen;
 		X86_OPS_1BYTE_I16(CASES) return pfxlen + 3;
-		X86_OPS_1BYTE_MRM(CASES) return pfxlen + 1 + mrm(insn[1], addrlen);
+		X86_OPS_1BYTE_MRM(CASES) return pfxlen + 1 + mrmsib(insn + 1, addrlen);
 		X86_OPS_1BYTE_MRM_I8(CASES) operandlen = 1;
 		X86_OPS_1BYTE_MRM_IW(CASES)
-			return pfxlen + 1 + operandlen + mrm(insn[1], addrlen);
+			return pfxlen + 1 + operandlen + mrmsib(insn + 1, addrlen);
 		case X86_ENTER: return pfxlen + 4;
 		case X86_CRAZY8: operandlen = 1;
 		case X86_CRAZYW:
 			if ((insn[1] & 0x38) >= 0x10) operandlen = 0;
-			return pfxlen + 2 + operandlen + mrm(insn[1], addrlen);
+			return pfxlen + 2 + operandlen + mrmsib(insn + 1, addrlen);
 		case X86_2BYTE: ++insn; goto b2;
 	}
 	return -1;
@@ -76,9 +84,9 @@ b2:	switch (*insn) {
 		case X86_3BYTE1: case X86_3BYTE2: case X86_3DNOW: return -1;
 		X86_OPS_2BYTE_NO(CASES) return pfxlen + 2;
 		X86_OPS_2BYTE_IW(CASES) return pfxlen + 2 + operandlen;
-		X86_OPS_2BYTE_MRM(CASES) return pfxlen + 2 + mrm(insn[1], addrlen);
+		X86_OPS_2BYTE_MRM(CASES) return pfxlen + 2 + mrmsib(insn + 1, addrlen);
 		X86_OPS_2BYTE_MRM_I8(CASES) operandlen = 1;
-			return pfxlen + 2 + operandlen + mrm(insn[1], addrlen);
+			return pfxlen + 2 + operandlen + mrmsib(insn + 1, addrlen);
 	}
 
 	return -1;
