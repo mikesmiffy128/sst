@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,17 +19,18 @@
 
 static int mrm(uchar b, int addrlen) {
 	// I won't lie: I don't *entirely* understand this particular logic. I
-	// largely based it on some public domain code I found on the internet
+	// largely based it on some public domain code I found on the internet.
+	// See: https://github.com/Nomade040/length-disassembler/blob/e8b34546/ldisasm.cpp#L14
+	// Bonus route credit goes to Bill for spotting some bugs in prior versions.
 	if (addrlen == 4 || b & 0xC0) {
 		int sib = addrlen == 4 && b < 0xC0 && (b & 7) == 4;
 		switch (b & 0xC0) {
 			// disp8
 			case 0x40: return 2 + sib;
 			// disp16/32
-			case 0: if ((b & 7) == 5) case 0x80: return 1 + addrlen + sib;
+			case 0: if ((b & 7) != 5) return 1 + sib;
+			case 0x80: return 1 + addrlen + sib;
 		}
-		// disp8/32
-		if (sib && (b & 7) == 5) return b & 0x40 ? 3 : 6;
 	}
 	if (addrlen == 2 && b == 0x26) return 3;
 	return 1; // NOTE: include the mrm itself in the byte count
