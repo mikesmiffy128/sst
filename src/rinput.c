@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -22,11 +22,11 @@
 #include <Windows.h>
 
 #include "con_.h"
-#include "gamedata.h"
-#include "hook.h"
 #include "engineapi.h"
 #include "errmsg.h"
 #include "feature.h"
+#include "gamedata.h"
+#include "hook.h"
 #include "intdefs.h"
 #include "mem.h"
 #include "vcall.h"
@@ -149,9 +149,9 @@ INIT {
 		.lpszClassName = L"RInput"
 	};
 	if (!RegisterClassExW(&wc)) {
-		struct con_colour gold = {255, 210, 0, 255};
-		struct con_colour blue = {45, 190, 190, 255};
-		struct con_colour white = {200, 200, 200, 255};
+		struct rgba gold = {255, 210, 0, 255};
+		struct rgba blue = {45, 190, 190, 255};
+		struct rgba white = {200, 200, 200, 255};
 		con_colourmsg(&gold, "SST PROTIP! ");
 		con_colourmsg(&blue, "It appears you're using RInput.exe.\n"
 				"Consider launching without that and using ");

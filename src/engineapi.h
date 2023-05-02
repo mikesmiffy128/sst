@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -70,6 +70,16 @@ struct edict {
 };
 
 struct vec3f { float x, y, z; };
+
+/* an RGBA colour, used for colour console messages as well as VGUI/HUD stuff */
+struct rgba {
+	union {
+		struct { u8 r, g, b, a; };
+		u32 val;
+		uchar bytes[4];
+	};
+};
+
 struct CMoveData {
 	bool firstrun : 1, gamecodemoved : 1;
 	ulong playerhandle;

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -40,9 +40,7 @@ DEF_CVAR(sst_portal_colour1, "Crosshair colour for left portal (hex)",
 		"40A0FF", CON_ARCHIVE | CON_HIDDEN)
 DEF_CVAR(sst_portal_colour2, "Crosshair colour for right portal (hex)",
 		"FFA020", CON_ARCHIVE | CON_HIDDEN)
-// XXX: bit weird that this is still con_colour. should we move it back out to
-// engineapi as a general colour struct??
-static struct con_colour colours[3] = {
+static struct rgba colours[3] = {
 		{242, 202, 167, 255}, {64, 160, 255, 255}, {255, 160, 32, 255}};
 
 static void hexparse(uchar out[static 4], const char *s) {
@@ -89,11 +87,11 @@ static void colourcb(struct con_var *v) {
 }
 
 // Original sig is the following but we wanna avoid calling convention weirdness
-//typedef struct con_colour (*UTIL_Portal_Color_func)(int);
-typedef void (*UTIL_Portal_Color_func)(struct con_colour *out, int portal);
+//typedef struct rgba (*UTIL_Portal_Color_func)(int);
+typedef void (*UTIL_Portal_Color_func)(struct rgba *out, int portal);
 static UTIL_Portal_Color_func orig_UTIL_Portal_Color;
-static void hook_UTIL_Portal_Color(struct con_colour *out, int portal) {
-	if (portal < 0 || portal > 2) *out = (struct con_colour){255, 255, 255, 255};
+static void hook_UTIL_Portal_Color(struct rgba *out, int portal) {
+	if (portal < 0 || portal > 2) *out = (struct rgba){255, 255, 255, 255};
 	else *out = colours[portal];
 }
 

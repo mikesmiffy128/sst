@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -415,18 +415,17 @@ F( "static bool has_%s = false;", f->modname)
 	}
 _( "")
 _( "static void initfeatures(void) {")
-	for (struct feature *f = features.x[0]; f; f = f->hdr.x[0]) {
-		featdfs(out, f);
-	}
+	for (struct feature *f = features.x[0]; f; f = f->hdr.x[0]) featdfs(out, f);
 _( "")
 	// note: old success message is moved in here, to get the ordering right
-_( "	con_colourmsg(RGBA(64, 255, 64, 255),")
+_( "	con_colourmsg(&(struct rgba){64, 255, 64, 255},")
 _( "			LONGNAME \" v\" VERSION \" successfully loaded\");")
-_( "	con_colourmsg(RGBA(255, 255, 255, 255), \" for game \");")
-_( "	con_colourmsg(RGBA(0, 255, 255, 255), \"%s\\n\", gameinfo_title);")
-_( "	struct con_colour white = {255, 255, 255, 255};")
-_( "	struct con_colour green = {128, 255, 128, 255};")
-_( "	struct con_colour red   = {255, 128, 128, 255};")
+_( "	con_colourmsg(&(struct rgba){255, 255, 255, 255}, \" for game \");")
+_( "	con_colourmsg(&(struct rgba){0, 255, 255, 255}, \"%s\\n\", ")
+_( "		gameinfo_title);")
+_( "	struct rgba white = {255, 255, 255, 255};")
+_( "	struct rgba green = {128, 255, 128, 255};")
+_( "	struct rgba red   = {255, 128, 128, 255};")
 _( "	con_colourmsg(&white, \"---- List of plugin features ---\\n\");");
 	for (const struct feature *f = features_bydesc.x[0]; f;
 			f = f->hdr_bydesc.x[0]) {

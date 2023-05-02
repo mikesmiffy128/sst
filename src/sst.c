@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -179,8 +179,6 @@ static const void *const *const plugin_obj;
 
 static bool already_loaded = false, skip_unload = false;
 
-#define RGBA(r, g, b, a) (&(struct con_colour){(r), (g), (b), (a)})
-
 // auto-update message. see below in do_featureinit()
 static const char *updatenotes = "\
 * various internal cleanup\n\
@@ -201,8 +199,8 @@ static void do_featureinit(void) {
 #else
 		unsetenv("SST_UPDATED");
 #endif
-		struct con_colour gold = {255, 210, 0, 255};
-		struct con_colour white = {255, 255, 255, 255};
+		struct rgba gold = {255, 210, 0, 255};
+		struct rgba white = {255, 255, 255, 255};
 		con_colourmsg(&white, "\n" NAME " was just ");
 		con_colourmsg(&gold, "UPDATED");
 		con_colourmsg(&white, " to version ");

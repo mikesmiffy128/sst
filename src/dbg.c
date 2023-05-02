@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,12 +19,13 @@
 #endif
 
 #include "con_.h"
+#include "engineapi.h"
 #include "intdefs.h"
 #include "ppmagic.h"
 #include "udis86.h"
 
 void dbg_hexdump(char *name, const void *p, int len) {
-	struct con_colour nice_colour = {160, 64, 200, 255}; // a nice purple colour
+	struct rgba nice_colour = {160, 64, 200, 255}; // a nice purple colour
 	con_colourmsg(&nice_colour, "Hex dump \"%s\" (%p):", name, p);
 	for (const uchar *cp = p; cp - (uchar *)p < len; ++cp) {
 		// group into words and wrap every 8 words
@@ -38,7 +39,7 @@ void dbg_hexdump(char *name, const void *p, int len) {
 }
 
 void dbg_asmdump(char *name, const void *p, int len) {
-	struct con_colour nice_colour = {40, 160, 140, 255}; // a nice teal colour
+	struct rgba nice_colour = {40, 160, 140, 255}; // a nice teal colour
 	struct ud udis;
 	ud_init(&udis);
 	ud_set_mode(&udis, 32);

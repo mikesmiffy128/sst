@@ -21,7 +21,7 @@
 
 #include "abi.h"
 #include "con_.h"
-#include "engineapi.h" // only for factories - XXX: do we care this is circular?
+#include "engineapi.h" // for factories and rgba - XXX: is this a bit circular?
 #include "extmalloc.h"
 #include "gametype.h"
 #include "mem.h"
@@ -46,7 +46,7 @@ int con_cmdclient;
 // these have to be extern because of varargs nonsense - they get wrapped in a
 // macro for the actual api (con_colourmsg)
 void *_con_iface;
-void (*_con_colourmsgf)(void *this, const struct con_colour *c, const char *fmt,
+void (*_con_colourmsgf)(void *this, const struct rgba *c, const char *fmt,
 		...) _CON_PRINTF(3, 4);
 
 // bootstrap hackery, see "GENIUS HACK" comment below :)
@@ -67,7 +67,7 @@ DECL_VFUNC_DYN(void, CallGlobalChangeCallbacks, struct con_var *, const char *,
 // can't pass varargs to other varargs of course). we only get a pointer to it
 // via VFUNC so just declare the typedef here - I don't wanna write any more
 // macros today.
-typedef void (*ConsoleColorPrintf_func)(void *, const struct con_colour *,
+typedef void (*ConsoleColorPrintf_func)(void *, const struct rgba *,
 		const char *, ...);
 
 static inline void initval(struct con_var *v) {
@@ -229,7 +229,7 @@ static void VCALLCONV InternalSetIntValue_impl(struct con_var *this, int v) {
 DECL_VFUNC_DYN(void, InternalSetValue, const char *)
 DECL_VFUNC_DYN(void, InternalSetFloatValue, float)
 DECL_VFUNC_DYN(void, InternalSetIntValue, int)
-DECL_VFUNC_DYN(void, InternalSetColorValue, struct con_colour)
+DECL_VFUNC_DYN(void, InternalSetColorValue, struct rgba)
 
 // Hack: IConVar things get this-adjusted pointers, we just reverse the offset
 // to get the top pointer.
@@ -248,7 +248,7 @@ static void VCALLCONV SetValue_i_thunk(void *thisoff, int v) {
 			-offsetof(struct con_var, vtable_iconvar));
 	InternalSetIntValue(&this->parent->base, v);
 }
-static void VCALLCONV SetValue_colour_thunk(void *thisoff, struct con_colour v) {
+static void VCALLCONV SetValue_colour_thunk(void *thisoff, struct rgba v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
 	InternalSetColorValue(&this->parent->base, v);
