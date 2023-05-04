@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2022 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -16,6 +16,9 @@
  */
 
 #include <stdlib.h>
+#ifdef _WIN32
+#include <immintrin.h>
+#endif
 
 #include "bind.h"
 #include "con_.h"
@@ -67,29 +70,50 @@ static ssize __stdcall mproc(int code, UINT_PTR wp, ssize lp) {
 
 // this is its own thread to meet the strict timing deadline, otherwise the
 // hook gets silently removed. plus, we don't wanna incur latency anyway.
-static ulong __stdcall inhookthrmain(void *unused) {
+static ulong __stdcall inhookthrmain(void *param) {
+	volatile u32 *sig = param;
 	if (!SetWindowsHookExW(WH_KEYBOARD_LL, &kproc, 0, 0) ||
 			!SetWindowsHookExW(WH_MOUSE_LL, &mproc, 0, 0)) {
+		*sig = 2;
 		return -1;
 	}
+	*sig = 1;
 	MSG m; int ret;
 	while ((ret = GetMessageW(&m, inhookwin, 0, 0)) > 0) DispatchMessage(&m);
 	return ret;
 }
 
+static WNDPROC orig_wndproc;
+static ssize __stdcall hook_wndproc(void *wnd, uint msg, UINT_PTR wp, ssize lp) {
+	if (msg == WM_COPYDATA && lockdown) return DefWindowProcW(wnd, msg, wp, lp);
+	return orig_wndproc(wnd, msg, wp, lp);
+}
+
 static bool win32_init(void) {
 	gamewin = FindWindowW(L"Valve001", 0);
+	// note: error messages here are a bit cryptic on purpose, but easy to find
+	// in the code. in other words, we're hiding in plain sight :-)
 	if (!gamewin) {
-		errmsg_errorsys("failed to get game window handle");
+		errmsg_errorsys("failed to find window");
 		return false;
+	}
+	orig_wndproc = (WNDPROC)SetWindowLongPtrW(gamewin, GWLP_WNDPROC,
+			(ssize)hook_wndproc);
+	if (!orig_wndproc) {
+		errmsg_errorsys("failed to attach message handler");
 	}
 	return true;
 }
 
-static void inhook_start(void) {
-	inhookwin = CreateWindowW(L"sst-eventloop", L"sst-eventloop",
-			WS_DISABLED, 0, 0, 0, 0, HWND_MESSAGE, 0, 0, 0);
-	inhookthr = CreateThread(0, 0, &inhookthrmain, 0, 0, &inhooktid);
+static void win32_end(void) {
+	// no error handling here because we'd crash either way. good luck!
+	SetWindowLongW(gamewin, GWLP_WNDPROC, (ssize)orig_wndproc);
+}
+
+static void inhook_start(volatile u32 *sig) {
+	inhookwin = CreateWindowW(L"sst-eventloop", L"sst-eventloop", WS_DISABLED,
+			0, 0, 0, 0, HWND_MESSAGE, 0, 0, 0);
+	inhookthr = CreateThread(0, 0, &inhookthrmain, (u32 *)sig, 0, &inhooktid);
 }
 
 static void inhook_check(void) {
@@ -120,6 +144,7 @@ static void inhook_stop(void) {
 		// not much else we can do now!
 		con_warn("warning: RTA mode message loop had an error during shutdown");
 	}
+	CloseHandle(inhookthr);
 }
 
 #else
@@ -128,20 +153,27 @@ static void inhook_stop(void) {
 
 #endif
 
-// TODO(rta): call these functions as part of the run lifecycle
-
-static void startlockdown(void) {
-	if (lockdown) return;
+bool ac_enable(void) {
+	if (lockdown) return true;
 #ifdef _WIN32
-	inhook_start();
+	// and now for some frivolously microoptimised spinlocking nonsense
+	volatile u32 sig = 0; // paranoid volatile to ensure no loop misopt...
+	inhook_start(&sig);
+	register u32 x; // avoid double-reading the volatile
+	// pausing in the middle here seems to produce shorter asm with gcc -O2 and
+	// clang -O3 in godbolt (avoids unrolling of head which is unlikely to help)
+	while (x = sig, _mm_pause(), !x);
+	if (x == 2) { // else 1 for success
+		con_warn("** sst: ERROR starting message loop, can't continue! **");
+		CloseHandle(inhookthr);
+		return false;
+	}
 #endif
-	// FIXME: should really have some semaphore to make sure inhook thread got
-	// going okay...
 	lockdown = true;
-	// TODO(rta): start demos, etc
+	return true;
 }
 
-HANDLE_EVENT(Tick) {
+HANDLE_EVENT(Tick, bool simulating) {
 #ifdef _WIN32
 	static uint fewticks = 0;
 	// just check this every so often (roughly 0.1-0.3s depending on game)
@@ -149,7 +181,7 @@ HANDLE_EVENT(Tick) {
 #endif
 }
 
-static void endlockdown(void) {
+void ac_disable(void) {
 	if (!lockdown) return;
 #ifdef _WIN32
 	inhook_stop();
@@ -262,7 +294,12 @@ INIT {
 }
 
 END {
-	endlockdown();
+#if defined(_WIN32)
+	win32_end();
+#elif defined(__linux__)
+	// TODO(linux): call cleanup things
+#endif
+	ac_disable();
 	unhook_inline((void *)orig_DispatchInputEvent);
 }
 
