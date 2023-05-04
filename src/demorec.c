@@ -20,6 +20,7 @@
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"
+#include "event.h"
 #include "feature.h"
 #include "gamedata.h"
 #include "gameinfo.h"
@@ -41,7 +42,9 @@ DEF_CVAR(sst_autorecord, "Continuously record demos even after reconnecting", 1,
 void *demorecorder;
 static int *demonum;
 static bool *recording;
+const char *demorec_basename;
 static bool wantstop = false;
+bool demorec_forceauto = false;
 
 #define SIGNONSTATE_NEW 3
 #define SIGNONSTATE_SPAWN 5
@@ -78,16 +81,22 @@ static void VCALLCONV hook_StopRecording(void *this) {
 	orig_StopRecording(this);
 	// If the user didn't specifically request the stop, tell the engine to
 	// start recording again as soon as it can.
-	if (wasrecording && !wantstop && con_getvari(sst_autorecord)) {
+	if (wasrecording && !wantstop && (demorec_forceauto ||
+			con_getvari(sst_autorecord))) {
 		*recording = true;
 		*demonum = lastnum;
 	}
 }
 
+DECL_VFUNC_DYN(void, StartRecording)
+
 static struct con_cmd *cmd_record, *cmd_stop;
 static con_cmdcb orig_record_cb, orig_stop_cb;
 
+DEF_PREDICATE(AllowDemoControl, void)
+
 static void hook_record_cb(const struct con_cmdargs *args) {
+	if (!CHECK_AllowDemoControl()) return;
 	bool was = *recording;
 	if (!was && args->argc == 2 || args->argc == 3) {
 		// safety check: make sure a directory exists, otherwise recording
@@ -149,6 +158,7 @@ static void hook_record_cb(const struct con_cmdargs *args) {
 }
 
 static void hook_stop_cb(const struct con_cmdargs *args) {
+	if (!CHECK_AllowDemoControl()) return;
 	wantstop = true;
 	orig_stop_cb(args);
 	wantstop = false;
@@ -198,6 +208,51 @@ static inline bool find_recmembers(void *stoprecording) {
 	return false;
 }
 
+// This finds "m_szDemoBaseName" using the pointer to the original
+// "StartRecording" demorecorder function.
+static inline bool find_demoname(void *startrecording) {
+#ifdef _WIN32
+	for (uchar *p = (uchar *)startrecording; p - (uchar *)startrecording < 32;) {
+		// the function immediately calls Q_strncpy and copies into a buffer
+		// offset from `this` - look for a LEA instruction some time *before*
+		// the first call takes place
+		if (p[0] == X86_CALL) return false;
+		if (p[0] == X86_LEA && (p[1] & 0xC0) == 0x80) {
+			demorec_basename = mem_offset(demorecorder, mem_load32(p + 2));
+			return true;
+		}
+		NEXT_INSN(p, "demo basename variable");
+	}
+#else
+#warning TODO(linux): implement linux equivalent (???)
+#endif
+	return false;
+}
+
+bool demorec_start(const char *name) {
+	bool was = *recording;
+	if (was) return false;
+	// easiest way to do this, though dumb, is to just call the record command
+	// callback that we already have a hold of. note: this args object is very
+	// incomplete, but is enough to make the command work
+	struct con_cmdargs args = {.argc = 2, .argv = {0, name, 0}};
+	orig_record_cb(&args);
+	if (!was && *recording) *demonum = 0; // same logic as in the hook
+	return *recording;
+}
+
+int demorec_stop(void) {
+	// note: our set-to-0-and-back hack actually has the nice side effect of
+	// making this correct when recording and stopping in the menu lol
+	int ret = *demonum;
+	orig_StopRecording(demorecorder);
+	return ret;
+}
+
+bool demorec_recording(void) {
+	return *recording;
+}
+
 INIT {
 	cmd_record = con_findcmd("record");
 	if (!cmd_record) { // can *this* even happen? I hope not!
@@ -224,6 +279,10 @@ INIT {
 	}
 	if (!find_recmembers(vtable[vtidx_StopRecording])) {
 		errmsg_errorx("couldn't find recording state variables");
+		return false;
+	}
+	if (!find_demoname(vtable[vtidx_StartRecording])) {
+		errmsg_errorx("couldn't find demo basename variable");
 		return false;
 	}
 
