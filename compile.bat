@@ -73,6 +73,7 @@ setlocal DisableDelayedExpansion
 :+ hook.c
 :+ kv.c
 :+ l4dwarp.c
+:+ nomute.c
 :+ nosleep.c
 :+ portalcolours.c
 :+ rinput.c
@@ -102,7 +103,8 @@ if "%dbg%"=="1" (
 	set clibs=-lmsvcrt -lvcruntime -lucrt
 )
 %CC% -shared -flto %ldflags% -Wl,/IMPLIB:.build/sst.lib,/Brepro,/nodefaultlib ^
--L.build %clibs% -lkernel32 -luser32 -ladvapi32 -lshlwapi -ld3d9 -ltier0 -lvstdlib -o sst.dll%objs% .build/dll.res || exit /b
+-L.build %clibs% -lkernel32 -luser32 -ladvapi32 -lshlwapi -ld3d9 -ldsound ^
+-ltier0 -lvstdlib -o sst.dll%objs% .build/dll.res || exit /b
 :: get rid of another useless file (can we just not create this???)
 del .build\sst.lib
 
