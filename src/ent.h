@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,7 +19,10 @@
 
 #include "engineapi.h"
 
+/* Returns a server-side edict pointer, or null if not found. */
 struct edict *ent_getedict(int idx);
+
+/* Returns an opaque pointer to a server-side entity, or null if not found. */
 void *ent_get(int idx);
 
 #endif

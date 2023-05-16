@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,8 +20,8 @@
 #include "intdefs.h"
 
 /*
- * This file defines miscellaneous C++ ABI stuff. Looking at it may cause
- * brain damage and/or emotional trauma.
+ * This file defines miscellaneous C++ ABI stuff. Looking at it may cause brain
+ * damage and/or emotional trauma.
  */
 
 #ifdef _WIN32 // Windows RTTI stuff, obviously only used on Windows.
@@ -37,19 +37,20 @@
 // should be a small lookup table is an absolute nutcase. I hope that individual
 // has gotten some help by now, mostly for the sake of others.
 
-struct msvc_rtti_descriptor {
-	void *vtab;
+struct msvc_rtti_descriptor_head {
+	void **vtab;
 	void *unknown; // ???
-	// XXX: pretty sure this is supposed to be flexible, but too lazy to write
-	// the stupid union init macros to make that fully portable
-	char classname[80];
+	// descriptor includes this, but constant flexible arrays are annoying, so
+	// this structure is just the header part and the string is tacked on in the
+	// DEF_MSVC_BASIC_RTTI macro below
+	//char classname[];
 };
 
 // "pointer to member displacement"
 struct msvc_pmd { int mdisp, pdisp, vdisp; };
 
 struct msvc_basedesc {
-	struct msvc_rtti_descriptor *desc;
+	const struct msvc_rtti_descriptor_head *desc;
 	uint nbases;
 	struct msvc_pmd where;
 	uint attr;
@@ -59,7 +60,7 @@ struct msvc_rtti_hierarchy {
 	uint sig;
 	uint attrs;
 	uint nbaseclasses;
-	struct msvc_basedesc **baseclasses;
+	const struct msvc_basedesc **baseclasses;
 };
 
 struct msvc_rtti_locator {
@@ -67,20 +68,26 @@ struct msvc_rtti_locator {
 	int baseoff;
 	// ctor offset, or some flags; reactos and rust pelite say different things?
 	int unknown;
-	struct msvc_rtti_descriptor *desc;
-	struct msvc_rtti_hierarchy *hier;
+	const struct msvc_rtti_descriptor_head *desc;
+	const struct msvc_rtti_hierarchy *hier;
 };
 
 // I mean seriously look at this crap!
 #define DEF_MSVC_BASIC_RTTI(mod, name, vtab, typestr) \
-mod struct msvc_rtti_locator name; \
-static struct msvc_rtti_descriptor _desc_##name = {(vtab), 0, typestr}; \
-static struct msvc_basedesc _basedesc_##name = {&_desc_##name, 0, {0, 0, 0}, 0}; \
-mod struct msvc_rtti_locator name = { \
+const mod struct msvc_rtti_locator name; \
+static const struct { \
+	struct msvc_rtti_descriptor_head d; \
+	char classname[sizeof("" typestr)]; \
+} _desc_##name = {(vtab), 0, .classname = "" typestr}; \
+static const struct msvc_basedesc _basedesc_##name = { \
+	&_desc_##name.d, 0, {0, 0, 0}, 0 \
+}; \
+mod const struct msvc_rtti_locator name = { \
 	0, 0, 0, \
-	&_desc_##name, \
+	&_desc_##name.d, \
 	&(struct msvc_rtti_hierarchy){ \
-		0, 1 /* per engine */, 1, (struct msvc_basedesc *[]){&_basedesc_##name} \
+		0, 1 /* match engine */, 1, \
+		(const struct msvc_basedesc *[]){&_basedesc_##name} \
 	} \
 };
 

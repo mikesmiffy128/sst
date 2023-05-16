@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2022 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -102,7 +102,7 @@ nosp:	con_warn("hook_inline: out of trampoline space\n");
 }
 
 void unhook_inline(void *orig) {
-	uchar *p = (uchar *)orig;
+	uchar *p = orig;
 	int len = p[-1];
 	int off = mem_load32(p + len + 1);
 	uchar *q = p + off + 5;

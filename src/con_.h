@@ -213,7 +213,7 @@ extern void *_con_vtab_cmd[];
 // a constant expression we have to use a macro.
 extern struct _con_vtab_var_wrap {
 #ifdef _WIN32
-	struct msvc_rtti_locator *rtti;
+	const struct msvc_rtti_locator *rtti;
 #else
 	// itanium ABI also has the top offset/"whole object" offset in libstdc++
 	ssize topoffset;

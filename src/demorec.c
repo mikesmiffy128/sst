@@ -168,9 +168,10 @@ static void hook_stop_cb(const struct con_cmdargs *args) {
 // instance).
 static inline bool find_demorecorder(void) {
 #ifdef _WIN32
+	const uchar *insns = (const uchar *)orig_stop_cb;
 	// The "stop" command calls the virtual function demorecorder.IsRecording(),
 	// so just look for the load of the "this" pointer into ECX
-	for (uchar *p = (uchar *)orig_stop_cb; p - (uchar *)orig_stop_cb < 32;) {
+	for (const uchar *p = insns; p - insns < 32;) {
 		if (p[0] == X86_MOVRMW && p[1] == X86_MODRM(0, 1, 5)) {
 			void **indirect = mem_loadptr(p + 2);
 			demorecorder = *indirect;
@@ -188,7 +189,8 @@ static inline bool find_demorecorder(void) {
 // original "StopRecording" demorecorder function.
 static inline bool find_recmembers(void *stoprecording) {
 #ifdef _WIN32
-	for (uchar *p = (uchar *)stoprecording; p - (uchar *)stoprecording < 128;) {
+	const uchar *insns = (uchar *)stoprecording;
+	for (const uchar *p = insns; p - insns < 128;) {
 		// m_nDemoNumber = 0 -> mov dword ptr [<reg> + off], 0
 		// XXX: might end up wanting constants for the MRM field masks?
 		if (p[0] == X86_MOVMIW && (p[1] & 0xC0) == 0x80 &&
@@ -212,7 +214,8 @@ static inline bool find_recmembers(void *stoprecording) {
 // "StartRecording" demorecorder function.
 static inline bool find_demoname(void *startrecording) {
 #ifdef _WIN32
-	for (uchar *p = (uchar *)startrecording; p - (uchar *)startrecording < 32;) {
+	const uchar *insns = (uchar *)startrecording;
+	for (const uchar *p = insns; p - insns < 32;) {
 		// the function immediately calls Q_strncpy and copies into a buffer
 		// offset from `this` - look for a LEA instruction some time *before*
 		// the first call takes place

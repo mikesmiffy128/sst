@@ -17,6 +17,7 @@
 #ifndef INC_BIND_H
 #define INC_BIND_H
 
+/* Returns the command string bound to a given keycode. */
 const char *bind_get(int keycode);
 
 #endif

@@ -21,6 +21,7 @@
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"
+#include "gamedata.h"
 #include "gametype.h"
 #include "intdefs.h"
 #include "kv.h"

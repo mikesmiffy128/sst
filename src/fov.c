@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2022 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -50,9 +50,9 @@ static void VCALLCONV hook_SetDefaultFOV(void *this, int fov) {
 }
 
 static bool find_SetDefaultFOV(struct con_cmd *fov) {
-	uchar *fovcb = (uchar *)fov->cb;
+	const uchar *insns = (const uchar *)fov->cb;
 	int callcnt = 0;
-	for (uchar *p = fovcb; p - fovcb < 96;) {
+	for (const uchar *p = insns; p - insns < 96;) {
 		// fov command source, and consequent asm, calls 4 functions, one of
 		// them virtual (i.e. via register). of the 3 direct calls,
 		// SetDefaultFOV is the third.

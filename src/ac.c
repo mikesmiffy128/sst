@@ -27,6 +27,7 @@
 #include "errmsg.h"
 #include "event.h"
 #include "feature.h"
+#include "gamedata.h"
 #include "intdefs.h"
 #include "mem.h"
 #include "os.h"
@@ -242,10 +243,8 @@ static bool find_DispatchInputEvent(void) {
 		return false;
 	}
 	void *cgame;
-	GetDesktopResolution_func GetDesktopResolution =
-			VFUNC(gameuifuncs, GetDesktopResolution);
-	for (uchar *p = (uchar *)GetDesktopResolution;
-			p - (uchar *)GetDesktopResolution < 16;) {
+	const uchar *insns = (const uchar*)VFUNC(gameuifuncs, GetDesktopResolution);
+	for (const uchar *p = insns; p - insns < 16;) {
 		if (p[0] == X86_MOVRMW && p[1] == X86_MODRM(0, 1, 5)) {
 			void **indirect = mem_loadptr(p + 2);
 			cgame = *indirect;
@@ -255,10 +254,8 @@ static bool find_DispatchInputEvent(void) {
 	}
 	errmsg_errorx("couldn't find pointer to CGame instance");
 	return false;
-ok:	DispatchAllStoredGameMessages_func DispatchAllStoredGameMessages =
-			VFUNC(cgame, DispatchAllStoredGameMessages);
-	for (uchar *p = (uchar *)DispatchAllStoredGameMessages;
-			p - (uchar *)DispatchAllStoredGameMessages < 128;) {
+ok:	insns = (const uchar *)VFUNC(cgame, DispatchAllStoredGameMessages);
+	for (const uchar *p = insns; p - insns < 128;) {
 		if (p[0] == X86_CALL) {
 			orig_DispatchInputEvent = (DispatchInputEvent_func)(p + 5 +
 					mem_loadoffset(p + 1));

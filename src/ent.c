@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -28,7 +28,7 @@ FEATURE()
 DECL_VFUNC_DYN(void *, PEntityOfEntIndex, int)
 static struct edict **edicts = 0;
 
-void *ent_getedict(int idx) {
+struct edict *ent_getedict(int idx) {
 	if (edicts) {
 		// globalvars->edicts seems to be null when disconnected
 		if (!*edicts) return 0;

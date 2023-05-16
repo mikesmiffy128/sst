@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -37,7 +37,8 @@ const char *bind_get(int keycode) { return keyinfo[keycode].binding; }
 
 static bool find_keyinfo(con_cmdcb klbc_cb) {
 #ifdef _WIN32
-	for (uchar *p = (uchar *)klbc_cb; p - (uchar *)klbc_cb < 32;) {
+	const uchar *insns = (const uchar *)klbc_cb;
+	for (const uchar *p = insns; p - insns < 32;) {
 		// key_listboundkeys command, in its loop through each possible index,
 		// does a mov from that index into a register, something like:
 		// mov <reg>, dword ptr [<reg> * 8 + s_pKeyInfo]

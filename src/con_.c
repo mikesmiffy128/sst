@@ -23,6 +23,7 @@
 #include "con_.h"
 #include "engineapi.h" // for factories and rgba - XXX: is this a bit circular?
 #include "extmalloc.h"
+#include "gamedata.h"
 #include "gametype.h"
 #include "mem.h"
 #include "os.h"

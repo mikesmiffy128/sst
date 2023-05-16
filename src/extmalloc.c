@@ -17,7 +17,7 @@
 #include "intdefs.h"
 #include "vcall.h"
 
-// FIXME: this is duped from os.h because I don't want to pull in Windows.h,
+// XXX: this is duped from os.h because I don't want to pull in Windows.h,
 // consider splitting out the IMPORT/EXPORT defs to some other thing?
 #ifdef _WIN32
 #define IMPORT __declspec(dllimport) // only needed for variables

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,8 +16,6 @@
 
 #ifndef INC_VCALL_H
 #define INC_VCALL_H
-
-#include "gamedata.h"
 
 /*
  * Convenient facilities for calling simple (single-table) virtual functions on

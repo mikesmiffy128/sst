@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -83,9 +83,9 @@ static inline void os_randombytes(void *buf, int sz) {
 
 #ifndef PATH_MAX
 // XXX: win32/crt has this dumb 260 limit even though the actual kernel imposes
-// no limit (though apparently NTFS has a limit of 65535). Theoerically we could
-// do some memes with UNC paths to extend it to at least have parity with Unix
-// PATH_MAX (4096), but for now we just kind of accept that Windows is a
+// no limit (though apparently NTFS has a limit of 65535). Theoretically we
+// could do some memes with UNC paths to extend it to at least have parity with
+// Unix PATH_MAX (4096), but for now we just kind of accept that Windows is a
 // disaster.
 #define PATH_MAX MAX_PATH
 #endif

@@ -24,7 +24,7 @@
 #include "ppmagic.h"
 #include "udis86.h"
 
-void dbg_hexdump(char *name, const void *p, int len) {
+void dbg_hexdump(const char *name, const void *p, int len) {
 	struct rgba nice_colour = {160, 64, 200, 255}; // a nice purple colour
 	con_colourmsg(&nice_colour, "Hex dump \"%s\" (%p):", name, p);
 	for (const uchar *cp = p; cp - (uchar *)p < len; ++cp) {
@@ -38,7 +38,7 @@ void dbg_hexdump(char *name, const void *p, int len) {
 	con_msg("\n");
 }
 
-void dbg_asmdump(char *name, const void *p, int len) {
+void dbg_asmdump(const char *name, const void *p, int len) {
 	struct rgba nice_colour = {40, 160, 140, 255}; // a nice teal colour
 	struct ud udis;
 	ud_init(&udis);
@@ -52,15 +52,15 @@ void dbg_asmdump(char *name, const void *p, int len) {
 }
 
 #ifdef _WIN32
-usize dbg_toghidra(void *addr) {
-	void *mod;
+usize dbg_toghidra(const void *addr) {
+	const void *mod;
 	if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
 			GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (ushort *)addr,
-			(HMODULE *)&mod/*please leave me alone*/)) {
+			(HMODULE *)&mod /* please leave me alone */)) {
 		con_warn("dbg_toghidra: couldn't get base address\n");
 		return 0;
 	}
-	return (char *)addr - (char *)mod + 0x10000000;
+	return (const char *)addr - (const char *)mod + 0x10000000;
 }
 #endif
 

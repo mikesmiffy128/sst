@@ -71,8 +71,9 @@ DEF_CCMD_HERE_UNREG(sst_alias_remove, "Remove a command alias", 0) {
 }
 
 static bool find_alias_head(con_cmdcb alias_cb) {
+	const uchar *insns = (const uchar *)alias_cb;
 #ifdef _WIN32
-	for (uchar *p = (uchar *)alias_cb; p - (uchar *)alias_cb < 64;) {
+	for (const uchar *p = insns; p - insns < 64;) {
 		// alias command with no args calls ConMsg() then loads the head pointer
 		// that asm looks like: call <reg>; mov <reg>, dword ptr [x]
 		// (we don't care about the exact registers)
