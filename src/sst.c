@@ -46,6 +46,8 @@ static int ifacever;
 // exposing lib handles in general, probably.
 void *clientlib = 0;
 
+bool sst_earlyloaded = false; // see deferinit() below
+
 #ifdef _WIN32
 extern long __ImageBase; // this is actually the PE header struct but don't care
 #define ownhandle() ((void *)&__ImageBase)
@@ -244,6 +246,7 @@ static bool deferinit(void) {
 	// Portal 2 does away with the separate gameui library, so now we just call
 	// CEngineVGui::IsInitialized() which works everywhere.
 	if (VGuiIsInitialized(vgui)) return false;
+	sst_earlyloaded = true; // let other code know
 	if (!os_mprot(*(void ***)vgui + vtidx_VGuiConnect, sizeof(void *),
 			PAGE_READWRITE)) {
 		errmsg_warnsys("couldn't make CEngineVGui vtable writable for deferred "

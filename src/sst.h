@@ -26,6 +26,9 @@ DECL_EVENT(Tick, bool /*simulating*/)
 
 extern void *clientlib;
 
+/* occasionally useful: quick query to determine how sst was loaded */
+extern bool sst_earlyloaded;
+
 #endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
