@@ -22,11 +22,8 @@
 #include "feature.h"
 #include "hook.h"
 #include "intdefs.h"
-#include "mem.h"
 #include "os.h"
 #include "sst.h"
-#include "x86.h"
-#include "x86util.h"
 
 // these have to come after Windows.h (via os.h) and in this order
 #include <mmeapi.h>
@@ -46,7 +43,7 @@ static con_cmdcbv1 snd_restart_cb = 0;
 // after that, so we don't want to run snd_restart the first time the cvar is
 // set, unless we were loaded later with plugin_load, in which case audio is
 // already up and running and we'll want to restart it every time
-bool skiprestart;
+static bool skiprestart;
 static void losefocuscb(struct con_var *v) {
 	if (!skiprestart) snd_restart_cb();
 	skiprestart = false;
@@ -69,23 +66,21 @@ PREINIT {
 INIT {
 	skiprestart = sst_earlyloaded; // see above
 	IDirectSound *ds_obj = 0;
-	if (DirectSoundCreate(NULL, &ds_obj, NULL) != DS_OK) {
+	if (DirectSoundCreate(0, &ds_obj, 0) != DS_OK) {
+		// XXX: can this error be usefully stringified?
 		errmsg_errorx("couldn't create IDirectSound instance");
 		return false;
 	}
-
 	ds_vt = ds_obj->lpVtbl;
+	ds_obj->lpVtbl->Release(ds_obj);
 	if (!os_mprot(&ds_vt->CreateSoundBuffer, sizeof(void *), PAGE_READWRITE)) {
-		errmsg_errorx("couldn't make virtual table writable");
+		errmsg_errorsys("couldn't make virtual table writable");
 		return false;
 	}
-
-	ds_obj->lpVtbl->Release(ds_obj);
-
 	orig_CreateSoundBuffer = ds_vt->CreateSoundBuffer;
 	ds_vt->CreateSoundBuffer = &hook_CreateSoundBuffer;
-	snd_mute_losefocus->base.flags &= ~CON_HIDDEN;
 
+	snd_mute_losefocus->base.flags &= ~CON_HIDDEN;
 	struct con_cmd *snd_restart = con_findcmd("snd_restart");
 	if (snd_restart) {
 		snd_restart_cb = con_getcmdcbv1(snd_restart);
@@ -97,7 +92,6 @@ INIT {
 				"audio settings or restarting the game with SST autoloaded in "
 				"order to have an effect");
 	}
-
 	return true;
 }
 
