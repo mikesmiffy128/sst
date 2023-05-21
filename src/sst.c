@@ -76,7 +76,7 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 	const os_char *searchdir = ifacever == 3 ?
 			gameinfo_gamedir : gameinfo_bindir;
 	os_char path[PATH_MAX];
-	if (!os_dlfile(ownhandle(), path, sizeof(path) / sizeof(*path))) {
+	if (os_dlfile(ownhandle(), path, sizeof(path) / sizeof(*path)) == -1) {
 		// hopefully by this point this won't happen, but, like, never know
 		errmsg_errordl("failed to get path to plugin");
 		return;

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -46,14 +46,22 @@ typedef char os_char;
 #define os_dlsym dlsym
 
 #ifdef __linux__
-static inline bool os_dlfile(void *m, char *buf, int sz) {
-	// NOTE: this might be linux/glibc-specific (I haven't checked every
-	// implementation). this is fine as we don't use it in any build-time code,
-	// only in the plugin itself. just keep it in mind!
-	struct link_map *lm = m;
-	ssz len = strlen(lm->l_name) + 1;
-	if (ssz > sz) { errno = ENAMETOOLONG; return false; }
-	memcpy(buf, lm->l_name, ssz); return true;
+// note: this is glibc-specific. it shouldn't be used in build-time code, just
+// the plugin itself (that really shouldn't be a problem).
+static inline int os_dlfile(void *m, char *buf, int sz) {
+	// private struct hidden behind _GNU_SOURCE. see dlinfo(3) or <link.h>
+	struct gnu_link_map {
+		unsigned long l_addr;
+		const char *l_name;
+		void *l_ld;
+		struct gnu_link_map *l_next, *l_prev;
+		// [more private stuff below]
+	};
+	struct gnu_link_map *lm = m;
+	int ssz = strlen(lm->l_name) + 1;
+	if (ssz > sz) { errno = ENAMETOOLONG; return -1; }
+	memcpy(buf, lm->l_name, ssz);
+	return ssz;
 }
 #endif
 
