@@ -20,8 +20,6 @@
 #include "con_.h"
 #include "errmsg.h"
 #include "feature.h"
-#include "hook.h"
-#include "intdefs.h"
 #include "os.h"
 #include "sst.h"
 
