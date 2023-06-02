@@ -29,6 +29,7 @@
 #include "vcall.h"
 
 FEATURE("Left 4 Dead warp testing")
+REQUIRE(ent)
 REQUIRE_GAMEDATA(off_entpos)
 REQUIRE_GAMEDATA(off_eyeang)
 REQUIRE_GAMEDATA(vtidx_Teleport)

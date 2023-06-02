@@ -72,7 +72,9 @@ setlocal DisableDelayedExpansion
 :+ gameinfo.c
 :+ hook.c
 :+ kv.c
-:+ l4d2vote.c
+:+ kvsys.c
+:+ l4dmm.c
+:+ l4dreset.c
 :+ l4dwarp.c
 :+ nomute.c
 :+ nosleep.c
@@ -91,7 +93,7 @@ if "%dbg%"=="1" set src=%src% src/udis86.c
 %HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h -ladvapi32 ^
 -o .build/mkentprops.exe src/build/mkentprops.c src/kv.c || exit /b
 .build\codegen.exe%src% || exit /b
-.build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv || exit /b
+.build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv gamedata/matchmaking.kv || exit /b
 .build\mkentprops.exe gamedata/entprops.kv || exit /b
 llvm-rc /FO .build\dll.res src\dll.rc || exit /b
 %CC% -shared -O0 -w -o .build/tier0.dll src/stubs/tier0.c

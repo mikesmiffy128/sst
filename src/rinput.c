@@ -51,12 +51,12 @@ FEATURE("scalable raw mouse input")
 #define USAGE_MOUSE 2
 
 static int cx, cy, rx = 0, ry = 0; // cursor xy, remainder xy
-static union { // cheeky space saving
+static union { // space saving
 	void *inwin;
 	void **vtable_insys;
-} u1;
-#define inwin u1.inwin
-#define vtable_insys u1.vtable_insys
+} U;
+#define inwin U.inwin
+#define vtable_insys U.vtable_insys
 
 DEF_CVAR_UNREG(m_rawinput, "Use Raw Input for mouse input (SST reimplementation)",
 		0, CON_ARCHIVE | CON_HIDDEN)

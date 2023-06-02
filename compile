@@ -67,7 +67,9 @@ src="\
 	gameinfo.c
 	hook.c
 	kv.c
-	l4d2vote.c
+	kvsys.c
+	l4dmm.c
+	l4dreset.c
 	l4dwarp.c
 	nosleep.c
 	portalcolours.c
@@ -85,7 +87,8 @@ $HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -include stdbool.h \
 $HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -include stdbool.h \
 		-o .build/mkentprops src/build/mkentprops.c src/kv.c
 .build/codegen `for s in $src; do echo "src/$s"; done`
-.build/mkgamedata gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv
+.build/mkgamedata gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv \
+		gamedata/matchmaking.kv
 .build/mkentprops gamedata/entprops.kv
 for s in $src; do cc "$s"; done
 $CC -shared -fpic -fuse-ld=lld -O0 -w -o .build/libtier0.so src/stubs/tier0.c

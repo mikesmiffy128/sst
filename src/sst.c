@@ -143,23 +143,6 @@ DEF_CCMD_HERE(sst_printversion, "Display plugin version information", 0) {
 	con_msg("v" VERSION "\n");
 }
 
-// HACK: later versions of L4D2 show an annoying dialog on every plugin_load.
-// We can suppress this by catching the message string that's passed from
-// engine.dll to gameui.dll through KeyValuesSystem in vstdlib.dll and just
-// replacing it with some other arbitrary garbage string. This makes gameui fail
-// to match the message and thus do nothing. :)
-static void **kvsvt;
-typedef const char *(*VCALLCONV GetStringForSymbol_func)(void *this, int s);
-static GetStringForSymbol_func orig_GetStringForSymbol = 0;
-static const char *VCALLCONV GetStringForSymbol_hook(void *this, int s) {
-	const char *ret = orig_GetStringForSymbol(this, s);
-	if (!strcmp(ret, "OnClientPluginWarning")) ret = "sstBlockedThisEvent";
-	return ret;
-}
-
-// vstdlib symbol, only currently used in l4d2 but exists everywhere so oh well
-IMPORT void *KeyValuesSystem(void);
-
 // most plugin callbacks are unused - define dummy functions for each signature
 static void VCALLCONV nop_v_v(void *this) {}
 static void VCALLCONV nop_p_v(void *this, void *p) {}
@@ -317,21 +300,6 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	*p++ = (void *)&nop_p_v;		  // OnEdictAllocated
 	*p   = (void *)&nop_p_v;		  // OnEdictFreed
 
-	// NOTE: this is technically redundant for early versions but I CBA writing
-	// a version check; it's easier to just do this unilaterally.
-	if (GAMETYPE_MATCHES(L4D2x)) {
-		void *kvs = KeyValuesSystem();
-		kvsvt = *(void ***)kvs;
-		if (!os_mprot(kvsvt + 4, sizeof(void *), PAGE_READWRITE)) {
-			errmsg_warnx("couldn't make KeyValuesSystem vtable writable");
-			errmsg_note("won't be able to prevent any nag messages");
-		}
-		else {
-			orig_GetStringForSymbol = (GetStringForSymbol_func)hook_vtable(
-					kvsvt, 4, (void *)GetStringForSymbol_hook);
-		}
-	}
-
 	if (!deferinit()) do_featureinit();
 	return true;
 }
@@ -378,10 +346,6 @@ static void do_unload(void) {
 	if (clientlib) dlclose(clientlib);
 #endif
 	con_disconnect();
-
-	if (orig_GetStringForSymbol) {
-		unhook_vtable(kvsvt, 4, (void *)orig_GetStringForSymbol);
-	}
 }
 
 static bool VCALLCONV Load(void *this, ifacefactory enginef,
