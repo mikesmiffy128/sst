@@ -246,23 +246,14 @@ bool demorec_recording(void) {
 
 INIT {
 	cmd_record = con_findcmd("record");
-	if (!cmd_record) { // can *this* even happen? I hope not!
-		errmsg_errorx("couldn't find \"record\" command");
-		return false;
-	}
 	orig_record_cb = con_getcmdcb(cmd_record);
 	cmd_stop = con_findcmd("stop");
-	if (!cmd_stop) {
-		errmsg_errorx("couldn't find \"stop\" command");
-		return false;
-	}
 	orig_stop_cb = con_getcmdcb(cmd_stop);
 	if (!find_demorecorder()) {
 		errmsg_errorx("couldn't find demo recorder instance");
 		return false;
 	}
-
-	void **vtable = *(void ***)demorecorder;
+	void **vtable = mem_loadptr(demorecorder);
 	// XXX: 16 is totally arbitrary here! figure out proper bounds later
 	if (!os_mprot(vtable, 16 * sizeof(void *), PAGE_READWRITE)) {
 		errmsg_errorsys("couldn't make virtual table writable");

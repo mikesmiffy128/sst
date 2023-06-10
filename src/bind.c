@@ -56,10 +56,6 @@ static bool find_keyinfo(con_cmdcb klbc_cb) {
 
 INIT {
 	struct con_cmd *cmd_key_listboundkeys = con_findcmd("key_listboundkeys");
-	if (!cmd_key_listboundkeys) {
-		errmsg_errorx("couldn't find key_listboundkeys command");
-		return false;
-	}
 	con_cmdcb cb = con_getcmdcb(cmd_key_listboundkeys);
 	if (!find_keyinfo(cb)) {
 		errmsg_warnx("couldn't find key binding list");

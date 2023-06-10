@@ -94,10 +94,6 @@ INIT {
 	if (GAMETYPE_MATCHES(Portal2)) return false;
 
 	struct con_cmd *cmd_alias = con_findcmd("alias");
-	if (!cmd_alias) {
-		errmsg_warnx("couldn't find \"alias\" command");
-		return false;
-	}
 	if (!find_alias_head(con_getcmdcb(cmd_alias))) {
 		errmsg_warnx("couldn't find alias list");
 		return false;
