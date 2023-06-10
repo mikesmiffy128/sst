@@ -76,11 +76,8 @@ void democustom_write(const void *buf, int len) {
 	bitbuf_reset(&bb);
 }
 
-// This finds the CDemoRecorder::WriteMessages() function, which takes a raw
-// network packet, wraps it up in the appropriate demo framing format and writes
-// it out to the demo file being recorded.
 static bool find_WriteMessages(void) {
-	// TODO(compat): probably rewrite this to just scan for a call instruction!
+	// TODO(compat): rewrite this to just scan for a call instruction!
 	const uchar *insns = (*(uchar ***)demorecorder)[vtidx_RecordPacket];
 	// RecordPacket calls WriteMessages pretty much right away:
 	// 56           push  esi
@@ -101,8 +98,6 @@ static bool find_WriteMessages(void) {
 #endif
 	if (!memcmp(insns, bytes, sizeof(bytes))) {
 		ssize off = mem_loadoffset(insns + sizeof(bytes));
-		// ... and then offset is relative to the address of whatever is _after_
-		// the call instruction... because x86.
 		WriteMessages = (WriteMessages_func)(insns + sizeof(bytes) + 4 + off);
 		return true;
 	}

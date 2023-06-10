@@ -79,10 +79,7 @@ typedef void (*con_cmdcbv1)(void);
 typedef int (*con_complcb)(const char *part,
 		char cmds[CON_CMD_MAXCOMPLETE][CON_CMD_MAXCOMPLLEN]);
 
-/*
- * These are called by the plugin load/unload functions; they have no use
- * elsewhere.
- */
+/* These are called on plugin load/unload. They should not be used elsewhere. */
 bool con_detect(int pluginver);
 void con_init(void);
 void con_disconnect(void);

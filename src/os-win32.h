@@ -98,6 +98,9 @@ static inline void os_randombytes(void *buf, int sz) {
 #define fdopen _fdopen
 #define dup _dup
 #define dup2 _dup2
+#define strdup _strdup
+#define fstat _fstat64
+#define lseek _lseeki64
 #define O_RDONLY _O_RDONLY
 #define O_RDWR _O_RDWR
 #define O_CLOEXEC _O_NOINHERIT // and why did they rename this!?

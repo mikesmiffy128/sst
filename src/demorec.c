@@ -73,9 +73,6 @@ static void VCALLCONV hook_SetSignonState(void *this_, int state) {
 typedef void (*VCALLCONV StopRecording_func)(void *);
 static StopRecording_func orig_StopRecording;
 static void VCALLCONV hook_StopRecording(void *this) {
-	// This can be called any number of times in a row, generally twice per load
-	// and once per explicit disconnect. Each time the engine sets demonum to 0
-	// and recording to false.
 	bool wasrecording = *recording;
 	int lastnum = *demonum;
 	orig_StopRecording(this);
@@ -164,20 +161,17 @@ static void hook_stop_cb(const struct con_cmdargs *args) {
 	wantstop = false;
 }
 
-// This finds the "demorecorder" global variable (the engine-wide CDemoRecorder
-// instance).
 static inline bool find_demorecorder(void) {
 #ifdef _WIN32
 	const uchar *insns = (const uchar *)orig_stop_cb;
-	// The "stop" command calls the virtual function demorecorder.IsRecording(),
-	// so just look for the load of the "this" pointer into ECX
+	// The stop command loads `demorecorder` into ECX to call IsRecording()
 	for (const uchar *p = insns; p - insns < 32;) {
 		if (p[0] == X86_MOVRMW && p[1] == X86_MODRM(0, 1, 5)) {
 			void **indirect = mem_loadptr(p + 2);
 			demorecorder = *indirect;
 			return true;
 		}
-		NEXT_INSN(p, "demorecorder object");
+		NEXT_INSN(p, "global demorecorder object");
 	}
 #else
 #warning TODO(linux): implement linux equivalent (cdecl!)
@@ -185,11 +179,9 @@ static inline bool find_demorecorder(void) {
 	return false;
 }
 
-// This finds "m_bRecording" and "m_nDemoNumber" using the pointer to the
-// original "StopRecording" demorecorder function.
-static inline bool find_recmembers(void *stoprecording) {
+static inline bool find_recmembers(void *StopRecording) {
 #ifdef _WIN32
-	const uchar *insns = (uchar *)stoprecording;
+	const uchar *insns = (uchar *)StopRecording;
 	for (const uchar *p = insns; p - insns < 128;) {
 		// m_nDemoNumber = 0 -> mov dword ptr [<reg> + off], 0
 		// XXX: might end up wanting constants for the MRM field masks?
@@ -210,15 +202,12 @@ static inline bool find_recmembers(void *stoprecording) {
 	return false;
 }
 
-// This finds "m_szDemoBaseName" using the pointer to the original
-// "StartRecording" demorecorder function.
-static inline bool find_demoname(void *startrecording) {
+static inline bool find_demoname(void *StartRecording) {
 #ifdef _WIN32
-	const uchar *insns = (uchar *)startrecording;
+	const uchar *insns = (uchar *)StartRecording;
 	for (const uchar *p = insns; p - insns < 32;) {
-		// the function immediately calls Q_strncpy and copies into a buffer
-		// offset from `this` - look for a LEA instruction some time *before*
-		// the first call takes place
+		// the function immediately does a Q_strncpy() into a buffer offset from
+		// `this` - look for a LEA some time *before* the first call instruction
 		if (p[0] == X86_CALL) return false;
 		if (p[0] == X86_LEA && (p[1] & 0xC0) == 0x80) {
 			demorec_basename = mem_offset(demorecorder, mem_load32(p + 2));
@@ -235,9 +224,8 @@ static inline bool find_demoname(void *startrecording) {
 bool demorec_start(const char *name) {
 	bool was = *recording;
 	if (was) return false;
-	// easiest way to do this, though dumb, is to just call the record command
-	// callback that we already have a hold of. note: this args object is very
-	// incomplete, but is enough to make the command work
+	// dumb but easy way to do this: call the record command callback. note:
+	// this args object is very incomplete by enough to make the command work
 	struct con_cmdargs args = {.argc = 2, .argv = {0, name, 0}};
 	orig_record_cb(&args);
 	if (!was && *recording) *demonum = 0; // same logic as in the hook

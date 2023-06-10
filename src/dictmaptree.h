@@ -22,7 +22,7 @@
 
 /*
  * Valve's dict/map/tree structures come in various shapes and sizes, so here we
- * do the generic macro thing for future proofing. For now we just define a
+ * do the generic macro thing for future-proofing. For now we just define a
  * CUtlDict (map with string keys) of pointers, with ushort indices, which is
  * sufficient for server entity factory lookup, and probably some other stuff.
  * Functions for actually modifying the dicts/maps/trees aren't implemented.

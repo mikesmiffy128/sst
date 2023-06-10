@@ -39,8 +39,7 @@ static bool find_keyinfo(con_cmdcb klbc_cb) {
 #ifdef _WIN32
 	const uchar *insns = (const uchar *)klbc_cb;
 	for (const uchar *p = insns; p - insns < 32;) {
-		// key_listboundkeys command, in its loop through each possible index,
-		// does a mov from that index into a register, something like:
+		// key_listboundkeys loops through each index, moving into a register:
 		// mov <reg>, dword ptr [<reg> * 8 + s_pKeyInfo]
 		if (p[0] == X86_MOVRMW && (p[1] & 0xC7) == 4 /* SIB + imm32 */ &&
 				(p[2] & 0xC7) == 0xC5 /* [immediate + reg * 8] */) {

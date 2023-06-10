@@ -1,5 +1,5 @@
 /*
- * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -49,8 +49,7 @@ static inline void bitbuf_appendbits(struct bitbuf *bb, bitbuf_cell x,
 	// OR into the existing cell (lower bits were already set!)
 	bb->buf_as_cells[idx] |= x << shift;
 	// assign the next cell (that also clears the upper bits for the next OR)
-	// note: if nbits fits in the first cell, this just 0s the next cell, which
-	// is absolutely fine
+	// if nbits fits in the first cell, this zeros the next cell, which is fine
 	bb->buf_as_cells[idx + 1] = x >> (bitbuf_cell_bits - shift);
 	bb->curbit += nbits;
 }

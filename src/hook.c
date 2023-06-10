@@ -47,9 +47,8 @@ bool hook_init(void) {
 
 void *hook_inline(void *func_, void *target) {
 	uchar *func = func_;
-	// dumb hack: rather than correcting jmp offsets and having to painstakingly
-	// track them all, just look for the underlying thing being jmp-ed to and
-	// hook _that_.
+	// dumb hack: if we hit some thunk that immediately jumps elsewhere (which
+	// seems common for win32 API functions), hook the underlying thing instead.
 	while (*func == X86_JMPIW) func += mem_loadoffset(func + 1) + 5;
 	if (!os_mprot(func, 5, PAGE_EXECUTE_READWRITE)) return false;
 	int len = 0;
@@ -76,6 +75,7 @@ void *hook_inline(void *func_, void *target) {
 	}
 	// for simplicity, just bump alloc the trampoline. no need to free anyway
 	if (nexttrampoline - trampolines > sizeof(trampolines) - len - 6) goto nosp;
+	// TODO(opt): stop pretending to be thread-safe, it's just slowing us down
 	uchar *trampoline = (uchar *)InterlockedExchangeAdd(
 			(volatile long *)&nexttrampoline, len + 6);
 	// avoid TOCTOU

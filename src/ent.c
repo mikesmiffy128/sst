@@ -69,10 +69,10 @@ static struct CEntityFactoryDictionary *entfactorydict = 0;
 static inline bool find_entfactorydict(con_cmdcb dumpentityfactories_cb) {
 	const uchar *insns = (const uchar *)dumpentityfactories_cb;
 	for (const uchar *p = insns; p - insns < 64;) {
-		// the call to EntityFactoryDictionary() is inlined. that returns a
-		// static, which is lazy-inited (trivia: this was old MSVC, so it's not
-		// threadsafe like C++ requires nowadays). for some reason the init flag
-		// is set using OR, and then the instance is put in ECX to call the ctor
+		// EntityFactoryDictionary() is inlined, and returns a static, which is
+		// lazy-inited (trivia: this was old MSVC, so it's not thread-safe like
+		// C++ requires nowadays). for some reason the init flag is set using
+		// OR, and then the instance is put in ECX to call the ctor
 		if (p[0] == X86_ORMRW && p[6] == X86_MOVECXI && p[11] == X86_CALL) {
 			entfactorydict = mem_loadptr(p + 7);
 			return true;

@@ -19,13 +19,16 @@
 
 struct alias {
 	struct alias *next;
-	char name[32]; // TIL this has a hard limit :^)
+	char name[32];
 	char *value;
 };
 extern struct alias **_alias_head;
 #define alias_head (*_alias_head) // act as a global
 
+/* Clears all aliases from the engine's internal list. */
 void alias_nuke(void);
+
+/* Removes a specific named alias from the engine's internal list. */
 void alias_rm(const char *name);
 
 #endif

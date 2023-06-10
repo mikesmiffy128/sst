@@ -44,7 +44,7 @@ static int off_callerrecords = -1;
 static int off_voteissues;
 
 // Note: the vote callers vector contains these as elements. We don't currently
-// do anything with the structure, but keeping it here for reference.
+// do anything with the structure, but we're keeping it here for reference.
 /*struct CallerRecord {
 	u32 steamid_trunc;
 	float last_time;
@@ -78,8 +78,8 @@ static void reset(void) {
 	// reset the vote cooldowns if possible (will skip L4D1). only necessary on
 	// versions >2045 and on map 1, but it's easiest to do unconditionally
 	if (off_callerrecords != -1) {
-		// Basically equivalent to CUtlVector::RemoveAll. The elements have no
-		// destructors to call. The resulting state is as if nobody has voted.
+		// This is equivalent to CUtlVector::RemoveAll() as there's no
+		// destructors to call. The result as is if nobody had ever voted.
 		struct CUtlVector *recordvector = mem_offset(*votecontroller,
 				off_callerrecords);
 		recordvector->sz = 0;
@@ -116,8 +116,7 @@ DEF_CCMD_HERE_UNREG(sst_l4d_quickreset,
 
 PREINIT { return GAMETYPE_MATCHES(L4D); }
 
-// This finds the g_voteController variable using the listissues callback, and
-// returns a pointer to the rest of the bytes for find_voteissues() below
+// Note: this returns a pointer to subsequent bytes for find_voteissues() below
 static inline const uchar *find_votecontroller(con_cmdcbv1 listissues_cb) {
 	const uchar *insns = (const uchar *)listissues_cb;
 #ifdef _WIN32
@@ -136,8 +135,6 @@ static inline const uchar *find_votecontroller(con_cmdcbv1 listissues_cb) {
 	return 0;
 }
 
-// This finds ListIssues() using the instruction pointer returned by
-// find_votecontroller() above, and then uses that to find the vote issue list.
 static inline bool find_voteissues(const uchar *insns) {
 #ifdef _WIN32
 	for (const uchar *p = insns; p - insns < 16;) {
@@ -150,10 +147,9 @@ static inline bool find_voteissues(const uchar *insns) {
 	}
 	return false;
 ok:	for (const uchar *p = insns; p - insns < 96;) {
-		// There's a virtual call on each actual CVoteIssue in the loop over the
-		// list. That entails putting the issue pointer in ECX, which involves
-		// loading that pointer from the vector, which exists at an offset from
-		// `this`, meaning we can find the offset from the mov into ECX.
+		// The loop in ListIssues() calls a member function on each CVoteIssue.
+		// Each pointer is loaded from a CUtlVector at an offset from `this`, so
+		// we can find that offset from the mov into ECX.
 		if (p[0] == X86_MOVRMW && (p[1] & 0xF8) == 0x88) {
 			int off = mem_loadoffset(p + 2);
 			if (off > 800) { // sanity check: offset is always fairly high
@@ -161,9 +157,8 @@ ok:	for (const uchar *p = insns; p - insns < 96;) {
 				return true;
 			}
 		}
-		// Further complication: at least in 2045 there's a short jmp over some
-		// invalid instruction bytes. I guess there's no reason to ever expect
-		// something interesting after an unconditional jmp, so just follow it.
+		// Complication: at least 2045 has a short jmp over some garbage bytes.
+		// Follow that jmp since there's nothing interesting before the target.
 		if (p[0] == X86_JMPI8) {
 			p += 2 + ((s8 *)p)[1];
 			continue;
@@ -176,15 +171,12 @@ ok:	for (const uchar *p = insns; p - insns < 96;) {
 	return false;
 }
 
-// This finds the caller record vector using a pointer to the
-// CVoteController::Spawn function
 static inline bool find_votecallers(void *votectrlspawn) {
 #ifdef _WIN32
 	const uchar *insns = (const uchar *)votectrlspawn;
 	for (const uchar *p = insns; p - insns < 64;) {
-		// Unsure what the member on this offset actually is (the game seems to
-		// want it to be set to 0 to allow votes to happen), but the vector we
-		// want seems to consistently be 8 bytes after whatever this is
+		// Unsure what this offset points at (it seems to have to be 0 for votes
+		// to happen), but the vector of interest always comes 8 bytes later.
 		// "mov dword ptr [<reg> + off], 0", mod == 0b11
 		if (p[0] == X86_MOVMIW && (p[1] & 0xC0) == 0x80 &&
 				mem_load32(p + 6) == 0) {
@@ -215,12 +207,11 @@ INIT {
 		errmsg_errorx("couldn't find vote issues list offset\n");
 		return false;
 	}
-	// only bother with vote cooldown stuff for L4D2, since all versions of L4D1
-	// have unlimited votes anyway. NOTE: assuming L4D2 always has Spawn in
-	// gamedata (which has no reason to stop being true...)
+	// Only try cooldown stuff for L4D2, since L4D1 always had unlimited votes.
+	// NOTE: assuming L4D2 always has Spawn in gamedata (why wouldn't it?)
 	if (GAMETYPE_MATCHES(L4D2)) {
-		// g_voteController may have not been initialized yet so we get the
-		// vtable from the ent factory
+		// g_voteController is invalid if not running a server so get the
+		// vtable by inspecting the ent factory code instead
 		const struct CEntityFactory *factory = ent_getfactory("vote_controller");
 		if (!factory) {
 			errmsg_errorx("couldn't find vote controller entity factory");

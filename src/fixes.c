@@ -106,7 +106,7 @@ static void l4d2specific(void) {
 	// this out. Good meme 8/10.
 	unhide("sv_hosting_lobby");
 
-	// Older versions of L4D2 reset mat_queue_mode to -1 (multicore rendering
+	// Older versions of L4D2 reset mat_queue_mode to 0 (multicore rendering
 	// off) all the time if gpu_level is 0 (low shader detail), causing lag that
 	// can only be fixed by manually fixing the setting in video settings. Newer
 	// versions work around this by marking it as ARCHIVE, *breaking* the code
@@ -169,6 +169,7 @@ static void l4d1specific(void) {
 	// these hidden variables to 0 gets rid of it.
 	struct con_var *v = con_findvar("ui_l4d_debug");
 	if (v) con_setvari(v, 0);
+	// FIXME: this is borked with deferred init. Does gameui load SUPER late?
 	v = con_findvar("mm_l4d_debug");
 	if (v) con_setvari(v, 0);
 

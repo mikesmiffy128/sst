@@ -1,5 +1,6 @@
 /*
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -37,10 +38,9 @@ static IDirectSoundVtbl *ds_vt = 0;
 static typeof(ds_vt->CreateSoundBuffer) orig_CreateSoundBuffer;
 static con_cmdcbv1 snd_restart_cb = 0;
 
-// early init (via VDF) happens before config is loaded, and audio is set up
-// after that, so we don't want to run snd_restart the first time the cvar is
-// set, unless we were loaded later with plugin_load, in which case audio is
-// already up and running and we'll want to restart it every time
+// early init via VDF happens before config is loaded and audio is set up after
+// that, so we don't want to run snd_restart the first time the cvar is set,
+// unless we were loaded later with plugin_load in which case we actually do.
 static bool skiprestart;
 static void losefocuscb(struct con_var *v) {
 	if (!skiprestart) snd_restart_cb();

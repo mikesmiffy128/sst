@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -45,9 +45,7 @@ DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you",
 	void *e = GetBaseEntity(ed->ent_unknown); // is this call required?
 	struct vec3f *org = mem_offset(e, off_entpos);
 	struct vec3f *ang = mem_offset(e, off_eyeang);
-	// L4D idle warps go up to 10 units behind relative to whatever angle the
-	// player is facing, lessening the distance based on pitch angle but never
-	// displacing vertically
+	// L4D idle warps go up to 10 units behind yaw, lessening based on pitch.
 	float pitch = ang->x * M_PI / 180, yaw = ang->y * M_PI / 180;
 	float shift = -10 * cos(pitch);
 	Teleport(e, &(struct vec3f){org->x + shift * cos(yaw),

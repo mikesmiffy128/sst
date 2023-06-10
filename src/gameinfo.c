@@ -39,7 +39,10 @@
 #define PATHSEP "/"
 #endif
 
-// TODO(opt): get rid of the rest of the snprintf and strcpy, some day
+// ~~TODO(opt): get rid of the rest of the snprintf and strcpy, some day~~
+// TODO(opt): remove almost all this parsing nonsense, it's not needed any more!
+// We can simply GetWindowText (and do a little more work on Linux...) and do
+// away with absolute paths to DLLs which won't be required with deferred init.
 
 static os_char bindir[PATH_MAX] = {0};
 #ifdef _WIN32

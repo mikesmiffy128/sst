@@ -95,7 +95,7 @@ const char *l4dmm_curcampaign(void) {
 }
 
 INIT {
-	// ugh, we NEED to centralise the library stuff at some point, this sucks
+	// XXX: ugh, we NEED to centralise library stuff at some point, this sucks
 #ifdef _WIN32
 	void *mmlib = GetModuleHandleW(L"matchmaking.dll");
 #else

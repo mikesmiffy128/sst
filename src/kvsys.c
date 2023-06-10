@@ -60,8 +60,7 @@ void kvsys_free(struct KeyValues *kv) {
 // HACK: later versions of L4D2 show an annoying dialog on every plugin_load.
 // We can suppress this by catching the message string that's passed from
 // engine.dll to gameui.dll through KeyValuesSystem in vstdlib.dll and just
-// replacing it with some other arbitrary garbage string. This makes gameui fail
-// to match the message and thus do nothing. :)
+// replacing it with some other arbitrary string that gameui won't match.
 static GetStringForSymbol_func orig_GetStringForSymbol = 0;
 static const char *VCALLCONV hook_GetStringForSymbol(void *this, int s) {
 	const char *ret = orig_GetStringForSymbol(this, s);

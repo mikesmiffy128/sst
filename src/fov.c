@@ -44,8 +44,7 @@ static struct con_var *real_fov_desired; // engine's if it has it, or ours
 typedef void (*VCALLCONV SetDefaultFOV_func)(void *, int);
 static SetDefaultFOV_func orig_SetDefaultFOV;
 static void VCALLCONV hook_SetDefaultFOV(void *this, int fov) {
-	// the game normally clamps fov_desired on the server side, disregard
-	// whatever it tries to set and force our own value instead
+	// disregard server-side clamped value and force our own value instead
 	orig_SetDefaultFOV(this, con_getvari(real_fov_desired));
 }
 
@@ -53,15 +52,14 @@ static bool find_SetDefaultFOV(struct con_cmd *fov) {
 	const uchar *insns = (const uchar *)fov->cb;
 	int callcnt = 0;
 	for (const uchar *p = insns; p - insns < 96;) {
-		// fov command source, and consequent asm, calls 4 functions, one of
-		// them virtual (i.e. via register). of the 3 direct calls,
-		// SetDefaultFOV is the third.
+		// The fov command calls 4 functions, one of them virtual. Of the 3
+		// direct calls, SetDefaultFOV() is the third.
 		if (p[0] == X86_CALL && ++callcnt == 3) {
 			orig_SetDefaultFOV = (SetDefaultFOV_func)(p + 5 +
 					mem_loadoffset(p + 1));
 			return true;
 		}
-		NEXT_INSN(p, "SetDefaultFOV");
+		NEXT_INSN(p, "SetDefaultFOV function");
 	}
 	return false;
 }

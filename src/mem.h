@@ -19,7 +19,7 @@
 
 #include "intdefs.h"
 
-/* retrieves a 32-bit integer from an unaligned pointer */
+/* Retrieves a 32-bit integer from an unaligned pointer. */
 static inline u32 mem_load32(const void *p) {
 	// XXX: Turns out the pedantically-safe approach below causes most compilers
 	// to generate horribly braindead x86 output in at least some cases (and the
@@ -31,13 +31,13 @@ static inline u32 mem_load32(const void *p) {
 	//return (u32)cp[0] | (u32)cp[1] << 8 | (u32)cp[2] << 16 | (u32)cp[3] << 24;
 }
 
-/* retrieves a 64-bit integer from an unaligned pointer */
+/* Retrieves a 64-bit integer from an unaligned pointer. */
 static inline u64 mem_load64(const void *p) {
 	// this seems not to get butchered as badly in most cases?
 	return (u64)mem_load32(p) | (u64)mem_load32((uchar *)p + 4) << 32;
 }
 
-/* retrieves a pointer from an unaligned pointer-to-pointer */
+/* Retrieves a pointer from an unaligned pointer-to-pointer. */
 static inline void *mem_loadptr(const void *p) {
 #if defined(_WIN64) || defined(__x86_64__)
 	return (void *)mem_load64(p);
@@ -46,15 +46,15 @@ static inline void *mem_loadptr(const void *p) {
 #endif
 }
 
-/* retreives a signed offset from an unaligned pointer */
+/* Retreives a signed offset from an unaligned pointer. */
 static inline ssize mem_loadoffset(const void *p) {
 	return (ssize)mem_loadptr(p);
 }
 
-/* adds a byte count to a pointer and returns a freely-assignable void pointer */
+/* Adds a byte count to a pointer and returns a freely-assignable pointer. */
 static inline void *mem_offset(void *p, int off) { return (char *)p + off; }
 
-/* returns the offset in bytes from one pointer to another (p - q) */
+/* Returns the offset in bytes from one pointer to another (p - q). */
 static inline ssize mem_diff(const void *p, const void *q) {
 	return (char *)p - (char *)q;
 }

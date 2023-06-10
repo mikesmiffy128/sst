@@ -17,9 +17,12 @@ set warnings=-Wall -pedantic -Wno-parentheses -Wno-missing-braces ^
 -Wno-gnu-zero-variadic-macro-arguments
 
 set dbg=0
+:: XXX: -Og would be nice but apparently a bunch of stuff still gets inlined
+:: which can be somewhat annoying so -O0 it is. Still using -Og in the linux
+:: script; will need to investigate when linux is actually a thing later.
 if "%dbg%"=="1" (
-	set cflags=-Og -g
-	set ldflags=-Og -g
+	set cflags=-O0 -g3
+	set ldflags=-O0 -g3
 ) else (
 	set cflags=-O2
 	set ldflags=-O2
@@ -99,8 +102,8 @@ llvm-rc /FO .build\dll.res src\dll.rc || exit /b
 %CC% -shared -O0 -w -o .build/tier0.dll src/stubs/tier0.c
 %CC% -shared -O0 -w -o .build/vstdlib.dll src/stubs/vstdlib.c
 for %%b in (%src%) do ( call :cc %%b || exit /b )
+:: we need different library names for debugging because Microsoft.
 if "%dbg%"=="1" (
-	:: ugh, microsoft.
 	set clibs=-lmsvcrtd -lvcruntimed -lucrtd
 ) else (
 	set clibs=-lmsvcrt -lvcruntime -lucrt
@@ -113,6 +116,8 @@ del .build\sst.lib
 
 %HOSTCC% -O2 -g -include test/test.h -o .build/bitbuf.test.exe test/bitbuf.test.c || exit /b
 .build\bitbuf.test.exe || exit /b
+%HOSTCC% -O2 -g -include test/test.h -o .build/crc32.test.exe test/crc32.test.c || exit /b
+.build\crc32.test.exe || exit /b
 :: special case: test must be 32-bit
 %HOSTCC% -m32 -O2 -g -ladvapi32 -include test/test.h -o .build/hook.test.exe test/hook.test.c || exit /b
 .build\hook.test.exe || exit /b

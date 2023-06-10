@@ -230,8 +230,7 @@ static void VCALLCONV hook_DispatchInputEvent(void *this,
 
 static bool find_DispatchInputEvent(void) {
 #ifdef _WIN32
-	// Crazy pointer-chasing path to get to DispatchInputEvent (to log keypresses
-	// and their associated binds):
+	// Crazy pointer-chasing path to get to DispatchInputEvent:
 	// IGameUIFuncs interface
 	// -> CGameUIFuncs::GetDesktopResolution vfunc
 	//  -> IGame/CGame (first mov into ECX)
