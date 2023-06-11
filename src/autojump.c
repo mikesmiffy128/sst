@@ -73,6 +73,16 @@ static bool unprot(void *gm) {
 	return ret;
 }
 
+// reimplementing cheats check for dumb and bad reasons, see below
+static struct con_var *sv_cheats;
+static void cheatcb(struct con_var *this) {
+	if (this->ival && !con_getvari(sv_cheats)) {
+		con_warn("Can't use cheat cvar sst_autojump, unless server has "
+				"sv_cheats set to 1.\n");
+		con_setvari(this, 0);
+	}
+}
+
 INIT {
 	gmsv = factory_server("GameMovement001", 0);
 	if (!gmsv) {
@@ -97,10 +107,11 @@ INIT {
 		// tried arguing about it already and with how long it takes to convince
 		// the Portal guys of anything I'd rather concede for now and maybe try
 		// and revert this later if anyone eventually decides to be sensible.
-		// the alternative is nobody's allowed to use SST in runs - except of
-		// course the couple of people who just roll the dice anyway, and
-		// thusfar haven't actually been told to stop. yeah, whatever.
+		// and annoyingly, since cheats aren't even checked properly in portal,
+		// it's also necessary to do this extremely stupid callback nonsense!
 		sst_autojump->base.flags |= CON_CHEAT;
+		sv_cheats = con_findvar("sv_cheats");
+		sst_autojump->cb = cheatcb;
 	}
 	return true;
 }
