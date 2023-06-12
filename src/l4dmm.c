@@ -95,13 +95,7 @@ const char *l4dmm_curcampaign(void) {
 }
 
 INIT {
-	// XXX: ugh, we NEED to centralise library stuff at some point, this sucks
-#ifdef _WIN32
-	void *mmlib = GetModuleHandleW(L"matchmaking.dll");
-#else
-	void *mmlib = dlopen("matchmaking.so", RTLD_NOW | RTLD_NOLOAD);
-	if (mmlib) dlclose(mmlib);
-#endif
+	void *mmlib = os_dlhandle(OS_LIT("matchmaking") OS_LIT(OS_DLSUFFIX));
 	if (mmlib) {
 		ifacefactory factory = (ifacefactory)os_dlsym(mmlib, "CreateInterface");
 		if (!factory) {

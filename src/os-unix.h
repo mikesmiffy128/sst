@@ -39,10 +39,19 @@ typedef char os_char;
 #define os_getenv getenv
 #define os_getcwd getcwd
 
+#define OS_DLPREFIX "lib"
 #define OS_DLSUFFIX ".so"
 
 #define OS_MAIN main
 
+static inline void *os_dlopen(const char *name) {
+	return dlopen(name, RTLD_NOW);
+}
+static inline void *os_dlhandle(const char *name) {
+	void *ret = dlopen(name, RTLD_NOW | RTLD_NOLOAD);
+	if (ret) dlclose(ret);
+	return ret;
+}
 #define os_dlsym dlsym
 
 #ifdef __linux__

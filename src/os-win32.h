@@ -45,10 +45,17 @@ typedef unsigned short os_char;
 #define os_getenv _wgetenv
 #define os_getcwd _wgetcwd
 
+#define OS_DLPREFIX ""
 #define OS_DLSUFFIX ".dll"
 
 #define OS_MAIN wmain
 
+static inline void *os_dlopen(const ushort *name) {
+	return LoadLibraryW(name);
+}
+static inline void *os_dlhandle(const ushort *name) {
+	return GetModuleHandleW(name);
+}
 static inline void *os_dlsym(void *m, const char *s) {
 	return (void *)GetProcAddress(m, s);
 }

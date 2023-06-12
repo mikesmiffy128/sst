@@ -71,7 +71,6 @@ bool engineapi_init(int pluginver) {
 	void *pim = factory_server("PlayerInfoManager002", 0);
 	if (pim) globalvars = GetGlobalVars(pim);
 
-	inputsystem = factory_inputsystem("InputSystemVersion001", 0);
 	vgui = factory_engine("VEngineVGui001", 0);
 
 	void *srvdll;
