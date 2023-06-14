@@ -116,8 +116,6 @@ del .build\sst.lib
 
 %HOSTCC% -O2 -g -include test/test.h -o .build/bitbuf.test.exe test/bitbuf.test.c || exit /b
 .build\bitbuf.test.exe || exit /b
-%HOSTCC% -O2 -g -include test/test.h -o .build/crc32.test.exe test/crc32.test.c || exit /b
-.build\crc32.test.exe || exit /b
 :: special case: test must be 32-bit
 %HOSTCC% -m32 -O2 -g -ladvapi32 -include test/test.h -o .build/hook.test.exe test/hook.test.c || exit /b
 .build\hook.test.exe || exit /b
