@@ -169,7 +169,6 @@ static void l4d1specific(void) {
 	// these hidden variables to 0 gets rid of it.
 	struct con_var *v = con_findvar("ui_l4d_debug");
 	if (v) con_setvari(v, 0);
-	// FIXME: this is borked with deferred init. Does gameui load SUPER late?
 	v = con_findvar("mm_l4d_debug");
 	if (v) con_setvari(v, 0);
 
