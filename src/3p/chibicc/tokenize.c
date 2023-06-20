@@ -330,9 +330,11 @@ static Token *read_char_literal(char *start, char *quote, Type *ty) {
   else
     c = decode_utf8(&p, p);
 
-  char *end = strchr(p, '\'');
-  if (!end)
-    error_at(p, "unclosed char literal");
+  char *end = p;
+  for (; *end != '\''; ++end) {
+    if (!*end || *end == '\n')
+      error_at(p, "unclosed char literal");
+  }
 
   Token *tok = new_token(TK_NUM, start, end + 1);
   tok->val = c;
@@ -691,25 +693,6 @@ File *new_file(char *name, int file_no, char *contents) {
   return file;
 }
 
-// Replaces \r or \r\n with \n.
-static void canonicalize_newline(char *p) {
-  int i = 0, j = 0;
-
-  while (p[i]) {
-    if (p[i] == '\r' && p[i + 1] == '\n') {
-      i += 2;
-      p[j++] = '\n';
-    } else if (p[i] == '\r') {
-      i++;
-      p[j++] = '\n';
-    } else {
-      p[j++] = p[i++];
-    }
-  }
-
-  p[j] = '\0';
-}
-
 // Removes backslashes followed by a newline.
 static void remove_backslash_newline(char *p) {
   int i = 0, j = 0;
@@ -781,7 +764,6 @@ static void convert_universal_chars(char *p) {
 
 // NOTE modified API from upstream
 Token *tokenize_buf(const char *name, char *p) {
-  canonicalize_newline(p);
   remove_backslash_newline(p);
   convert_universal_chars(p);
 

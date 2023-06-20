@@ -81,14 +81,14 @@ static inline int cmp_feature(struct feature *e, const char *s) {
 }
 static inline int cmp_feature_bydesc(struct feature *e, const char *s) {
 	for (const char *p = e->desc; ; ++p, ++s) {
-		// longer string first
-		if (!*s) return !!*p; else if (!*p) return -1;
+		// shortest string first
+		if (!*p) return !!*s; if (!*s) return -1;
 		// case insensitive sort where possible
-		if (tolower(*p) > tolower(*s)) return 1;
-		if (tolower(*p) < tolower(*s)) return -1;
+		if (tolower((uchar)*p) > tolower((uchar)*s)) return 1;
+		if (tolower((uchar)*p) < tolower((uchar)*s)) return -1;
 		// prioritise upper-case if same letter
-		if (isupper(*p) && islower(*s)) return 1;
-		if (islower(*p) && isupper(*s)) return -1;
+		if (isupper((uchar)*p) && islower((uchar)*s)) return 1;
+		if (islower((uchar)*p) && isupper((uchar)*s)) return -1;
 	}
 	return 0;
 }
