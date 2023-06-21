@@ -76,7 +76,7 @@ void crypto_rng_read(crypto_rng_ctx *ctx, uint8_t *buf, size_t size)
     size_t pool_size = 512 - ctx->idx;
     while (size > pool_size) {
         copy(buf, ctx->pool + ctx->idx, pool_size);
-        crypto_chacha20(ctx->pool, 0, 512, ctx->pool, zero);
+        crypto_chacha20_djb(ctx->pool, 0, 512, ctx->pool, zero, 0);
         size     -= pool_size;
         buf      += pool_size;
         ctx->idx  = 32;
