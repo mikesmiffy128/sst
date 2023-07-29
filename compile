@@ -102,5 +102,7 @@ $HOSTCC -O2 -g3 -include test/test.h -o .build/bitbuf.test test/bitbuf.test.c
 #.build/hook.test
 $HOSTCC -O2 -g3 -include test/test.h -o .build/kv.test test/kv.test.c
 .build/kv.test
+$HOSTCC -O2 -g3 -include test/test.h -o .build/x86.test test/x86.test.c
+.build/x86.test
 
 # vi: sw=4 tw=4 noet tw=80 cc=80

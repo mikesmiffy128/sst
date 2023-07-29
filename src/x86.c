@@ -74,7 +74,7 @@ P:		X86_SEG_PREFIXES(CASES)
 		case X86_CRAZY8: operandlen = 1;
 		case X86_CRAZYW:
 			if ((insn[1] & 0x38) >= 0x10) operandlen = 0;
-			return pfxlen + 2 + operandlen + mrmsib(insn + 1, addrlen);
+			return pfxlen + 1 + operandlen + mrmsib(insn + 1, addrlen);
 		case X86_2BYTE: ++insn; goto b2;
 	}
 	return -1;

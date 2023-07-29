@@ -121,6 +121,8 @@ del .build\sst.lib
 .build\hook.test.exe || exit /b
 %HOSTCC% -O2 -g -include test/test.h -o .build/kv.test.exe test/kv.test.c || exit /b
 .build\kv.test.exe || exit /b
+%HOSTCC% -O2 -g -include test/test.h -o .build/x86.test.exe test/x86.test.c || exit /b
+.build\x86.test.exe || exit /b
 
 endlocal
 
