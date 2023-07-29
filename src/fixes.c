@@ -81,13 +81,13 @@ static void generalfixes(void) {
 	struct con_var *v = con_findvar("fps_max");
 	if (GAMETYPE_MATCHES(L4Dx)) {
 		// for L4D games, generally changing anything above normal limits is
-		// banned, but externally capping FPS will always be possible so we
+		// disallowed, but externally capping FPS will always be possible so we
 		// might as well allow lowering it ingame for convenience.
 		if (v->parent->base.flags & (CON_HIDDEN | CON_DEVONLY)) {
 			v->parent->base.flags &= ~(CON_HIDDEN | CON_DEVONLY);
 			v->parent->hasmax = true; v->parent->maxval = 300;
 		}
-		else {
+		else if (!v->parent->hasmax) {
 			// in TLS, this was made changeable, but still limit to 1000 to
 			// prevent breaking the engine
 			v->parent->hasmax = true; v->parent->maxval = 1000;
