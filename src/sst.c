@@ -103,7 +103,13 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 			errmsg_errorx("path to game is too long");
 			return;
 		}
-		memcpy(_startdir + len, OS_LIT("/bin"), 5 * sizeof(os_char));
+		memcpy(_startdir + len,
+#ifdef _WIN32
+				L"\\bin", // PathRelativePathToW actually NEEDS a backslash, UGH
+#else
+				"/bin",
+#endif
+				5 * sizeof(os_char));
 	}
 	else /* ifacever == 3 */ {
 		// newer games load from the mod dir instead of engine bin, and search
