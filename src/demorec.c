@@ -50,6 +50,10 @@ bool demorec_forceauto = false;
 #define SIGNONSTATE_SPAWN 5
 #define SIGNONSTATE_FULL 6
 
+DEF_PREDICATE(DemoControlAllowed, void)
+DEF_EVENT(DemoRecordStarting, void)
+DEF_EVENT(DemoRecordStopped, int)
+
 typedef void (*VCALLCONV SetSignonState_func)(void *, int);
 static SetSignonState_func orig_SetSignonState;
 static void VCALLCONV hook_SetSignonState(void *this_, int state) {
@@ -83,6 +87,9 @@ static void VCALLCONV hook_StopRecording(void *this) {
 		*recording = true;
 		*demonum = lastnum;
 	}
+	else {
+		EMIT_DemoRecordStopped(lastnum);
+	}
 }
 
 DECL_VFUNC_DYN(void, StartRecording)
@@ -90,10 +97,8 @@ DECL_VFUNC_DYN(void, StartRecording)
 static struct con_cmd *cmd_record, *cmd_stop;
 static con_cmdcb orig_record_cb, orig_stop_cb;
 
-DEF_PREDICATE(AllowDemoControl, void)
-
 static void hook_record_cb(const struct con_cmdargs *args) {
-	if (!CHECK_AllowDemoControl()) return;
+	if (!CHECK_DemoControlAllowed()) return;
 	bool was = *recording;
 	if (!was && args->argc == 2 || args->argc == 3) {
 		// safety check: make sure a directory exists, otherwise recording
@@ -152,10 +157,11 @@ static void hook_record_cb(const struct con_cmdargs *args) {
 		// mike: I think this is questionably necessary but I'm outvoted :)
 		con_msg("Demo recording started\n");
 	}
+	EMIT_DemoRecordStarting();
 }
 
 static void hook_stop_cb(const struct con_cmdargs *args) {
-	if (!CHECK_AllowDemoControl()) return;
+	if (!CHECK_DemoControlAllowed()) return;
 	wantstop = true;
 	orig_stop_cb(args);
 	wantstop = false;
@@ -229,6 +235,7 @@ bool demorec_start(const char *name) {
 	struct con_cmdargs args = {.argc = 2, .argv = {0, name, 0}};
 	orig_record_cb(&args);
 	if (!was && *recording) *demonum = 0; // same logic as in the hook
+	EMIT_DemoRecordStarting();
 	return *recording;
 }
 
@@ -237,11 +244,12 @@ int demorec_stop(void) {
 	// making this correct when recording and stopping in the menu lol
 	int ret = *demonum;
 	orig_StopRecording(demorecorder);
+	EMIT_DemoRecordStopped(ret);
 	return ret;
 }
 
-bool demorec_recording(void) {
-	return *recording;
+int demorec_demonum(void) {
+	return *recording ? *demonum : -1;
 }
 
 INIT {

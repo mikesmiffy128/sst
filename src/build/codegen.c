@@ -24,8 +24,14 @@
 #include "skiplist.h"
 #include "vec.h"
 
+#ifdef _WIN32
+#define fS "S"
+#else
+#define fS "s"
+#endif
+
 static void die(const char *s) {
-	fprintf(stderr, "codegen: %s\n", s);
+	fprintf(stderr, "codegen: fatal: %s\n", s);
 	exit(100);
 }
 
@@ -275,6 +281,11 @@ F( "	has_%s = status_%s == FEAT_OK;", f->modname, f->modname)
 int OS_MAIN(int argc, os_char *argv[]) {
 	for (++argv; *argv; ++argv) {
 		const struct cmeta *cm = cmeta_loadfile(*argv);
+		if (!cm) {
+			fprintf(stderr, "codegen: fatal: couldn't load file %" fS "\n",
+					*argv);
+			exit(100);
+		}
 		cmeta_conmacros(cm, &oncondef);
 		cmeta_evdefmacros(cm, &onevdef);
 		if (!vec_push(&pass2, ((struct passinfo){cm, *argv}))) {

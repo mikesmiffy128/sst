@@ -1,0 +1,109 @@
+fastspin.{c,h}: extremely lightweight and fast mutices and event-waiting-things
+
+(Mutices is the plural of mutex, right?)
+
+== Compiling ==
+
+  gcc -c -O2 [-flto] fastspin.c
+  clang -c -O2 [-flto] fastspin.c
+  tcc -c fastspin.c
+  cl.exe /c /O2 /std:c17 /experimental:c11atomics fastspin.c
+
+In most cases you can just drop the .c file straight into your codebase/build
+system. LTO is advised to avoid dead code and enable more efficient calls
+including potential inlining.
+
+NOTE: On Windows, it is necessary to link with ntdll.lib.
+
+== Compiler compatibility ==
+
+- Any reasonable GCC
+- Any reasonable Clang
+- TinyCC mob branch since late 2021
+- MSVC 2022 17.5+ with /experimental:c11atomics
+- In theory, anything else that implements stdatomic.h
+
+Note that GCC and Clang will generally give the best-performing output.
+
+Once the .c file is built, the public header can be consumed by virtually any C
+or C++ compiler, as well as probably most half-decent FFIs.
+
+Note that the .c source file is not C++-compatible, only the header is. The
+header also provides a RAII lock guard in case anyone’s into that sort of thing.
+
+== API usage ==
+
+See documentation comments in fastspin.h for a basic idea. Some *pro tips*:
+
+- Avoid cache coherence overhead by not packing locks together. Ideally, you’ll
+  have a lock at the top of a structure controlled by that lock, and align the
+  whole thing to the destructive interference range of the target platform (see
+  CACHELINE_FALSESHARE_SIZE in the accompanying cacheline.h).
+
+- Avoid putting more than one lock in a cache line. Ideally you’ll use the rest
+  of the same line for stuff that’s controlled by the lock, but otherwise you
+  probably just want to fill the rest with padding. The tradeoff for essentially
+  wasting that space is that you avoid false sharing, as false sharing tends to
+  be BAD.
+
+- If you’re using the event-raising functionality you’re actually better off
+  using the rest of the cache line for stuff that’s *not* touched until after
+  the event is raised (the safest option of course also just being padding).
+
+- You should actually measure this stuff, I dunno man.
+
+Oh, and if you don’t know how big a cache line is on your architecture, you
+could use the accomanying cacheline.h to get some reasonable guesses. Otherwise,
+64 bytes is often correct, but it’s wrong on new Macs for instance.
+
+== OS compatibility ==
+
+First-class:
+- Linux 2.6+ (glibc or musl)
+- FreeBSD 11+
+- OpenBSD 6.2+
+- NetBSD ~9.1+
+- DragonFly 1.1+
+- Windows 8+ (only tested on 10+)
+- macOS/Darwin since ~2016(?) (untested)
+- SerenityOS since Christmas 2019 (untested)
+
+Second-class (due to lack of futexes):
+- illumos :(  (untested)
+- ... others?
+
+* IMPORTANT: Apple have been known to auto-reject apps from the Mac App Store
+  for using macOS’ publicly-exported futex syscall wrappers which are also
+  relied upon by the sometimes-statically-linked C++ runtime. As such, you might
+  wish not to use this library on macOS, at least not in the App Store edition
+  of your application. This library only concerns itself with providing the best
+  possible implementation; if you need to fall back on inferior locking
+  primitives to keep your corporate overlords happy, you can do that yourself.
+
+== Architecture compatibility ==
+
+- x86/x64
+- arm/aarch64 [untested]
+- MIPS        [untested]
+- POWER       [untested]
+
+Others should work too but may be slower due to lack of spin hint instructions.
+Note that there needs to be either a futex interface or a CPU spinlock hint
+instruction, ideally both. Otherwise performance will be simply no good during
+contention. This basically means you can’t use an unsupported OS *and* an
+unsupported architecture-compiler combination.
+
+== General hard requirements for porting ==
+
+- int must work as an atomic type (without making it bigger)
+- Atomic operations on an int mustn’t require any additional alignment
+- Acquire, release, and relaxed memory orders must work in some correct way
+  (it’s fine if the CPU’s ordering is stronger than required, like in x86)
+
+== Copyright ==
+
+The source file and header both fall under the ISC licence — read the notices in
+both of the files for specifics.
+
+Thanks, and have fun!
+- Michael Smith <mikesmiffy128@gmail.com>

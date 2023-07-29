@@ -19,47 +19,50 @@
 
 #include "intdefs.h"
 
-// NOTE: This code assumes it's running on a little endian machine, because,
-// well, the game runs on a little endian machine.
-// *technically* this could break unit tests in a contrived cross-compile
-// scenario? right now none of the tests care about actual bit values, and we
-// don't cross compile, so this won't matter till later. :)
+// NOTE: This code is not big-endian-safe, because the game itself is little-
+// endian. This could theoretically break tests in odd cross-compile scenarios,
+// but no tests currently look at actual bit values so it's fine for now.
 
-// handle 8 bytes at a time (COULD do 16 with SSE, but who cares this is fine)
-typedef uvlong bitbuf_cell;
+// handle one machine word at a time (SIMD is probably not worth it... yet?)
+typedef usize bitbuf_cell;
 static const int bitbuf_cell_bits = sizeof(bitbuf_cell) * 8;
 static const int bitbuf_align = _Alignof(bitbuf_cell);
 
 /* A bit buffer, ABI-compatible with bf_write defined in tier1/bitbuf.h */
 struct bitbuf {
 	union {
-		char *buf; /* NOTE: the buffer MUST be aligned as bitbuf_cell! */
-		bitbuf_cell *buf_as_cells;
+		char *buf; /* NOTE: the buffer SHOULD be aligned as bitbuf_cell! */
+		bitbuf_cell *cells;
 	};
-	int sz, nbits, curbit;
+	int sz, nbits;
+	uint curbit; // made unsigned so divisions can become shifts (hopefully...)
 	bool overflow, assert_on_overflow;
 	const char *debugname;
 };
 
-/* Append a value to the bitbuffer, with a specfied length in bits. */
-static inline void bitbuf_appendbits(struct bitbuf *bb, bitbuf_cell x,
-		int nbits) {
+// detail: need a cell internally, but API users shouldn't rely on 64-bit size
+static inline void _bitbuf_append(struct bitbuf *bb, bitbuf_cell x, int nbits) {
 	int idx = bb->curbit / bitbuf_cell_bits;
 	int shift = bb->curbit % bitbuf_cell_bits;
 	// OR into the existing cell (lower bits were already set!)
-	bb->buf_as_cells[idx] |= x << shift;
+	bb->cells[idx] |= x << shift;
 	// assign the next cell (that also clears the upper bits for the next OR)
 	// if nbits fits in the first cell, this zeros the next cell, which is fine
-	bb->buf_as_cells[idx + 1] = x >> (bitbuf_cell_bits - shift);
+	bb->cells[idx + 1] = x >> (bitbuf_cell_bits - shift);
 	bb->curbit += nbits;
 }
 
-/* Append a byte to the bitbuffer - same as appendbits(8) but more convenient */
-static inline void bitbuf_appendbyte(struct bitbuf *bb, uchar x) {
-	bitbuf_appendbits(bb, x, 8);
+/* Appends a value to the bit buffer, with a specfied length in bits. */
+static inline void bitbuf_appendbits(struct bitbuf *bb, uint x, int nbits) {
+	_bitbuf_append(bb, x, nbits);
 }
 
-/* Append a sequence of bytes to the bitbuffer, with length given in bytes */
+/* Appends a byte to the bit buffer. */
+static inline void bitbuf_appendbyte(struct bitbuf *bb, uchar x) {
+	_bitbuf_append(bb, x, 8);
+}
+
+/* Appends a sequence of bytes to the bit buffer, with length given in bytes. */
 static inline void bitbuf_appendbuf(struct bitbuf *bb, const char *buf,
 		uint len) {
 	// NOTE! This function takes advantage of the fact that nothing unaligned
@@ -67,25 +70,30 @@ static inline void bitbuf_appendbuf(struct bitbuf *bb, const char *buf,
 	// segfault. This is absolutely definitely technically UB, but it's unit
 	// tested and apparently works in practice. If something weird happens
 	// further down the line, sorry!
-	usize unalign = (usize)buf % bitbuf_align;
+	usize unalign = (usize)buf & (bitbuf_align - 1);
 	if (unalign) {
 		// round down the pointer
-		bitbuf_cell *p = (bitbuf_cell *)((usize)buf & ~(bitbuf_align - 1));
+		bitbuf_cell *p = (bitbuf_cell *)((usize)buf - unalign);
 		// shift the stored value (if it were big endian, the shift would have
 		// to be the other way, or something)
-		bitbuf_appendbits(bb, *p >> (unalign * 8), (bitbuf_align - unalign) * 8);
+		_bitbuf_append(bb, *p >> (unalign << 3), (bitbuf_align - unalign) << 3);
 		buf += sizeof(bitbuf_cell) - unalign;
 		len -= unalign;
 	}
 	bitbuf_cell *aligned = (bitbuf_cell *)buf;
-	for (; len > sizeof(bitbuf_cell); len -= sizeof(bitbuf_cell), ++aligned) {
-		bitbuf_appendbits(bb, *aligned, bitbuf_cell_bits);
+	for (; len >= sizeof(bitbuf_cell); len -= sizeof(bitbuf_cell), ++aligned) {
+		_bitbuf_append(bb, *aligned, bitbuf_cell_bits);
 	}
 	// unaligned end bytes
-	bitbuf_appendbits(bb, *aligned, len * 8);
+	_bitbuf_append(bb, *aligned, len << 3);
 }
 
-/* Clear the bitbuffer to make it ready to append new data */
+/* 0-pad the bit buffer up to the next whole byte boundary. */
+static inline void bitbuf_roundup(struct bitbuf *bb) {
+	bb->curbit += -(uint)bb->curbit & 7;
+}
+
+/* Clear the bit buffer to make it ready to append new data. */
 static inline void bitbuf_reset(struct bitbuf *bb) {
 	bb->buf[0] = 0; // we have to zero out the lowest cell since it gets ORed
 	bb->curbit = 0;

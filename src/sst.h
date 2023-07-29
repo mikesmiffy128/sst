@@ -24,10 +24,17 @@
 DECL_EVENT(ClientActive, struct edict */*player*/)
 DECL_EVENT(Tick, bool /*simulating*/)
 
+DECL_PREDICATE(AllowPluginLoading, void)
+DECL_EVENT(PluginLoaded, void)
+DECL_EVENT(PluginUnloaded, void)
+
 extern void *clientlib;
 
 /* occasionally useful: quick query to determine how sst was loaded */
 extern bool sst_earlyloaded;
+/* similar query for how we are being unloaded - ONLY valid during unload */
+// TODO(opt): we can skip a whole bunch of cleanup when exiting the game!
+extern bool sst_userunloaded;
 
 #endif
 

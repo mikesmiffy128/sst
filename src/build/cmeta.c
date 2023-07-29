@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -111,15 +111,7 @@ static void die2(const char *s1, const char *s2) {
 
 static char *readsource(const os_char *f) {
 	int fd = os_open(f, O_RDONLY);
-#ifndef _WIN32
-	if (fd == -1) die2("couldn't open ", f);
-#else
-	// XXX: this is dumb and bad
-	if (fd == -1) {
-		fprintf(stderr, "cmeta: fatal: couldn't open %S", f);
-		exit(100);
-	}
-#endif
+	if (fd == -1) return 0;
 	uint bufsz = 8192;
 	char *buf = malloc(bufsz);
 	if (!buf) die1("couldn't allocate memory");
@@ -146,6 +138,7 @@ struct cmeta;
 
 const struct cmeta *cmeta_loadfile(const os_char *f) {
 	char *buf = readsource(f);
+	if (!buf) return 0;
 #ifdef _WIN32
 	char *realname = malloc(wcslen(f) + 1);
 	if (!realname) die1("couldn't allocate memory");
@@ -163,7 +156,7 @@ const struct cmeta *cmeta_loadfile(const os_char *f) {
 // NOTE: we don't care about conditional includes, nor do we expand macros. We
 // just parse the minimum info to get what we need for SST. Also, there's not
 // too much in the way of syntax checking; if an error gets ignored the compiler
-// picks it anyway, and gives far better diagnostics.
+// picks it up anyway, and gives far better diagnostics.
 void cmeta_includes(const struct cmeta *cm,
 		void (*cb)(const char *f, bool issys, void *ctxt), void *ctxt) {
 	const Token *tp = (const Token *)cm;

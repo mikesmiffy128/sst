@@ -1,0 +1,55 @@
+msg.{c,h}: fast low-level msgpack encoding
+
+== Compiling ==
+
+  gcc -c -O2 [-flto] msg.c
+  clang -c -O2 [-flto] msg.c
+  tcc -c msg.c
+  cl.exe /c /O2 msg.c
+
+In most cases you can just drop the .c file straight into your codebase/build
+system. LTO is advised to avoid dead code and enable more efficient calls
+including potential inlining.
+
+== Compiler compatibility ==
+
+- Any reasonable GCC
+- Any reasonable Clang
+- Any reasonable MSVC
+- TinyCC
+- Probably almost all others; this is very portable code
+
+Note that GCC and Clang will generally give the best-performing output.
+
+Once the .c file is built, the public header can be consumed by virtually any C
+or C++ compiler, as well as probably most half-decent FFIs.
+
+Note that the .c source file is not C++-compatible, only the header is. The
+source file relies on union type-punning, which is well-defined in C but
+undefined behaviour in C++.
+
+== API Usage ==
+
+See documentation comments in msg.h for a basic idea. Note that this library is
+very low-level and probably best suited use with some sort of metaprogramming/
+code-generation, or bindings to a higher-level langauge.
+
+== OS Compatibility ==
+
+- All.
+- Seriously, this library doesn’t even use libc.
+
+== Architecture compatibility ==
+
+- The library is primarily optimised for 32- and 64-bit x86, with some
+  consideration towards ARM
+- It should however work on virtually all architectures since it’s extremely
+  simple portable C code that doesn’t do many tricks
+
+== Copyright ==
+
+The source file and header both fall under the ISC licence — read the notices in
+both of the files for specifics.
+
+Thanks, and have fun!
+- Michael Smith <mikesmiffy128@gmail.com>

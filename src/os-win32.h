@@ -50,10 +50,10 @@ typedef unsigned short os_char;
 
 #define OS_MAIN wmain
 
-static inline void *os_dlopen(const ushort *name) {
+static inline void *os_dlopen(const unsigned short *name) {
 	return LoadLibraryW(name);
 }
-static inline void *os_dlhandle(const ushort *name) {
+static inline void *os_dlhandle(const unsigned short *name) {
 	return GetModuleHandleW(name);
 }
 static inline void *os_dlsym(void *m, const char *s) {

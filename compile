@@ -50,11 +50,13 @@ ld() {
 
 src="\
 	ac.c
-	bind.c
-	crypto.c
 	alias.c
 	autojump.c
+	bind.c
+	chunklets/fastspin.c
+	chunklets/msg.c
 	con_.c
+	crypto.c
 	democustom.c
 	demorec.c
 	engineapi.c

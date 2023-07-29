@@ -17,12 +17,9 @@
 #ifndef INC_DEMOCUSTOM_H
 #define INC_DEMOCUSTOM_H
 
-/* maximum length of a custom demo message, in bytes */
-#define DEMOCUSTOM_MSG_MAX 253
-
 /*
- * Write a block of up to DEMOWRITER_MSG_MAX bytes into the currently recording
- * demo - NOT bounds checked, caller MUST ensure length is okay!
+ * Writes a custom demo message, automatically splitting into multiple demo
+ * packets if too long. Assumes a demo is currently being recorded.
  */
 void democustom_write(const void *buf, int len);
 

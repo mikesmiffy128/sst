@@ -52,21 +52,38 @@ bool demorec_start(const char *name);
 /*
  * Stops recording the current demo and returns the number of demos recorded
  * (the first will have the original basename + .dem extension; the rest will
- * have the _N.dem suffixes).
+ * have the _N.dem suffixes). Value will be zero if the recording is stopped
+ * before the game has even gotten a chance to create the first demo file.
  */
 int demorec_stop(void);
 
 /*
- * Queries whether a demo is currently being recorded.
+ * Returns the current number in the recording sequence, or -1 if not recording.
+ * Value may be 0 if recording was requested but has yet to start (say, because
+ * we have yet to join a map).
  */
-bool demorec_recording(void);
+int demorec_demonum(void);
 
 /*
  * Used to determine whether to allow usage of the normal record and stop
  * commands. Code which takes over control of demo recording can use this to
  * block the user from interfering.
  */
-DECL_PREDICATE(AllowDemoControl)
+DECL_PREDICATE(DemoControlAllowed, void)
+
+/*
+ * Emitted whenever a recording session is about to be started, as a result of
+ * either the record command or a call to the demorec_start() function. A demo
+ * file won't actually have been created yet; this merely indicates that a
+ * request to record has happened.
+ */
+DECL_EVENT(DemoRecordStarting, void)
+
+/*
+ * Emitted when the current demo or series of demos has finished recording.
+ * Receives the number of recorded demo files (which could be 0) as an argument.
+ */
+DECL_EVENT(DemoRecordStopped, int)
 
 #endif
 

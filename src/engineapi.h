@@ -136,6 +136,23 @@ extern struct VEngineServer *engserver;
 extern void *globalvars;
 extern void *inputsystem, *vgui;
 
+// XXX: not exactly engine *API* but not curently clear where else to put this
+struct CPlugin {
+	char description[128];
+	bool paused;
+	void *theplugin; // our own "this" pointer (or whichever other plugin it is)
+	int ifacever;
+	// should be the plugin library, but in old Source branches it's just null,
+	// because CServerPlugin::Load() erroneously shadows this field with a local
+	void *module;
+};
+struct CServerPlugin /* : IServerPluginHelpers */ {
+	void **vtable;
+	struct CUtlVector plugins;
+	/*IPluginHelpersCheck*/ void *pluginhlpchk;
+};
+extern struct CServerPlugin *pluginhandler;
+
 /*
  * Called on plugin init to attempt to initialise various core interfaces.
  * This includes console/cvar initialisation and populating gametype and

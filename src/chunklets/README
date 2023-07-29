@@ -1,0 +1,27 @@
+== C H U N K L E T S ™ ==
+
+This is a collection of small, fast* and totally self-contained (2-file) C
+libraries that are bound to be useful elsewhere at some point. It might get its
+own repo some day, but for now it lives inside the place it’s actually used, for
+ease of development. Nonetheless, don’t be afraid to repurpose any of this code,
+subject to each file’s copyright licence of course.
+
+Each .{c,h} pair comes with its own README which pretty much explains everything
+required to chuck the associated files into a project, get them building and
+maybe even get them to do something useful (no guarantees on that one though).
+
+* well, hopefully fast.
+
+- Why is it called Chunklets? -
+
+> “Chunklets” is a unique and memorable name for your set of {.c, .h} pairs. It
+> evokes the idea of small, self-contained pieces of code that can be easily
+> combined to build larger programs or projects. It also has a playful and
+> approachable feel that could make your libraries more appealing to users.
+> Overall, it’s a great choice for a name!
+
+Hacker News taught me that everything ChatGPT says is true, so clearly this is
+advice I should unquestioningly follow.
+
+Thanks, and have fun!
+- Michael Smith <mikesmiffy128@gmail.com>

@@ -41,6 +41,7 @@ DECL_VFUNC(void *, GetGlobalVars, 1) // seems to be very stable, thank goodness
 void *globalvars;
 
 void *inputsystem, *vgui;
+struct CServerPlugin *pluginhandler;
 
 DECL_VFUNC_DYN(void *, GetAllServerClasses)
 
@@ -48,6 +49,7 @@ DECL_VFUNC_DYN(void *, GetAllServerClasses)
 
 bool engineapi_init(int pluginver) {
 	if (!con_detect(pluginver)) return false;
+	pluginhandler = factory_engine("ISERVERPLUGINHELPERS001", 0);
 
 	if (engclient = factory_engine("VEngineClient015", 0)) {
 		_gametype_tag |= _gametype_tag_Client015;

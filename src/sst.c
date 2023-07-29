@@ -30,6 +30,7 @@
 #include "gametype.h"
 #include "hook.h"
 #include "os.h"
+#include "sst.h"
 #include "vcall.h"
 #include "version.h"
 
@@ -46,10 +47,13 @@ static int ifacever;
 void *clientlib = 0;
 
 bool sst_earlyloaded = false; // see deferinit() below
+bool sst_userunloaded = false; // see hook_plugin_unload_cb() below
+
+#define VDFBASENAME "SourceSpeedrunTools"
 
 #ifdef _WIN32
 extern long __ImageBase; // this is actually the PE header struct but don't care
-#define ownhandle() ((void *)&__ImageBase)
+static inline void *ownhandle(void) { return &__ImageBase; }
 #else
 // sigh, _GNU_SOURCE crap. define here instead >:(
 typedef struct {
@@ -59,15 +63,15 @@ typedef struct {
 	void *dli_saddr;
 } Dl_info;
 int dladdr1(const void *addr, Dl_info *info, void **extra_info, int flags);
-static inline void *ownhandle(void) {
+static void *ownhandle(void) {
+	static void *cached = 0;
 	Dl_info dontcare;
-	void *dl;
-	dladdr1((void *)&ownhandle, &dontcare, &dl, /*RTLD_DL_LINKMAP*/ 2);
-	return dl;
+	if (!cached) {
+		dladdr1((void *)&ownhandle, &dontcare, &cached, /*RTLD_DL_LINKMAP*/ 2);
+	}
+	return cached;
 }
 #endif
-
-#define VDFBASENAME "SourceSpeedrunTools"
 
 #ifdef _WIN32
 // not a proper check, just a short-circuit check to avoid doing more work.
@@ -305,6 +309,45 @@ e:	con_warn("!!! SOME FEATURES MAY BE BROKEN !!!\n");
 	return false;
 }
 
+DEF_PREDICATE(AllowPluginLoading, bool)
+DEF_EVENT(PluginLoaded, void)
+DEF_EVENT(PluginUnloaded, void)
+
+static struct con_cmd *cmd_plugin_load, *cmd_plugin_unload;
+static con_cmdcb orig_plugin_load_cb, orig_plugin_unload_cb;
+
+static int ownidx; // XXX: super hacky way of getting this to do_unload()
+
+static void hook_plugin_load_cb(const struct con_cmdargs *args) {
+	if (args->argc == 1) return;
+	if (!CHECK_AllowPluginLoading(true)) return;
+	orig_plugin_load_cb(args);
+	EMIT_PluginLoaded();
+}
+static void hook_plugin_unload_cb(const struct con_cmdargs *args) {
+	if (args->argc == 1) return;
+	if (!CHECK_AllowPluginLoading(false)) return;
+	int idx = atoi(args->argv[1]);
+	struct CPlugin **plugins = pluginhandler->plugins.m.mem;
+	if (idx >= 0 && idx < pluginhandler->plugins.sz &&
+			plugins[idx]->theplugin == &plugin_obj) {
+		sst_userunloaded = true;
+		ownidx = idx;
+#ifdef __clang__
+		// thanks clang for forcing use of return here and THEN warning about it
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpedantic"
+		__attribute__((musttail)) return orig_plugin_unload_cb(args);
+#pragma clang diagnostic pop
+#else
+#error We are tied to clang without an assembly solution for this!
+#endif
+	}
+	// if it's some other plugin being unloaded, we can keep doing stuff after
+	orig_plugin_unload_cb(args);
+	EMIT_PluginUnloaded();
+}
+
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	if (!hook_init()) {
 		errmsg_warnsys("couldn't set up memory for function hooking");
@@ -326,46 +369,34 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	*p++ = (void *)&nop_p_v;		  // OnEdictAllocated
 	*p   = (void *)&nop_p_v;		  // OnEdictFreed
 	if (!deferinit()) { do_featureinit(); fixes_apply(); }
+	if (pluginhandler) {
+		cmd_plugin_load = con_findcmd("plugin_load");
+		orig_plugin_load_cb = cmd_plugin_load->cb;
+		cmd_plugin_load->cb = &hook_plugin_load_cb;
+		cmd_plugin_unload = con_findcmd("plugin_unload");
+		orig_plugin_unload_cb = cmd_plugin_unload->cb;
+		cmd_plugin_unload->cb = &hook_plugin_unload_cb;
+	}
 	return true;
 }
 
-struct CServerPlugin /* : IServerPluginHelpers */ {
-	void **vtable;
-	struct CUtlVector plugins;
-	/*IPluginHelpersCheck*/ void *pluginhlpchk;
-};
-struct CPlugin {
-	char description[128];
-	bool paused;
-	void *theplugin; // our own "this" pointer (or whichever other plugin it is)
-	int ifacever;
-	// should be the plugin library, but in old Source branches it's just null,
-	// because CServerPlugin::Load() erroneously shadows this field with a local
-	void *module;
-};
-
 static void do_unload(void) {
 #ifdef _WIN32 // this is only relevant in builds that predate linux support
-	struct CServerPlugin *pluginhandler =
-			factory_engine("ISERVERPLUGINHELPERS001", 0);
-	if (pluginhandler) { // if not, oh well too bad we tried :^)
-		struct CPlugin **plugins = pluginhandler->plugins.m.mem;
-		int n = pluginhandler->plugins.sz;
-		for (struct CPlugin **pp = plugins; pp - plugins < n; ++pp) {
-			if ((*pp)->theplugin == (void *)&plugin_obj) {
-				// see comment in CPlugin above. setting this to the real handle
-				// right before the engine tries to unload us allows it to
-				// actually do so. in newer branches this is redundant but
-				// doesn't do any harm so it's just unconditional.
-				// NOTE: old engines ALSO just leak the handle and never call
-				// Unload() if Load() fails; can't really do anything about that
-				(*pp)->module = ownhandle();
-				break;
-			}
+	if (pluginhandler) { // if not, oh well too bad :^)
+		cmd_plugin_load->cb = orig_plugin_load_cb;
+		cmd_plugin_unload->cb = orig_plugin_unload_cb;
+		if (sst_userunloaded) {
+			struct CPlugin **plugins = pluginhandler->plugins.m.mem;
+			// see comment in CPlugin above. setting this to the real handle
+			// right before the engine tries to unload us allows it to actually
+			// do so. in newer branches this is redundant but doesn't do any
+			// harm so it's just unconditional. NOTE: old engines ALSO just leak
+			// the handle and never call Unload() if Load() fails; can't really
+			// do anything about that.
+			plugins[ownidx]->module = ownhandle();
 		}
 	}
 #endif
-
 	endfeatures();
 #ifdef __linux__
 	if (clientlib) dlclose(clientlib);

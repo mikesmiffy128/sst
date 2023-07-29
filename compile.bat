@@ -58,11 +58,13 @@ setlocal EnableDelayedExpansion
 for /f "tokens=2" %%f in ('findstr /B /C:":+ " "%~nx0"') do set src=!src! src/%%f
 setlocal DisableDelayedExpansion
 :+ ac.c
-:+ bind.c
-:+ crypto.c
 :+ alias.c
 :+ autojump.c
+:+ bind.c
 :+ con_.c
+:+ chunklets/fastspin.c
+:+ chunklets/msg.c
+:+ crypto.c
 :+ democustom.c
 :+ demorec.c
 :+ engineapi.c
@@ -110,7 +112,7 @@ if "%dbg%"=="1" (
 )
 %CC% -shared -flto %ldflags% -Wl,/IMPLIB:.build/sst.lib,/Brepro,/nodefaultlib ^
 -L.build %clibs% -lkernel32 -luser32 -ladvapi32 -lshlwapi -ld3d9 -ldsound ^
--ltier0 -lvstdlib -o sst.dll%objs% .build/dll.res || exit /b
+-ltier0 -lvstdlib -lntdll -o sst.dll%objs% .build/dll.res || exit /b
 :: get rid of another useless file (can we just not create this???)
 del .build\sst.lib
 
