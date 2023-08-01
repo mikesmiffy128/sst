@@ -82,6 +82,21 @@ bool gameinfo_init(void) {
 #else
 #error TODO(linux): grab window handle and title from SDL (a bit involved...)
 #endif
+
+		// SUPER crude algorithm to force uppercase titles like HALF-LIFE 2 or
+		// PORTAL 2 to (almost-)titlecase. will refine later, as needed
+		bool hasupper = false, haslower = false;
+		for (char *p = title; *p && (!hasupper || !haslower); ++p) {
+			haslower |= *p >= 'a' && *p <= 'z';
+			hasupper |= *p >= 'A' && *p <= 'Z';
+		}
+		if (hasupper && !haslower) {
+			int casebit = 0;
+			for (char *p = title; *p; ++p) {
+				if (*p >= 'A' && *p <= 'Z') *p |= casebit;
+				casebit = (*p == ' ' || *p == '-') << 5; // ? 32 : 0
+			}
+		}
 	}
 	return true;
 }
