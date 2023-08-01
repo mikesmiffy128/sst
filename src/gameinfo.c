@@ -14,6 +14,8 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <string.h>
+
 #include "engineapi.h"
 #include "errmsg.h"
 #include "gamedata.h"
@@ -68,9 +70,17 @@ bool gameinfo_init(void) {
 		// XXX: this same FindWindow call happens in ac.c - maybe factor out?
 		void *gamewin = FindWindowW(L"Valve001", 0);
 		// assuming: all games/mods use narrow chars only; this won't fail.
-		GetWindowTextA(gamewin, title, sizeof(title));
+		int len = GetWindowTextA(gamewin, title, sizeof(title));
+		// argh, why did they start doing this, it's so pointless!
+		// hopefully nobody included these suffixes in their mod names, lol
+		if (len > 13 && !memcmp(title + len - 13, " - Direct3D 9", 13)) {
+			title[len - 13] = '\0';
+		}
+		else if (len > 9 && !memcmp(title + len - 9, " - Vulkan", 9)) {
+			title[len - 9] = '\0';
+		}
 #else
-#erorr TODO(linux): grab window handle and title from SDL (a bit involved...)
+#error TODO(linux): grab window handle and title from SDL (a bit involved...)
 #endif
 	}
 	return true;
