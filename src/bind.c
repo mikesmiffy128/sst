@@ -38,7 +38,7 @@ const char *bind_get(int keycode) { return keyinfo[keycode].binding; }
 static bool find_keyinfo(con_cmdcb klbc_cb) {
 #ifdef _WIN32
 	const uchar *insns = (const uchar *)klbc_cb;
-	for (const uchar *p = insns; p - insns < 32;) {
+	for (const uchar *p = insns; p - insns < 64;) {
 		// key_listboundkeys loops through each index, moving into a register:
 		// mov <reg>, dword ptr [<reg> * 8 + s_pKeyInfo]
 		if (p[0] == X86_MOVRMW && (p[1] & 0xC7) == 4 /* SIB + imm32 */ &&
