@@ -4,6 +4,10 @@
 
 F(Msg)
 F(Warning)
-V(g_pMemAlloc)
+#ifdef _WIN32
+V(g_pMemAlloc) // this doesn't exist at all on Linux
+#else
+F(Error) // only used for extmalloc() and nothing else :^)
+#endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

@@ -47,31 +47,58 @@ typedef char os_char;
 static inline void *os_dlopen(const char *name) {
 	return dlopen(name, RTLD_NOW);
 }
-static inline void *os_dlhandle(const char *name) {
-	void *ret = dlopen(name, RTLD_NOW | RTLD_NOLOAD);
-	if (ret) dlclose(ret);
-	return ret;
-}
 #define os_dlsym dlsym
 
 #ifdef __linux__
 // note: this is glibc-specific. it shouldn't be used in build-time code, just
 // the plugin itself (that really shouldn't be a problem).
+
+// private struct hidden behind _GNU_SOURCE. see dlinfo(3) or <link.h>
+struct gnu_link_map {
+	unsigned long l_addr;
+	const char *l_name;
+	void *l_ld;
+	struct gnu_link_map *l_next, *l_prev;
+	// [more private stuff below]
+};
+
+static inline void *os_dlhandle(const char *name) {
+	extern struct gnu_link_map *_os_lmbase; // note: defined in sst.c for now
+	if (!_os_lmbase) { // IMPORTANT: not thread safe. don't forget later!
+		_os_lmbase = (struct gnu_link_map *)dlopen("libc.so.6",
+				RTLD_LAZY | RTLD_NOLOAD);
+		dlclose(_os_lmbase); // assume success
+		while (_os_lmbase->l_prev) _os_lmbase = _os_lmbase->l_prev;
+	}
+	// this is a tiny bit crude, but basically okay. we just want to find
+	// something that roughly matches the basename, rather than needing an exact
+	// path, in a manner vaguely similar to Windows' GetModuleHandle(). that way
+	// we can just look up client.so or something without having to figure out
+	// where exactly that is.
+	for (struct gnu_link_map *lm = _os_lmbase; lm; lm = lm->l_next) {
+		if (name[0] == '/') {
+			if (!strcmp(name, lm->l_name)) return lm;
+			continue;
+		}
+		int namelen = strlen(lm->l_name);
+		int sublen = strlen(name);
+		if (sublen >= namelen) continue;
+		if (lm->l_name[namelen - sublen - 1] == '/' && !memcmp(
+				lm->l_name + namelen - sublen, name, sublen)) {
+			return lm;
+		}
+	}
+	return 0;
+}
+
 static inline int os_dlfile(void *m, char *buf, int sz) {
-	// private struct hidden behind _GNU_SOURCE. see dlinfo(3) or <link.h>
-	struct gnu_link_map {
-		unsigned long l_addr;
-		const char *l_name;
-		void *l_ld;
-		struct gnu_link_map *l_next, *l_prev;
-		// [more private stuff below]
-	};
 	struct gnu_link_map *lm = m;
 	int ssz = strlen(lm->l_name) + 1;
 	if (ssz > sz) { errno = ENAMETOOLONG; return -1; }
 	memcpy(buf, lm->l_name, ssz);
 	return ssz;
 }
+
 #endif
 
 // unix mprot flags are much nicer but cannot be defined in terms of the windows

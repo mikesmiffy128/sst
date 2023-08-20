@@ -15,17 +15,16 @@ Windows:
 
 Linux:
  • Install Clang (and LLD) via your system package manager. Technically, GCC
-   might be able to compile this too, but Clang is heavily preferred in the name
-   of consistency and using GCC will require a decent amount of fiddling. It’s
-   also not tested and might break and I probably won’t care that much.
- • Install 32-bit C libraries and the C library headers if they’re not already
-   installed.
+   should be able to compile most of this too, but we are currently relying on
+   a Clang-specific extension or two, and GCC in general doesn't get tested nor
+   used for binary releases, so it's probably not worth wasting time on.
+ • Install 32-bit glibc and libstdc++ libraries and associated C headers if
+   they’re not already installed.
  • Run ./compile (in lieu of a better build tool, to be added later).
 
-NOTE: Linux code doesn’t quite compile yet and even if it did it probably
-wouldn’t quite work. Essentially, it’s a placeholder to ensure that supporting
-Linux in the future isn’t totally impossible, but there’s still a bunch of code
-that would have to be written first. See also TODO/linux.
+NOTE: Linux code should compile now but still crashes on cvar registration and
+almost none of the features usefully work. In other words, it needs quite a lot
+more development before it's of use to anyone.
 
 ════ How and where to install ════
 

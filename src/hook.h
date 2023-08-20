@@ -1,5 +1,5 @@
 /*
- * Copyright © 2021 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -41,6 +41,10 @@ static inline void unhook_vtable(void **vtable, usize off, void *orig) {
 /*
  * Returns a trampoline pointer, or null if hooking failed. Unlike hook_vtable,
  * handles memory protection for you.
+ *
+ * This function is not remotely thread-safe, and should never be called from
+ * any thread besides the main one nor be used to hook anything that gets called
+ * from other threads.
  */
 void *hook_inline(void *func, void *target);
 

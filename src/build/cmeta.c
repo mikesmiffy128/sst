@@ -97,24 +97,17 @@ static char *join_tokens(const Token *tok, const Token *end) {
 #include "../3p/openbsd/asprintf.c" // missing from libc; plonked here for now
 #endif
 
-static void die1(const char *s) {
+static void die(const char *s) {
 	fprintf(stderr, "cmeta: fatal: %s\n", s);
 	exit(100);
 }
-
-#ifndef _WIN32
-static void die2(const char *s1, const char *s2) {
-	fprintf(stderr, "cmeta: fatal: %s%s\n", s1, s2);
-	exit(100);
-}
-#endif
 
 static char *readsource(const os_char *f) {
 	int fd = os_open(f, O_RDONLY);
 	if (fd == -1) return 0;
 	uint bufsz = 8192;
 	char *buf = malloc(bufsz);
-	if (!buf) die1("couldn't allocate memory");
+	if (!buf) die("couldn't allocate memory");
 	int nread;
 	int off = 0;
 	while ((nread = read(fd, buf + off, bufsz - off)) > 0) {
@@ -122,12 +115,12 @@ static char *readsource(const os_char *f) {
 		if (off == bufsz) {
 			bufsz *= 2;
 			// somewhat arbitrary cutoff
-			if (bufsz == 1 << 30) die1("input file is too large");
+			if (bufsz == 1 << 30) die("input file is too large");
 			buf = realloc(buf, bufsz);
-			if (!buf) die1("couldn't reallocate memory");
+			if (!buf) die("couldn't reallocate memory");
 		}
 	}
-	if (nread == -1) die1("couldn't read file");
+	if (nread == -1) die("couldn't read file");
 	buf[off] = 0;
 	close(fd);
 	return buf;
@@ -141,7 +134,7 @@ const struct cmeta *cmeta_loadfile(const os_char *f) {
 	if (!buf) return 0;
 #ifdef _WIN32
 	char *realname = malloc(wcslen(f) + 1);
-	if (!realname) die1("couldn't allocate memory");
+	if (!realname) die("couldn't allocate memory");
 	// XXX: being lazy about Unicode right now; a general purpose tool should
 	// implement WTF8 or something. SST itself doesn't have any unicode paths
 	// though, so don't really care as much.
@@ -171,7 +164,7 @@ void cmeta_includes(const struct cmeta *cm,
 		if (tp->kind == TK_STR) {
 			// include strings are a special case; they don't have \escapes.
 			char *copy = malloc(tp->len - 1);
-			if (!copy) die1("couldn't allocate memory");
+			if (!copy) die("couldn't allocate memory");
 			memcpy(copy, tp->loc + 1, tp->len - 2);
 			copy[tp->len - 2] = '\0';
 			cb(copy, false, ctxt);
@@ -240,13 +233,13 @@ void cmeta_conmacros(const struct cmeta *cm,
 		if (isplusminus) {
 			// XXX: this is stupid but whatever
 			char *plusname = malloc(sizeof("PLUS_") + tp->len);
-			if (!plusname) die1("couldn't allocate memory");
+			if (!plusname) die("couldn't allocate memory");
 			memcpy(plusname, "PLUS_", 5);
 			memcpy(plusname + sizeof("PLUS_") - 1, tp->loc, tp->len);
 			plusname[sizeof("PLUS_") - 1 + tp->len] = '\0';
 			cb(plusname, false, unreg);
 			char *minusname = malloc(sizeof("MINUS_") + tp->len);
-			if (!minusname) die1("couldn't allocate memory");
+			if (!minusname) die("couldn't allocate memory");
 			memcpy(minusname, "MINUS_", 5);
 			memcpy(minusname + sizeof("MINUS_") - 1, tp->loc, tp->len);
 			minusname[sizeof("MINUS_") - 1 + tp->len] = '\0';
@@ -254,7 +247,7 @@ void cmeta_conmacros(const struct cmeta *cm,
 		}
 		else {
 			char *name = malloc(tp->len + 1);
-			if (!name) die1("couldn't allocate memory");
+			if (!name) die("couldn't allocate memory");
 			memcpy(name, tp->loc, tp->len);
 			name[tp->len] = '\0';
 			cb(name, isvar, unreg);
@@ -318,7 +311,7 @@ void cmeta_featinfomacros(const struct cmeta *cm, void (*cb)(
 			if (equal(tp->next, "(") && tp->next->next) {
 				tp = tp->next->next;
 				char *param = malloc(tp->len + 1);
-				if (!param) die1("couldn't allocate memory");
+				if (!param) die("couldn't allocate memory");
 				memcpy(param, tp->loc, tp->len);
 				param[tp->len] = '\0';
 				cb(type, param, ctxt);
@@ -335,10 +328,10 @@ static void pushmacroarg(const Token *last, const char *start,
 		struct vec_str *list) {
 	int len = last->loc - start + last->len;
 	char *dup = malloc(len + 1);
-	if (!dup) die1("couldn't allocate memory");
+	if (!dup) die("couldn't allocate memory");
 	memcpy(dup, start, len);
 	dup[len] = '\0';
-	if (!vec_push(list, dup)) die1("couldn't append to array");
+	if (!vec_push(list, dup)) die("couldn't append to array");
 }
 
 // XXX: maybe this should be used for the other functions too. it'd be less ugly
@@ -400,7 +393,7 @@ void cmeta_evhandlermacros(const struct cmeta *cm, const char *modname,
 		if (equal(tp, "HANDLE_EVENT") && equal(tp->next, "(")) {
 			tp = tp->next->next;
 			char *name = malloc(tp->len + 1);
-			if (!name) die1("couldn't allocate memory");
+			if (!name) die("couldn't allocate memory");
 			memcpy(name, tp->loc, tp->len);
 			name[tp->len] = '\0';
 			cb_handler(name, modname);

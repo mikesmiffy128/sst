@@ -121,7 +121,7 @@ static void kv_cb(enum kv_token type, const char *p, uint len, void *ctxt) {
 			}
 			state->curent = state->curent->parent;
 			break;
-		case KV_VAL: case KV_VAL_QUOTED:
+		case KV_VAL: case KV_VAL_QUOTED:;
 			char *s = malloc(len + 1);
 			if (!s) die("couldn't allocate value string");
 			memcpy(s, p, len); s[len] = '\0';

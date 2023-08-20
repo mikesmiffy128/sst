@@ -74,7 +74,7 @@ struct msvc_rtti_locator {
 
 // I mean seriously look at this crap!
 #define DEF_MSVC_BASIC_RTTI(mod, name, vtab, typestr) \
-const mod struct msvc_rtti_locator name; \
+mod const struct msvc_rtti_locator name; \
 static const struct { \
 	struct msvc_rtti_descriptor_head d; \
 	char classname[sizeof("" typestr)]; \
@@ -93,24 +93,48 @@ mod const struct msvc_rtti_locator name = { \
 
 #else
 
-#warning FIXME! More stuff needs to be implemented/fixed here!
+struct itanium_type_info_vtable {
+	void *dtor1, *dtor2;
+};
 
 struct itanium_type_info {
-	struct itanium_type_info_vtable {
-		void *dtor1, *dtor2; // ???
-		// there's some more functions here in libstdc++: is_pointer,
-		// is_function, do_catch, etc. however they're not specified in itanium
-		// abi doc. hoping to do without them, but we'll see I guess
-	} *vtable;
+	struct itanium_type_info_vtable *vtable;
 	const char *name;
 };
 
+struct itanium_vmi_type_info {
+	struct itanium_type_info base;
+	uint flags;
+	uint nbases;
+	// then there's a flexible array of `__base_class_type_info`s, but for our
+	// purposes we can just have zero bases and avoid dealing with more nonsense
+};
+
+struct itanium_type_info_vtable_wrapper {
+	// Oh CHRIST, Unix RTTI is bonkers too. Each type_info is itself one of
+	// several subclasses with its own RTTI; the RTTI has RTTI!
+	ssize topoffset;
+	struct itanium_type_info *rtti;
+	struct itanium_type_info_vtable vtable;
+};
+
+// `typeinfo for __cxxabiv1::__vmi_class_type_info` in libcxxabi - type_info
+// comparison is identity-based, so we need to import this from a shared object
+// in order to implement the same ABI. I honestly don't know whether this or the
+// MSVC design is more stupid.
+extern struct itanium_type_info _ZTIN10__cxxabiv121__vmi_class_type_infoE;
+
+// XXX: just static for now, as only used for cvars and lto would dedupe anyway.
+static void _itanium_type_info_dtor(void *this) {}
+
 #define DEF_ITANIUM_BASIC_RTTI(mod, name, typestr) \
-	mod struct itanium_type_info name = { \
-		&(struct itanium_type_info_vtable){ \
-			0, 0 /* FIXME/TEMP: definitely need real functions here! */ \
-		}, \
-		typestr \
+	mod const struct itanium_vmi_type_info name = { \
+		&(struct itanium_type_info_vtable_wrapper){ \
+			0, &_ZTIN10__cxxabiv121__vmi_class_type_infoE, \
+			(void *)&_itanium_type_info_dtor, (void *)&_itanium_type_info_dtor \
+		}.vtable, \
+		typestr, \
+		0, 0 \
 	};
 
 #endif

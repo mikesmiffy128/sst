@@ -69,7 +69,7 @@ static int _ntests = 0;
 	static struct _test _TESTCAT(_test_, __LINE__) = { \
 		.flags = _TEST_USE_DEFAULT_FLAGS, \
 		.timeout = _TEST_DEFAULT_TIMEOUT, \
-		.desc = __FILE__":"_TESTSTR(__LINE__)": "desc_, \
+		.desc = __FILE__":"_TESTSTR(__LINE__)": "desc_ __VA_OPT__(,) \
 		__VA_ARGS__, \
 		._f = &_TESTCAT(_test_f_, __LINE__) \
 	}; \

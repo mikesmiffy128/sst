@@ -80,7 +80,8 @@ bool gameinfo_init(void) {
 			title[len - 9] = '\0';
 		}
 #else
-#error TODO(linux): grab window handle and title from SDL (a bit involved...)
+//#error TODO(linux): grab window handle and title from SDL (a bit involved...)
+		gameinfo_title = "Linux Game With As Yet Unkown Title";
 #endif
 
 		// SUPER crude algorithm to force uppercase titles like HALF-LIFE 2 or

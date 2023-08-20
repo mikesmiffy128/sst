@@ -14,18 +14,18 @@ esac
 
 mkdir -p .build/include
 
-: "${CC:=clang --target=-i686-pc-linux-gnu -fuse-ld=lld}"
-: "${HOSTCC:=clang -fuse-ld=lld}"
+: "${CC:=clang --target=-i686-pc-linux-gnu}"
+: "${HOSTCC:=clang}"
 
 warnings="-Wall -pedantic -Wno-parentheses -Wno-missing-braces \
 -Wno-gnu-zero-variadic-macro-arguments"
 
 dbg=0
 if [ "$dbg" = 1 ]; then
-	cflags="-Og -g3"
-	ldflags="-Og -g3"
+	cflags="-O0 -g3"
+	ldflags="-O0 -g3"
 else
-	cflags="-O2"
+	cflags="-O2 -fvisibility=hidden"
 	ldflags="-O2 -s"
 fi
 
@@ -38,14 +38,14 @@ cc() {
 	if [ "$_mn" = " -DMODULE_NAME=con_" ]; then _mn=" -DMODULE_NAME=con"
 	elif [ "$_mn" = "-DMODULE_NAME=sst" ]; then _mn=; fi
 	# note: using typeof and bool from C23 - see detailed comment in compile.bat
-	$CC -m32 -c -flto -fpic $cflags $warnings -I.build/include \
+	$CC -m32 -c -flto -fpic -fno-ident $cflags $warnings -I.build/include \
 		-D_FILE_OFFSET_BITS=64 -D_TIME_BITS=64$_mn \
 		-Dtypeof=__typeof -include stdbool.h -o ".build/${_bn%%.c}.o" "src/$1"
 }
 
 ld() {
-	$CC -m32 -shared -flto -fpic -fno-ident -fuse-ld=lld $ldflags \
-		-L.build -ldl -ltier0 -lvstdlib -o sst.so$objs
+	$CC -shared -flto -fpic -fuse-ld=lld $ldflags -L.build -ldl \
+			-ltier0 -lvstdlib -o sst.so$objs
 }
 
 src="\

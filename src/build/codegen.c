@@ -14,6 +14,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -118,7 +119,7 @@ static void onfeatinfo(enum cmeta_featmacro type, const char *param,
 	switch (type) {
 		case CMETA_FEAT_REQUIRE:; bool optional = false; goto dep;
 		case CMETA_FEAT_REQUEST: optional = true;
-dep:		struct feature *dep = skiplist_get_feature(&features, param);
+dep:;		struct feature *dep = skiplist_get_feature(&features, param);
 			if (optional) dep->is_requested = true;
 			if (!dep) {
 				fprintf(stderr, "codegen: error: feature `%s` tried to depend "
@@ -308,7 +309,7 @@ int OS_MAIN(int argc, os_char *argv[]) {
 		}
 		p[arglen] = '\0';
 #else
-		const char *p = p->path;
+		const char *p = pi->path;
 #endif
 		const char *lastslash = p - 1;
 		for (; *p; ++p) {

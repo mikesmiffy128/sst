@@ -401,7 +401,7 @@ INIT {
 	if (madvise(keybox, 4096, MADV_DONTFORK) == -1 ||
 			madvise(keybox, 4096, MADV_DONTDUMP) == - 1 ||
 			mlock(keybox, 4096) == -1) {
-		errormsg_errorstd("couldn't secure session state");
+		errmsg_errorstd("couldn't secure session state");
 		goto e;
 	}
 	// TODO(linux): call other init things
@@ -420,7 +420,7 @@ INIT {
 #ifdef _WIN32
 e:	WerUnregisterExcludedMemoryBlock(keybox); // this'd better not fail!
 e2:	VirtualFree(keybox, 4096, MEM_RELEASE);
-#elif
+#else
 e:	munmap(keybox, 4096);
 #endif
 	unhook_inline((void *)orig_DispatchInputEvent);
@@ -433,7 +433,7 @@ END {
 	WerUnregisterExcludedMemoryBlock(keybox); // this'd better not fail!
 	VirtualFree(keybox, 4096, MEM_RELEASE);
 	win32_end();
-#elif defined(__linux__)
+#else
 	munmap(keybox, 4096);
 	// TODO(linux): call other cleanup things
 #endif

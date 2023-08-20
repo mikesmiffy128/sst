@@ -295,10 +295,13 @@ struct _con_vtab_var_wrap _con_vtab_var_wrap = {
 	(void *)&AddFlags_var
 };
 
-void *_con_vtab_iconvar[7] = {
+struct _con_vtab_iconvar_wrap _con_vtab_iconvar_wrap = {
 #ifdef _WIN32
 	0 // because of crazy overload vtable order we can't prefill *anything*
 #else
+	// RTTI members first on linux:
+	-offsetof(struct con_var, vtable_iconvar),
+	&varrtti,
 	// colour is the last of the 4 on linux so we can at least prefill these 3
 	(void *)&SetValue_str_thunk,
 	(void *)&SetValue_f_thunk,

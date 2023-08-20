@@ -23,10 +23,18 @@
  * These functions are just like malloc/realloc/free, but they call into
  * Valve's memory allocator wrapper, which ensures that allocations crossing
  * plugin/engine boundaries won't cause any weird issues.
+ *
+ * On Linux, there is no allocation wrapper, but these still do their own OoM
+ * checking, so there's no need to think about that.
  */
 void *extmalloc(usize sz);
 void *extrealloc(void *mem, usize sz);
+#ifdef _WIN32
 void extfree(void *mem);
+#else
+void free(void *);
+#define extfree free
+#endif
 
 #endif
 

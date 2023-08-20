@@ -27,8 +27,6 @@
 // Almost certainly breaks in some weird cases. Oh well! Most of the time,
 // vtable hooking is more reliable, this is only for, uh, emergencies.
 
-#if defined(_WIN32) && !defined(_WIN64)
-
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((aligned(4096)))
 #elif defined(_MSC_VER)
@@ -43,6 +41,18 @@ bool hook_init(void) {
 	// PE doesn't support rwx sections, not sure about ELF. Meh, just set it
 	// here instead.
 	return os_mprot(trampolines, sizeof(trampolines), PAGE_EXECUTE_READWRITE);
+}
+
+static inline void iflush(void *p, int len) {
+#if defined(_WIN32)
+	// -1 is the current process, and it's a constant in the WDK, so it's
+	// assumed we can safely avoid the useless GetCurrentProcess call
+	FlushInstructionCache((void *)-1, p, len);
+#elif defined(__GNUC__)
+	__builtin___clear_cache((char *)p, (char *)p + len);
+#else
+#error no way to flush instruction cache
+#endif
 }
 
 void *hook_inline(void *func_, void *target) {
@@ -74,30 +84,21 @@ void *hook_inline(void *func_, void *target) {
 		}
 	}
 	// for simplicity, just bump alloc the trampoline. no need to free anyway
-	if (nexttrampoline - trampolines > sizeof(trampolines) - len - 6) goto nosp;
-	// TODO(opt): stop pretending to be thread-safe, it's just slowing us down
-	uchar *trampoline = (uchar *)InterlockedExchangeAdd(
-			(volatile long *)&nexttrampoline, len + 6);
-	// avoid TOCTOU
-	if (trampoline - trampolines > sizeof(trampolines) - len - 6) {
-nosp:	con_warn("hook_inline: out of trampoline space\n");
+	if (nexttrampoline - trampolines > sizeof(trampolines) - len - 6) {
+		con_warn("hook_inline: out of trampoline space\n");
 		return 0;
 	}
+	uchar *trampoline = nexttrampoline;
+	nexttrampoline += len + 6; // NOT thread-safe. we don't need that anyway!
 	*trampoline++ = len; // stick length in front for quicker unhooking
 	memcpy(trampoline, func, len);
 	trampoline[len] = X86_JMPIW;
 	uint diff = func - (trampoline + 5); // goto the continuation
 	memcpy(trampoline + len + 1, &diff, 4);
-	uchar jmp[8];
-	jmp[0] = X86_JMPIW;
 	diff = (uchar *)target - (func + 5); // goto the hook target
-	memcpy(jmp + 1, &diff, 4);
-	// pad with original bytes so we can do an 8-byte atomic write
-	memcpy(jmp + 5, func + 5, 3);
-	*(volatile uvlong *)func = *(uvlong *)jmp; // (assuming function is aligned)
-	// -1 is the current process, and it's a constant in the WDK, so it's
-	// assumed we can safely avoid the useless GetCurrentProcess call
-	FlushInstructionCache((void *)-1, func, len);
+	func[0] = X86_JMPIW;
+	memcpy(func + 1, &diff, 4);
+	iflush(func, 5);
 	return trampoline;
 }
 
@@ -107,13 +108,7 @@ void unhook_inline(void *orig) {
 	int off = mem_load32(p + len + 1);
 	uchar *q = p + off + 5;
 	memcpy(q, p, 5); // XXX: not atomic atm! (does any of it even need to be?)
-	FlushInstructionCache((void *)-1, q, 5);
+	iflush(q, 5);
 }
-
-#else
-
-// TODO(linux): Implement for Linux and/or x86_64 when needed...
-
-#endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

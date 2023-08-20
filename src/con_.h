@@ -112,11 +112,6 @@ struct con_cmd { // ConCommand in engine
 	bool has_complcb : 1, use_newcb : 1, use_newcmdiface : 1;
 };
 
-// con_var will be a bit different on linux; see offset_to_top etc.
-#ifdef __linux__
-#warning FIXME: redo multi-vtable crap for itanium ABI!
-#endif
-
 struct con_var { // ConVar in engine
 	struct con_cmdbase base;
 	void **vtable_iconvar; // IConVar in engine (pure virtual)
@@ -175,7 +170,7 @@ con_cmdcbv1 con_getcmdcbv1(const struct con_cmd *cmd);
  */
 #if defined(__GNUC__) || defined(__clang__)
 #ifdef _WIN32
-#define __asm__(x) __asm__("_" x) // stupid mangling meme (not on linux, right?)
+#define __asm__(x) __asm__("_" x) // stupid mangling meme, only on windows!
 #endif
 void con_msg(const char *fmt, ...) _CON_PRINTF(1, 2) __asm__("Msg");
 void con_warn(const char *fmt, ...) _CON_PRINTF(1, 2) __asm__("Warning");
@@ -214,12 +209,19 @@ extern struct _con_vtab_var_wrap {
 #else
 	// itanium ABI also has the top offset/"whole object" offset in libstdc++
 	ssize topoffset;
-	struct itanium_type_info *rtti;
+	const struct itanium_vmi_type_info *rtti;
 #endif
 	void *vtable[19];
 } _con_vtab_var_wrap;
 #define _con_vtab_var (_con_vtab_var_wrap.vtable)
-extern void *_con_vtab_iconvar[];
+extern struct _con_vtab_iconvar_wrap {
+#ifndef _WIN32
+	ssize topoffset;
+	const struct itanium_vmi_type_info *rtti;
+#endif
+	void *vtable[7];
+} _con_vtab_iconvar_wrap;
+#define _con_vtab_iconvar _con_vtab_iconvar_wrap.vtable
 
 #define _DEF_CVAR(name_, desc, value, hasmin_, min, hasmax_, max, flags_) \
 	static struct con_var _cvar_##name_ = { \

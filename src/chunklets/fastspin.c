@@ -51,6 +51,7 @@ void _mm_pause(); // don't pull in emmintrin.h for this
 
 #include <linux/futex.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 
 // some arches only have a _time64 variant. doesn't actually matter what
 // timespec ABI is used here, as we don't use/expose that functionality

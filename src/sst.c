@@ -14,6 +14,9 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifndef _WIN32
+#include <stdlib.h> // unsetenv
+#endif
 #include <string.h>
 
 #ifdef _WIN32
@@ -71,6 +74,8 @@ static void *ownhandle(void) {
 	}
 	return cached;
 }
+
+struct gnu_link_map *_os_lmbase = 0; // XXX: stupid place to put this, oh well
 #endif
 
 #ifdef _WIN32
@@ -139,9 +144,32 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 		return;
 	}
 	// arbitrary aesthetic judgement
-	for (os_char *p = relpath; *p; ++p) if (*p == L'\\') *p = L'/';
+	for (ushort *p = relpath; *p; ++p) if (*p == L'\\') *p = L'/';
 #else
-#error TODO(linux): implement this, it's late right now and I can't be bothered
+	const char *p = path, *q = startdir;
+	int slash = 0;
+	int i = 1;
+	for (;; ++i) {
+		if (p[i] == '/' && (q[i] == '/' || q[i] == '\0')) slash = i;
+		if (p[i] != q[i]) break;
+	}
+	int rellen = strlen(p + slash + 1) + 1; // include \0
+	char *r = relpath;
+	if (q[i]) {
+		if (r - relpath >= PATH_MAX - 3 - rellen) {
+			errmsg_errorx("path to game is too long"); // eh...
+			return;
+		}
+		for (;;) {
+			r[0] = '.'; r[1] = '.'; r[2] = '/';
+			r += 3;
+			for (;;) {
+				if (q[++i] == '/') break;
+				if (!q[i]) goto c;
+			}
+		}
+	}
+c:	memcpy(r, p + slash + 1, rellen);
 #endif
 	int len = os_strlen(gameinfo_gamedir);
 	if (len + sizeof("/addons/" VDFBASENAME ".vdf") >
@@ -231,8 +259,8 @@ static void do_featureinit(void) {
 			"CreateInterface"))) {
 		errmsg_warndl("couldn't get client's CreateInterface");
 	}
-	void *inputsystemlib = os_dlhandle(OS_LIT("bin/") OS_LIT(OS_DLPREFIX)
-			OS_LIT("inputsystem") OS_LIT(OS_DLSUFFIX));
+	void *inputsystemlib = os_dlhandle(OS_LIT("bin/") OS_LIT("inputsystem")
+			OS_LIT(OS_DLSUFFIX));
 	if (!inputsystemlib) {
 		errmsg_warndl("couldn't get the input system library");
 	}
@@ -240,8 +268,9 @@ static void do_featureinit(void) {
 			"CreateInterface"))) {
 		errmsg_warndl("couldn't get input system's CreateInterface");
 	}
-	inputsystem = factory_inputsystem("InputSystemVersion001", 0);
-	if (!inputsystem) errmsg_warnx("missing input system interface");
+	else if (!(inputsystem = factory_inputsystem("InputSystemVersion001", 0))) {
+		errmsg_warnx("missing input system interface");
+	}
 	// ... and now for the real magic!
 	initfeatures();
 
@@ -398,9 +427,6 @@ static void do_unload(void) {
 	}
 #endif
 	endfeatures();
-#ifdef __linux__
-	if (clientlib) dlclose(clientlib);
-#endif
 	con_disconnect();
 }
 
