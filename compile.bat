@@ -42,9 +42,9 @@ set objs=%objs% .build/%basename%.o
 :: year to get anything done. typeof=__typeof prevents pedantic warnings caused
 :: by typeof still technically being an extension, and stdbool gives us
 :: predefined bool/true/false before compilers start doing that by default
-%CC% -m32 -c -flto %cflags% %warnings% -I.build/include -D_CRT_SECURE_NO_WARNINGS -D_DLL ^
--DWIN32_LEAN_AND_MEAN -DNOMINMAX%dmodname% -Dtypeof=__typeof -include stdbool.h ^
--o .build/%basename%.o %1 || exit /b
+%CC% -m32 -c -flto -mno-stack-arg-probe %cflags% %warnings% -I.build/include ^
+-D_CRT_SECURE_NO_WARNINGS -D_DLL -DWIN32_LEAN_AND_MEAN -DNOMINMAX%dmodname% ^
+-Dtypeof=__typeof -include stdbool.h -o .build/%basename%.o %1 || exit /b
 goto :eof
 
 :src
@@ -90,6 +90,7 @@ setlocal DisableDelayedExpansion
 :: just tack these on, whatever (repeated condition because of expansion memes)
 if "%dbg%"=="1" set src=%src% src/dbg.c
 if "%dbg%"=="1" set src=%src% src/udis86.c
+if "%dbg%"=="0" set src=%src% src/wincrt.c
 
 %HOSTCC% -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h -ladvapi32 ^
 -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c || exit /b
@@ -104,11 +105,14 @@ llvm-rc /FO .build\dll.res src\dll.rc || exit /b
 %CC% -shared -O0 -w -o .build/tier0.dll src/stubs/tier0.c
 %CC% -shared -O0 -w -o .build/vstdlib.dll src/stubs/vstdlib.c
 for %%b in (%src%) do ( call :cc %%b || exit /b )
-:: we need different library names for debugging because Microsoft.
+:: we need different library names for debugging because Microsoft...
+:: actually, it's different anyway because we don't use vcruntime for releases
+:: any more. see comment in wincrt.c
+:: required runtime bits ourselves (which saves 10KiB over static VCRT)
 if "%dbg%"=="1" (
 	set clibs=-lmsvcrtd -lvcruntimed -lucrtd
 ) else (
-	set clibs=-lmsvcrt -lvcruntime -lucrt
+	set clibs=-lucrt
 )
 %CC% -shared -flto %ldflags% -Wl,/IMPLIB:.build/sst.lib,/Brepro,/nodefaultlib ^
 -L.build %clibs% -lkernel32 -luser32 -ladvapi32 -lshlwapi -ld3d9 -ldsound ^
