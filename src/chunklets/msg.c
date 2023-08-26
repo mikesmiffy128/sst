@@ -197,7 +197,7 @@ void msg_putssz5(unsigned char *out, int sz) {
 }
 
 int msg_putssz8(unsigned char *out, int sz) {
-	if (sz < 64) { msg_putssz5(out, sz); return 1; }
+	if (sz < 32) { msg_putssz5(out, sz); return 1; }
 	out[0] = 0xD9;
 	out[1] = sz;
 	return 2;
@@ -241,7 +241,7 @@ void msg_putasz4(unsigned char *out, int sz) {
 }
 
 int msg_putasz16(unsigned char *out, int sz) {
-	if (sz < 32) { msg_putasz4(out, sz); return 1; }
+	if (sz < 16) { msg_putasz4(out, sz); return 1; }
 	out[0] = 0xDC;
 	doput16(out, sz);
 	return 3;
@@ -259,7 +259,7 @@ void msg_putmsz4(unsigned char *out, int sz) {
 }
 
 int msg_putmsz16(unsigned char *out, int sz) {
-	if (sz < 32) { msg_putmsz4(out, sz); return 1; }
+	if (sz < 16) { msg_putmsz4(out, sz); return 1; }
 	out[0] = 0xDE;
 	doput16(out, sz);
 	return 3;

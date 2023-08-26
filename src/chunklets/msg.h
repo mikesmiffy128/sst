@@ -162,7 +162,7 @@ void msg_putf(unsigned char *out, float val);
 int msg_putd(unsigned char *out, double val);
 
 /*
- * Writes the string size sz in the range [0, 15] to the buffer out. Values
+ * Writes the string size sz in the range [0, 31] to the buffer out. Values
  * outside this range will produce an undefined encoding. Always writes a single
  * byte.
  *
