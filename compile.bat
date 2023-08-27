@@ -108,7 +108,6 @@ for %%b in (%src%) do ( call :cc %%b || exit /b )
 :: we need different library names for debugging because Microsoft...
 :: actually, it's different anyway because we don't use vcruntime for releases
 :: any more. see comment in wincrt.c
-:: required runtime bits ourselves (which saves 10KiB over static VCRT)
 if "%dbg%"=="1" (
 	set clibs=-lmsvcrtd -lvcruntimed -lucrtd
 ) else (
