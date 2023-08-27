@@ -18,7 +18,8 @@ mkdir -p .build/include
 : "${HOSTCC:=clang}"
 
 warnings="-Wall -pedantic -Wno-parentheses -Wno-missing-braces \
--Wno-gnu-zero-variadic-macro-arguments"
+-Wno-gnu-zero-variadic-macro-arguments -Werror=implicit-function-declaration \
+-Werror=vla"
 
 dbg=0
 if [ "$dbg" = 1 ]; then
@@ -38,7 +39,7 @@ cc() {
 	if [ "$_mn" = " -DMODULE_NAME=con_" ]; then _mn=" -DMODULE_NAME=con"
 	elif [ "$_mn" = "-DMODULE_NAME=sst" ]; then _mn=; fi
 	# note: using typeof and bool from C23 - see detailed comment in compile.bat
-	$CC -m32 -c -flto -fpic -fno-ident $cflags $warnings -I.build/include \
+	$CC -c -flto -fpic -fno-ident $cflags $warnings -I.build/include \
 		-D_FILE_OFFSET_BITS=64 -D_TIME_BITS=64$_mn \
 		-Dtypeof=__typeof -include stdbool.h -o ".build/${_bn%%.c}.o" "src/$1"
 }
