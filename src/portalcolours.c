@@ -34,11 +34,11 @@ REQUIRE_GLOBAL(clientlib)
 
 // It's like the thing Portal Tools does, but at runtime!
 
-DEF_CVAR(sst_portal_colour0, "Crosshair colour for gravity beam (hex)",
+DEF_CVAR_UNREG(sst_portal_colour0, "Crosshair colour for gravity beam (hex)",
 		"F2CAA7", CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR(sst_portal_colour1, "Crosshair colour for left portal (hex)",
+DEF_CVAR_UNREG(sst_portal_colour1, "Crosshair colour for left portal (hex)",
 		"40A0FF", CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR(sst_portal_colour2, "Crosshair colour for right portal (hex)",
+DEF_CVAR_UNREG(sst_portal_colour2, "Crosshair colour for right portal (hex)",
 		"FFA020", CON_ARCHIVE | CON_HIDDEN)
 static struct rgba colours[3] = {
 		{242, 202, 167, 255}, {64, 160, 255, 255}, {255, 160, 32, 255}};
@@ -122,7 +122,11 @@ static bool find_UTIL_Portal_Color(void *base) {
 }
 
 PREINIT {
-	return GAMETYPE_MATCHES(Portal1);
+	if (!GAMETYPE_MATCHES(Portal1)) return false;
+	con_reg(sst_portal_colour0);
+	con_reg(sst_portal_colour1);
+	con_reg(sst_portal_colour2);
+	return true;
 }
 
 INIT {
