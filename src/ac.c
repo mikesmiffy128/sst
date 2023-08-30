@@ -430,6 +430,7 @@ e:	munmap(keybox, 4096);
 END {
 	ac_disable();
 #if defined(_WIN32)
+	// TODO(opt): *maybe* do the skip-on-quit stuff here. feels a bit scary...
 	WerUnregisterExcludedMemoryBlock(keybox); // this'd better not fail!
 	VirtualFree(keybox, 4096, MEM_RELEASE);
 	win32_end();

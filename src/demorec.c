@@ -29,6 +29,7 @@
 #include "mem.h"
 #include "os.h"
 #include "ppmagic.h"
+#include "sst.h"
 #include "vcall.h"
 #include "x86.h"
 #include "x86util.h"
@@ -289,6 +290,7 @@ INIT {
 }
 
 END {
+	if (!sst_userunloaded) return;
 	// avoid dumb edge case if someone somehow records and immediately unloads
 	if (*recording && *demonum == 0) *demonum = 1;
 	void **vtable = *(void ***)demorecorder;

@@ -29,6 +29,7 @@
 #include "hook.h"
 #include "intdefs.h"
 #include "mem.h"
+#include "sst.h"
 #include "vcall.h"
 
 FEATURE("scalable raw mouse input")
@@ -217,6 +218,7 @@ e0:	UnregisterClassW(L"RInput", 0);
 }
 
 END {
+	if (!sst_userunloaded) return;
 	if (orig_SetCursorPos) { // if null, we didn't init our own implementation
 		RAWINPUTDEVICE rd = {
 			.dwFlags = RIDEV_REMOVE,

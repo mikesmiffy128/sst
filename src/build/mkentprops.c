@@ -157,15 +157,7 @@ _( "				const char *varname = mem_loadptr(mem_offset(p, off_SP_varname));")
 				pp - c->props.data < c->props.sz; ++pp) {
 F( "				%sif (!strcmp(varname, \"%s\")) {", else2, (*pp)->propname)
 F( "					has_%s = true;", (*pp)->varname)
-			// from AM L4D2 SDK headers:
-			// > SENDPROP_VECTORELEM makes [offset] negative to start with so we
-			// > can detect that and set the SPROP_IS_VECTOR_ELEM flag.
-			// apparently if we're loaded via VDF, it hasn't been flipped back
-			// yet. just calling abs() on everything as an easy solution.
-			// TODO(opt): if we moved this into deferred init we wouldn't need
-			// to bother with this, but that might involve untangling more
-			// engineapi stuff
-F( "					%s = abs(*(int *)mem_offset(p, off_SP_offset));",
+F( "					%s = mem_load32(mem_offset(p, off_SP_offset));",
 		(*pp)->varname)
 _( "					if (!--needprops) break;")
 _( "				}")

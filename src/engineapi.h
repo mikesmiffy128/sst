@@ -164,6 +164,12 @@ extern struct CServerPlugin *pluginhandler;
  */
 bool engineapi_init(int pluginver);
 
+/*
+ * Called right before deferred feature initialisation to set up some additional
+ * (nonessential) core stuff - currently this means entprops data.
+ */
+void engineapi_lateinit(void);
+
 #endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80 fdm=marker

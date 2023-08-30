@@ -33,7 +33,6 @@ extern void *clientlib;
 /* occasionally useful: quick query to determine how sst was loaded */
 extern bool sst_earlyloaded;
 /* similar query for how we are being unloaded - ONLY valid during unload */
-// TODO(opt): we can skip a whole bunch of cleanup when exiting the game!
 extern bool sst_userunloaded;
 
 #endif

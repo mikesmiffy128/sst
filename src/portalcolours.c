@@ -155,6 +155,7 @@ INIT {
 }
 
 END {
+	if (!sst_userunloaded) return;
 	unhook_inline((void *)orig_UTIL_Portal_Color);
 }
 
