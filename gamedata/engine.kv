@@ -105,4 +105,24 @@ vtidx_VGuiIsInitialized { // likewise, function is just called IsInitialized()
 	L4Dbased "7 + NVDTOR"
 }
 
+// CDedicatedServerAPI
+vtidx_RunFrame 7
+
+// IEngine
+vtidx_Frame "4 + NVDTOR"
+
+// CEngineTool
+vtidx_GetRealTime {
+    default 34 // HL2, P1, L4D1, BMS
+    // OE, DMoMM 24
+    L4D2 35
+    Portal2 36
+}
+vtidx_HostFrameTime {
+    default 35
+    // OE, DMoMM 25
+    L4D2 38
+    Portal2 39
+}
+
 // vi: sw=4 ts=4 noet tw=80 cc=80 ft=text
