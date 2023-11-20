@@ -54,6 +54,7 @@ static union { // space saving
 #define oldmmiface U.oldmmiface
 #define sym_game U.sym_game
 #define sym_campaign U.sym_campaign
+static int sym_chapter;
 static char campaignbuf[32];
 
 const char *l4dmm_curcampaign(void) {
@@ -61,16 +62,15 @@ const char *l4dmm_curcampaign(void) {
 	if (!matchfwk) { // we must have oldmmiface, then
 		struct contextval *ctxt = unknown_contextlookup(oldmmiface,
 				"CONTEXT_L4D_CAMPAIGN");
-		if (ctxt) {
-			// HACK: since this context symbol stuff was the best that was found
-			// for this old MM interface, just map things back to their names
-			// manually. bit stupid, but it gets the (rather difficult) job done
-			if (strncmp(ctxt->val, "CONTEXT_L4D_CAMPAIGN_", 21)) return 0;
-			if (!strcmp(ctxt->val + 21, "APARTMENTS")) return "Hospital";
-			if (!strcmp(ctxt->val + 21, "CAVES")) return "SmallTown";
-			if (!strcmp(ctxt->val + 21, "GREENHOUSE")) return "Airport";
-			if (!strcmp(ctxt->val + 21, "HILLTOP")) return "Farm";
-		}
+		if (!ctxt) return 0;
+		// HACK: since this context symbol stuff was the best that was found for
+		// this old MM interface, just map things back to their names manually.
+		// bit stupid, but it gets the (rather difficult) job done
+		if (strncmp(ctxt->val, "CONTEXT_L4D_CAMPAIGN_", 21)) return 0;
+		if (!strcmp(ctxt->val + 21, "APARTMENTS")) return "Hospital";
+		if (!strcmp(ctxt->val + 21, "CAVES")) return "SmallTown";
+		if (!strcmp(ctxt->val + 21, "GREENHOUSE")) return "Airport";
+		if (!strcmp(ctxt->val + 21, "HILLTOP")) return "Farm";
 		return 0;
 	}
 #endif
@@ -94,6 +94,30 @@ const char *l4dmm_curcampaign(void) {
 	return ret;
 }
 
+bool l4dmm_firstmap(void) {
+#ifdef _WIN32
+	if (!matchfwk) { // we must have oldmmiface, then
+		struct contextval *ctxt = unknown_contextlookup(oldmmiface,
+				"CONTEXT_L4D_LEVEL");
+		if (!ctxt) return 0;
+		if (strncmp(ctxt->val, "CONTEXT_L4D_LEVEL_", 18)) return false;
+		return !strcmp(ctxt->val + 18, "APARTMENTS") ||
+				!strcmp(ctxt->val + 18, "CAVES") ||
+				!strcmp(ctxt->val + 18, "GREENHOUSE") ||
+				!strcmp(ctxt->val + 18, "HILLTOP");
+	}
+#endif
+	void *ctrlr = GetMatchNetworkMsgController(matchfwk);
+	struct KeyValues *kv = GetActiveGameServerDetails(ctrlr, 0);
+	if (!kv) return false;
+	int chapter = 0;
+	struct KeyValues *subkey = kvsys_getsubkey(kv, sym_game);
+	if (subkey) subkey = kvsys_getsubkey(subkey, sym_chapter);
+	if (subkey) chapter = subkey->ival;
+	kvsys_free(kv);
+	return chapter == 1;
+}
+
 INIT {
 	void *mmlib = os_dlhandle(OS_LIT("matchmaking") OS_LIT(OS_DLSUFFIX));
 	if (mmlib) {
@@ -109,17 +133,15 @@ INIT {
 		}
 		sym_game = kvsys_strtosym("game");
 		sym_campaign = kvsys_strtosym("campaign");
+		sym_chapter = kvsys_strtosym("chapter");
 	}
+#ifdef _WIN32 // L4D1 has no Linux build, btw!
 	else {
-#ifdef _WIN32
 		oldmmiface = factory_engine("VENGINE_MATCHMAKING_VERSION001", 0);
 		if (!oldmmiface) {
 			errmsg_errorx("couldn't get IMatchmaking interface");
 			return false;
 		}
-#else // Linux L4D1 has always used the separate matchmaking library
-		errmsg_errordl("couldn't get matchmaking library");
-		return false;
 #endif
 	}
 	return true;

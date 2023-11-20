@@ -24,9 +24,27 @@
 #include "ppmagic.h"
 #include "udis86.h"
 
+#ifdef _WIN32
+usize dbg_toghidra(const void *addr) {
+	const void *mod;
+	if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+			GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (ushort *)addr,
+			(HMODULE *)&mod /* please leave me alone */)) {
+		con_warn("dbg_toghidra: couldn't get base address\n");
+		return 0;
+	}
+	return (const char *)addr - (const char *)mod + 0x10000000;
+}
+#endif
+
 void dbg_hexdump(const char *name, const void *p, int len) {
 	struct rgba nice_colour = {160, 64, 200, 255}; // a nice purple colour
-	con_colourmsg(&nice_colour, "Hex dump \"%s\" (%p):", name, p);
+#ifdef _WIN32
+	con_colourmsg(&nice_colour, "Hex dump \"%s\" (%p | %p):\n", name, p,
+			(void *)dbg_toghidra(p));
+#else
+	con_colourmsg(&nice_colour, "Hex dump \"%s\" (%p):\n", name, p);
+#endif
 	for (const uchar *cp = p; cp - (uchar *)p < len; ++cp) {
 		// group into words and wrap every 8 words
 		switch ((cp - (uchar *)p) & 31) {
@@ -45,23 +63,15 @@ void dbg_asmdump(const char *name, const void *p, int len) {
 	ud_set_mode(&udis, 32);
 	ud_set_input_buffer(&udis, p, len);
 	ud_set_syntax(&udis, UD_SYN_INTEL);
-	con_colourmsg(&nice_colour, "Disassembly \"%s\" (%p)\n", name, p);
+#ifdef _WIN32
+	con_colourmsg(&nice_colour, "Disassembly \"%s\" (%p | %p):\n", name, p,
+			(void *)dbg_toghidra(p));
+#else
+	con_colourmsg(&nice_colour, "Disassembly \"%s\" (%p):\n", name, p);
+#endif
 	while (ud_disassemble(&udis)) {
 		con_colourmsg(&nice_colour, "  %s\n", ud_insn_asm(&udis));
 	}
 }
-
-#ifdef _WIN32
-usize dbg_toghidra(const void *addr) {
-	const void *mod;
-	if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-			GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (ushort *)addr,
-			(HMODULE *)&mod /* please leave me alone */)) {
-		con_warn("dbg_toghidra: couldn't get base address\n");
-		return 0;
-	}
-	return (const char *)addr - (const char *)mod + 0x10000000;
-}
-#endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

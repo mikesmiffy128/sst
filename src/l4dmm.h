@@ -27,6 +27,12 @@
  */
 const char *l4dmm_curcampaign(void);
 
+/*
+ * Returns true if the current map is known to be the first map of a campaign,
+ * false otherwise.
+ */
+bool l4dmm_firstmap(void);
+
 #endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

@@ -133,6 +133,7 @@ struct ServerClass {
 
 extern struct VEngineClient *engclient;
 extern struct VEngineServer *engserver;
+extern void *srvdll;
 extern void *globalvars;
 extern void *inputsystem, *vgui;
 

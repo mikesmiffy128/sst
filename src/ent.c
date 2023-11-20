@@ -97,12 +97,32 @@ static inline ctor_func findctor(const struct CEntityFactory *factory,
 		const char *classname) {
 #ifdef _WIN32
 	const uchar *insns = (const uchar *)factory->vtable->Create;
-	// every Create() method follows the same pattern. after calling what is
-	// presumably operator new(), it copies the return value from EAX into ECX
-	// and then calls the constructor.
+	// mostly every Create() method follows the same pattern. after calling what
+	// is presumably operator new(), it copies the return value from a register
+	// into ECX and then calls the constructor.
+	//
+	// there have also been some thunky-looking ones, which we attempt to
+	// resolve by following the first call if we bump into a ret before anything
+	// else. this is depth-limited to prevent things getting out of hand.
+	const uchar *seencall = 0;
+	int depth = 3;
 	for (const uchar *p = insns; p - insns < 32;) {
-		if (p[0] == X86_MOVRMW && p[1] == 0xC8 && p[2] == X86_CALL) {
-			return (ctor_func)(p + 7 + mem_loadoffset(p + 3));
+		if (!seencall && p[0] == X86_CALL) {
+			seencall = p;
+		}
+		else {
+			if (p[0] == X86_MOVRMW && (p[1] & 0xF8) == 0xC8
+					&& p[2] == X86_CALL) {
+				return (ctor_func)(p + 7 + mem_loadoffset(p + 3));
+			}
+			if (p[0] == X86_RET || p[0] == X86_RETI16) {
+				if (seencall && --depth) {
+					p = seencall + 5 + mem_loadoffset(seencall + 1); insns = p;
+					seencall = 0;
+					continue;
+				}
+				return false;
+			}
 		}
 		// duping NEXT_INSN macro here in the name of a nicer message
 		int len = x86_len(p);
@@ -127,7 +147,7 @@ void **ent_findvtable(const struct CEntityFactory *factory,
 	const uchar *insns = (const uchar *)ctor;
 	// the constructor itself should do *(void**)this = &vtable; almost right
 	// away, so look for the first immediate load into indirect register
-	for (const uchar *p = insns; p - insns < 24;) {
+	for (const uchar *p = insns; p - insns < 32;) {
 		if (p[0] == X86_MOVMIW && (p[1] & 0xF8) == 0) return mem_loadptr(p + 2);
 		int len = x86_len(p);
 		if (len == -1) {

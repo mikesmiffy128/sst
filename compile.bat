@@ -19,8 +19,7 @@ set warnings=-Wall -pedantic -Wno-parentheses -Wno-missing-braces ^
 
 set dbg=0
 :: XXX: -Og would be nice but apparently a bunch of stuff still gets inlined
-:: which can be somewhat annoying so -O0 it is. Still using -Og in the linux
-:: script; will need to investigate when linux is actually a thing later.
+:: which can be somewhat annoying so -O0 it is.
 if "%dbg%"=="1" (
 	set cflags=-O0 -g3
 	set ldflags=-O0 -g3
