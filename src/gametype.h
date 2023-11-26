@@ -51,9 +51,9 @@ extern u64 _gametype_tag;
 #define _gametype_tag_SrvDLL005	(1 << 15) // mostly everything else, it seems
 
 /* games needing version-specific stuff */
-#define _gametype_tag_Portal1_3420 (1 << 16)
-#define _gametype_tag_L4D2_2147	(1 << 17)
-#define _gametype_tag_TheLastStand (1 << 18) /* The JAiZ update */
+#define _gametype_tag_Portal1_3420	(1 << 16)
+#define _gametype_tag_L4D2_2147plus	(1 << 17)
+#define _gametype_tag_TheLastStand	(1 << 18) /* The JAiZ update */
 
 /* Matches for any multiple possible tags */
 #define _gametype_tag_L4D		(_gametype_tag_L4D1 | _gametype_tag_L4D2)

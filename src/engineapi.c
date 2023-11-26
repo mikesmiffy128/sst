@@ -94,11 +94,11 @@ bool engineapi_init(int pluginver) {
 	}
 
 	if (GAMETYPE_MATCHES(L4D2)) {
+		if (con_findvar("sv_zombie_touch_trigger_delay")) {
+			_gametype_tag |= _gametype_tag_L4D2_2147plus;
+		}
 		if (con_findvar("director_cs_weapon_spawn_chance")) {
 			_gametype_tag |= _gametype_tag_TheLastStand;
-		}
-		else if (con_findvar("sv_zombie_touch_trigger_delay")) {
-			_gametype_tag |= _gametype_tag_L4D2_2147;
 		}
 	}
 
