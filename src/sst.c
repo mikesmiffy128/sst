@@ -348,6 +348,15 @@ static con_cmdcb orig_plugin_load_cb, orig_plugin_unload_cb;
 
 static int ownidx; // XXX: super hacky way of getting this to do_unload()
 
+static bool ispluginv1(const struct CPlugin *plugin) {
+	// basename string is set with strncmp(), so if there's null bytes with more
+	// stuff after, we can't be looking at a v2 struct. and we expect null bytes
+	// in ifacever, since it's a small int value
+	return (plugin->v2.basename[0] == 0 || plugin->v2.basename[0] == 1) &&
+			plugin->v1.theplugin && plugin->v1.ifacever < 256 &&
+			plugin->v1.ifacever;
+}
+
 static void hook_plugin_load_cb(const struct con_cmdargs *args) {
 	if (args->argc == 1) return;
 	if (!CHECK_AllowPluginLoading(true)) return;
@@ -359,10 +368,15 @@ static void hook_plugin_unload_cb(const struct con_cmdargs *args) {
 	if (!CHECK_AllowPluginLoading(false)) return;
 	int idx = atoi(args->argv[1]);
 	struct CPlugin **plugins = pluginhandler->plugins.m.mem;
-	if (idx >= 0 && idx < pluginhandler->plugins.sz &&
-			plugins[idx]->theplugin == &plugin_obj) {
-		sst_userunloaded = true;
-		ownidx = idx;
+	if (idx >= 0 && idx < pluginhandler->plugins.sz) {
+		const struct CPlugin *plugin = plugins[idx];
+		// XXX: *could* memoise the ispluginv1 call, but... meh. effort.
+		const struct CPlugin_common *common = ispluginv1(plugin) ?
+				&plugin->v1: &plugin->v2.common;
+		if (common->theplugin == &plugin_obj) {
+			sst_userunloaded = true;
+			ownidx = idx;
+		}
 #ifdef __clang__
 		// thanks clang for forcing use of return here and THEN warning about it
 #pragma clang diagnostic push
@@ -416,12 +430,14 @@ static void do_unload(void) {
 		cmd_plugin_unload->cb = orig_plugin_unload_cb;
 #ifdef _WIN32 // this bit is only relevant in builds that predate linux support
 		struct CPlugin **plugins = pluginhandler->plugins.m.mem;
-		// see comment in CPlugin above. setting this to the real handle right
+		// see comment in CPlugin struct. setting this to the real handle right
 		// before the engine tries to unload us allows it to actually do so. in
 		// newer branches this is redundant but doesn't do any harm so it's just
-		// unconditional. NOTE: old engines ALSO just leak the handle and never
-		// call Unload() if Load() fails; can't really do anything about that.
-		plugins[ownidx]->module = ownhandle();
+		// unconditional (for v1). NOTE: old engines ALSO just leak the handle
+		// and never call Unload() if Load() fails; can't really do anything
+		// about that.
+		struct CPlugin *plugin = plugins[ownidx];
+		if (ispluginv1(plugin)) plugins[ownidx]->v1.module = ownhandle();
 #endif
 	}
 	endfeatures();
