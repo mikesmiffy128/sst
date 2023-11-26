@@ -1,6 +1,6 @@
 /*
  * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
- * Copyright © 2022 Willian Henrique <wsimanbrazil@yahoo.com.br>
+ * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -277,10 +277,9 @@ struct inputevent {
 DECL_VFUNC_DYN(void, GetDesktopResolution, int *, int *)
 DECL_VFUNC_DYN(void, DispatchAllStoredGameMessages)
 
-typedef void (*VCALLCONV DispatchInputEvent_func)(void *, struct inputevent *);
-static DispatchInputEvent_func orig_DispatchInputEvent;
-static void VCALLCONV hook_DispatchInputEvent(void *this,
-		struct inputevent *ev) {
+typedef void (*Key_Event_func)(struct inputevent *);
+static Key_Event_func orig_Key_Event;
+static void hook_Key_Event(struct inputevent *ev) {
 	//const char *desc[] = {"DOWN", "UP", "DBL"};
 	//const char desclen[] = {4, 2, 3};
 	switch (ev->type) {
@@ -297,17 +296,17 @@ static void VCALLCONV hook_DispatchInputEvent(void *this,
 			//			msg_putssz5(p++, desclen[idx]);
 			//			memcpy(p, desc[idx], desclen[idx]); p += desclen[idx];
 	}
-	orig_DispatchInputEvent(this, ev);
+	orig_Key_Event(ev);
 }
 
-static bool find_DispatchInputEvent(void) {
+static bool find_Key_Event(void) {
 #ifdef _WIN32
 	// Crazy pointer-chasing path to get to DispatchInputEvent:
 	// IGameUIFuncs interface
 	// -> CGameUIFuncs::GetDesktopResolution vfunc
 	//  -> IGame/CGame (first mov into ECX)
 	//   -> CGame::DispatchAllStoredGameMessages vfunc
-	//    -> DispatchInputEvent (first call instruction)
+	//    -> First call instruction (either DispatchInputEvent or Key_Event)
 	void *gameuifuncs = factory_engine("VENGINE_GAMEUIFUNCS_VERSION005", 0);
 	if (!gameuifuncs) {
 		errmsg_errorx("couldn't get engine game UI interface");
@@ -328,17 +327,27 @@ static bool find_DispatchInputEvent(void) {
 ok:	insns = (const uchar *)VFUNC(cgame, DispatchAllStoredGameMessages);
 	for (const uchar *p = insns; p - insns < 128;) {
 		if (p[0] == X86_CALL) {
-			orig_DispatchInputEvent = (DispatchInputEvent_func)(p + 5 +
-					mem_loadoffset(p + 1));
-			// Note: we could go further and dig HandleEngineKey from Key_Event,
-			// but it seems like Key_Event isn't directly called from
-			// DispatchInputEvent in L4D2 (or has a much different structure,
-			// requiring another function call to lead to HandleEngineKey).
-			return true;
+			orig_Key_Event = (Key_Event_func)(p + 5 + mem_loadoffset(p + 1));
+			goto ok2;
 		}
-		NEXT_INSN(p, "DispatchInputEvent function");
+		NEXT_INSN(p, "DispatchInputEvent/Key_Event function");
 	}
-	errmsg_errorx("couldn't find DispatchInputEvent function");
+	errmsg_errorx("couldn't find DispatchInputEvent/Key_Event function");
+	return false;
+ok2:
+	insns = (const uchar *)orig_Key_Event;
+	// Depending on compiler inlining decisions, the function we just found can
+	// be either DispatchInputEvent or Key_Event. If another CALL is found at
+	// the start of this function, that means that we actually found
+	// DispatchInputEvent and this CALL points to Key_Event.
+	for (const uchar *p = insns; p - insns < 32;) {
+		if (p[0] == X86_CALL) {
+			orig_Key_Event = (Key_Event_func)(p + 5 + mem_loadoffset(p + 1));
+			break;
+		}
+		NEXT_INSN(p, "Key_Event function");
+	}
+	return true;
 #else
 #warning TODO(linux): more find-y stuff
 #endif
@@ -366,11 +375,11 @@ PREINIT {
 }
 
 INIT {
-	if (!find_DispatchInputEvent()) return false;
-	orig_DispatchInputEvent = (DispatchInputEvent_func)hook_inline(
-			(void *)orig_DispatchInputEvent, (void *)&hook_DispatchInputEvent);
-	if (!orig_DispatchInputEvent) {
-		errmsg_errorsys("couldn't hook DispatchInputEvent function");
+	if (!find_Key_Event()) return false;
+	orig_Key_Event = (Key_Event_func)hook_inline((void *)orig_Key_Event,
+			(void *)&hook_Key_Event);
+	if (!orig_Key_Event) {
+		errmsg_errorsys("couldn't hook Key_Event function");
 		return false;
 	}
 
@@ -423,7 +432,7 @@ e2:	VirtualFree(keybox, 4096, MEM_RELEASE);
 #else
 e:	munmap(keybox, 4096);
 #endif
-	unhook_inline((void *)orig_DispatchInputEvent);
+	unhook_inline((void *)orig_Key_Event);
 	return false;
 }
 
@@ -438,7 +447,7 @@ END {
 	munmap(keybox, 4096);
 	// TODO(linux): call other cleanup things
 #endif
-	unhook_inline((void *)orig_DispatchInputEvent);
+	unhook_inline((void *)orig_Key_Event);
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
