@@ -98,11 +98,17 @@ off_SP_offset {
 // IEngineVGuiInternal/CEngineVGui
 vtidx_VGuiConnect { // note: the actual name is Connect() but that's too generic
 	default "3 + NVDTOR"
-	L4Dbased "4 + NVDTOR" // ActivateGameUI added
+	L4Dbased {
+		default "4 + NVDTOR" // ActivateGameUI added
+		L4DS "5 + NVDTOR" // some other crap added, god knows
+	}
 }
 vtidx_VGuiIsInitialized { // likewise, function is just called IsInitialized()
 	default "6 + NVDTOR"
-	L4Dbased "7 + NVDTOR"
+	L4Dbased {
+		default "7 + NVDTOR"
+		L4DS "8 + NVDTOR"
+	}
 }
 
 // CDedicatedServerAPI
