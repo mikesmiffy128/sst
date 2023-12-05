@@ -104,11 +104,89 @@ static inline void change(const char *missionid) {
 	ExecuteCommand(issue);
 }
 
-static short ffdelay = 0, ffamt;
+// Encoding: skip segment[, another[, another...]]. Negative marks the last one.
+// Cutscenes of same length can share an entry to save a few bytes :)
+// TODO(compat): add popular custom campaigns too:
+// - dark blood 2
+// - grey scale
+// - left 4 mario
+// - ravenholm
+// - warcelona
+// - tour of terror
+// - dam it
+// - carried off
+static const schar ffsegs[] = {
+	- 9, // No Mercy
+	  4, // Swamp Fever
+	  3, // - seen first propane
+	-12, // - second propand. Also: Death Toll; Dead Air (L4D1); Dark Carnival
+	-15, // Blood Harvest (L4D1); The Sacrifice (L4D1)
+	- 8, // Crash Course; Hard Rain
+	-13, // Dead Center; The Parish; Dead Air (L4D2)
+	-10, // The Passing
+	 11, // The Sacrifice (L4D2)
+	- 4, // - view of biles
+	-16, // Blood Harvest (L4D2), The Last Stand
+	-18, // Cold Stream
+};
+#define FFIDX_NOMERCY 0
+#define FFIDX_SWAMP 1
+#define FFIDX_DEATHTOLL 3
+#define FFIDX_DEADAIR_L4D1 3
+#define FFIDX_CARNIVAL 3
+#define FFIDX_HARVEST_L4D1 4
+#define FFIDX_SACRIFICE_L4D1 4
+#define FFIDX_CRASHCOURSE 5
+#define FFIDX_HARDRAIN 5
+#define FFIDX_CENTER 6
+#define FFIDX_PARISH 6
+#define FFIDX_DEADAIR_L4D2 6
+#define FFIDX_PASSING 7
+#define FFIDX_SACRIFICE_L4D2 8
+#define FFIDX_HARVEST_L4D2 10
+#define FFIDX_TLS 10
+#define FFIDX_STREAM 11
+
+static schar ffidx;
+static short ffdelay;
+static float ffadj = 0;
 static bool mapchanging = false;
 
+DEF_CVAR_MINMAX_UNREG(sst_l4d_quickreset_peektime,
+		"How long to show each item spot during cutscene fast-forward on reset",
+		1.5, 0, 3, CON_ARCHIVE | CON_HIDDEN)
+
+DEF_CCMD_HERE_UNREG(sst_l4d_quickreset_continue,
+		"Get to the end of the current cutscene immediately", 0) {
+	if (!ffdelay) {
+		con_warn("not currently fast-forwarding a cutscene\n");
+		return;
+	}
+	float remainder = ffdelay / 30.0f; // XXX: fixed tickrate... fine for now.
+	while (ffsegs[ffidx] > 0) remainder += ffsegs[ffidx++];
+	remainder -= ffsegs[ffidx];
+	ffdelay = 0;
+	fastfwd_add(remainder, 30);
+}
+
 HANDLE_EVENT(Tick, bool simulating) {
-	if (!mapchanging && ffdelay && !--ffdelay) fastfwd(ffamt, 30);
+	if (!mapchanging && simulating && ffdelay && !--ffdelay) {
+		schar seg = ffsegs[ffidx];
+		float halfwin = con_getvarf(sst_l4d_quickreset_peektime) / 2.0f;
+		float t;
+		if (seg > 0) { // there's more after this one!
+			// if first seg, just take half window. otherwise half + adj = full
+			t = seg - ffadj - halfwin;
+			ffadj = halfwin;
+			++ffidx;
+			ffdelay = seg * 30; // XXX: fixed tickrate as above... fine for now.
+		}
+		else { // last one
+			t = -seg - ffadj;
+			ffadj = 0; // don't adjust the *next* fastforward's first seg
+		}
+		fastfwd(t, 30);
+	}
 }
 
 typedef void (*VCALLCONV OnGameplayStart_func)(void *this);
@@ -124,23 +202,14 @@ static void VCALLCONV hook_OnGameplayStart(void *this) {
 #define orig_UnfreezeTeam orig_OnGameplayStart
 #define hook_UnfreezeTeam hook_OnGameplayStart
 
-static inline int getffamt(const char *campaign) {
-	// TODO(compat): add popular custom campaigns too:
-	// - dark blood 2
-	// - grey scale
-	// - left 4 mario
-	// - ravenholm
-	// - warcelona
-	// - tour of terror
-	// - dam it
-	// - carried off
+static int getffidx(const char *campaign) {
 	if (GAMETYPE_MATCHES(L4D1)) {
-		if (!strcmp(campaign, "Hospital")) return 9; // No Mercy
-		if (!strcmp(campaign, "SmallTown")) return 12; // Death Toll
-		if (!strcmp(campaign, "Airport")) return 12; // Dead Air
-		if (!strcmp(campaign, "Farm")) return 15; // Blood Harvest
-		if (!strcmp(campaign, "River")) return 15; // The Sacrifice
-		if (!strcmp(campaign, "Garage")) return 8; // Crash Course
+		if (!strcmp(campaign, "Hospital")) return FFIDX_NOMERCY;
+		if (!strcmp(campaign, "SmallTown")) return FFIDX_DEATHTOLL;
+		if (!strcmp(campaign, "Airport")) return FFIDX_DEADAIR_L4D1;
+		if (!strcmp(campaign, "Farm")) return FFIDX_HARVEST_L4D1;
+		if (!strcmp(campaign, "River")) return FFIDX_SACRIFICE_L4D1;
+		if (!strcmp(campaign, "Garage")) return FFIDX_CRASHCOURSE;
 	}
 	else /* L4D2 */ {
 		if (!strncmp(campaign, "L4D2C", 5)) {
@@ -148,31 +217,31 @@ static inline int getffamt(const char *campaign) {
 			switch (campaign[5]) {
 				case '1':
 					switch (campaign[6]) {
-						case '\0': return 13; // Dead Center
-						case '0': ret = 12; break; // Death Toll
-						case '1': ret = 13; break; // Dead Air
-						case '2': ret = 16; break; // Blood Harvest
-						case '3': ret = 18; break; // Cold Stream
-						case '4': ret = 16; break; // The Last Stand
-						default: return 0;
+						case '\0': return FFIDX_CENTER;
+						case '0': ret = FFIDX_DEATHTOLL; break;
+						case '1': ret = FFIDX_DEADAIR_L4D2; break;
+						case '2': ret = FFIDX_HARVEST_L4D2; break;
+						case '3': ret = FFIDX_STREAM; break;
+						case '4': ret = FFIDX_TLS; break;
+						default: return -1;
 					}
-					if (campaign[7]) return 0;
+					if (campaign[7]) return -1;
 					return ret;
-				case '2': ret = 12; break; // Dark Carnival
-				case '3': ret = 19; break; // Swamp Fever
-				case '4': ret = 8; break; // Hard Rain
-				case '5': ret = 13; break; // The Parish
-				case '6': ret = 10; break; // The Passing
-				case '7': ret = 15; break; // The Sacrifice
-				case '8': ret = 9; break; // No Mercy
-				case '9': ret = 8; break; // Crash Course
-				default: return 0;
+				case '2': ret = FFIDX_CARNIVAL; break;
+				case '3': ret = FFIDX_SWAMP; break;
+				case '4': ret = FFIDX_HARDRAIN; break;
+				case '5': ret = FFIDX_PARISH; break;
+				case '6': ret = FFIDX_PASSING; break;
+				case '7': ret = FFIDX_SACRIFICE_L4D2; break;
+				case '8': ret = FFIDX_NOMERCY; break;
+				case '9': ret = FFIDX_CRASHCOURSE; break;
+				default: return -1;
 			}
-			if (campaign[6]) return 0;
+			if (campaign[6]) return -1;
 			return ret;
 		}
 	}
-	return 0; // if unknown, just don't skip, I guess.
+	return -1; // if unknown, just don't skip, I guess.
 }
 
 DEF_CVAR_UNREG(sst_l4d_quickreset_fastfwd,
@@ -202,7 +271,7 @@ DEF_CCMD_HERE_UNREG(sst_l4d_quickreset,
 		if (!(mapchanging = !l4dmm_firstmap())) fastfwd(0.8, 10);
 	}
 	if (campaign && con_getvari(sst_l4d_quickreset_fastfwd) &&
-			(ffamt = getffamt(campaign))) {
+			(ffidx = getffidx(campaign)) != -1) {
 		ffdelay = 45; // 1.5s
 	}
 }
@@ -210,6 +279,7 @@ DEF_CCMD_HERE_UNREG(sst_l4d_quickreset,
 PREINIT {
 	if (!GAMETYPE_MATCHES(L4D)) return false;
 	con_reg(sst_l4d_quickreset_fastfwd);
+	con_reg(sst_l4d_quickreset_peektime);
 	return true;
 }
 
@@ -404,7 +474,9 @@ nocd:		errmsg_note("resetting a first map will not clear vote cooldowns");
 		}
 	}
 	con_reg(sst_l4d_quickreset);
+	con_reg(sst_l4d_quickreset_continue);
 	sst_l4d_quickreset_fastfwd->base.flags &= ~CON_HIDDEN;
+	sst_l4d_quickreset_peektime->base.flags &= ~CON_HIDDEN;
 	return true;
 }
 

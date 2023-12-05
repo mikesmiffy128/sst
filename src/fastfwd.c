@@ -66,6 +66,11 @@ void fastfwd(float seconds, float timescale) {
 	skiprate = timescale;
 }
 
+void fastfwd_add(float seconds, float timescale) {
+	skiptime += seconds;
+	skiprate = timescale;
+}
+
 static inline void *find_eng(void *runframe) {
 #ifdef _WIN32
 	const uchar *insns = (const uchar *)runframe;

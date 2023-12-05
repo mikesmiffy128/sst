@@ -24,6 +24,13 @@
  */
 void fastfwd(float seconds, float timescale);
 
+/*
+ * Extends the length of an ongoing fast-forward (or otherwise does the same as
+ * fastfwd() above). Overrides the existing timescale speed, for lack of better
+ * idea of what to do.
+ */
+void fastfwd_add(float seconds, float timescale);
+
 #endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
