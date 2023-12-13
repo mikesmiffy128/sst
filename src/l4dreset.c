@@ -153,11 +153,11 @@ static float ffadj = 0;
 static bool mapchanging = false;
 
 DEF_CVAR_MINMAX_UNREG(sst_l4d_quickreset_peektime,
-		"How long to show each item spot during cutscene fast-forward on reset",
+		"Number of seconds to show each relevant item spot during fast-forward",
 		1.5, 0, 3, CON_ARCHIVE | CON_HIDDEN)
 
 DEF_CCMD_HERE_UNREG(sst_l4d_quickreset_continue,
-		"Get to the end of the current cutscene immediately", 0) {
+		"Get to the end of the current cutscene without further slowdowns", 0) {
 	if (!ffdelay) {
 		con_warn("not currently fast-forwarding a cutscene\n");
 		return;
