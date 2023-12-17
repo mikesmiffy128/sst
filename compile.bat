@@ -78,7 +78,6 @@ setlocal DisableDelayedExpansion
 :+ gameinfo.c
 :+ gameserver.c
 :+ hook.c
-:+ kv.c
 :+ kvsys.c
 :+ l4dmm.c
 :+ l4dreset.c
