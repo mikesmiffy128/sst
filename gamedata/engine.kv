@@ -95,6 +95,14 @@ off_SP_offset {
 	//2013 72 // TODO(compat): not sure about 2013/009 yet pt3
 }
 
+// CBaseServer/CGameServer
+vtidx_GetSpawnCount {
+	//OrangeBox "13 + NVDTOR" // not used right now anyway
+	L4D1 "13 + NVDTOR"
+	L4D2 "14 + NVDTOR" // GetTimescale() added, pushed it down
+	// rest untested, add later if/when actually needed for something
+}
+
 // IEngineVGuiInternal/CEngineVGui
 vtidx_VGuiConnect { // note: the actual name is Connect() but that's too generic
 	default "3 + NVDTOR"

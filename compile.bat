@@ -76,6 +76,7 @@ setlocal DisableDelayedExpansion
 :+ fov.c
 :+ gamedata.c
 :+ gameinfo.c
+:+ gameserver.c
 :+ hook.c
 :+ kv.c
 :+ kvsys.c

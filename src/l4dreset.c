@@ -26,6 +26,7 @@
 #include "feature.h"
 #include "gamedata.h"
 #include "gametype.h"
+#include "gameserver.h"
 #include "hook.h"
 #include "intdefs.h"
 #include "l4dmm.h"
@@ -42,6 +43,7 @@
 FEATURE("Left 4 Dead quick resetting")
 REQUIRE(ent)
 REQUIRE(fastfwd)
+REQUIRE(gameserver)
 REQUIRE(l4dmm)
 REQUIRE_GLOBAL(srvdll)
 REQUIRE_GAMEDATA(vtidx_GameFrame) // note: for L4D1 only, always defined anyway
@@ -119,7 +121,7 @@ static const schar ffsegs[] = {
 	- 9, // No Mercy
 	  4, // Swamp Fever
 	  3, // - seen first propane
-	-12, // - second propand. Also: Death Toll; Dead Air (L4D1); Dark Carnival
+	-12, // - second propane. Also: Death Toll; Dead Air (L4D1); Dark Carnival
 	-15, // Blood Harvest (L4D1); The Sacrifice (L4D1)
 	- 8, // Crash Course; Hard Rain
 	-13, // Dead Center; The Parish; Dead Air (L4D2)
@@ -148,9 +150,9 @@ static const schar ffsegs[] = {
 #define FFIDX_STREAM 11
 
 static schar ffidx;
-static short ffdelay;
+static short ffdelay = 0;
 static float ffadj = 0;
-static bool mapchanging = false;
+static int nextmapnum = 0;
 
 DEF_CVAR_MINMAX_UNREG(sst_l4d_quickreset_peektime,
 		"Number of seconds to show each relevant item spot during fast-forward",
@@ -170,7 +172,7 @@ DEF_CCMD_HERE_UNREG(sst_l4d_quickreset_continue,
 }
 
 HANDLE_EVENT(Tick, bool simulating) {
-	if (!mapchanging && simulating && ffdelay && !--ffdelay) {
+	if (!nextmapnum && simulating && ffdelay && !--ffdelay) {
 		schar seg = ffsegs[ffidx];
 		float halfwin = con_getvarf(sst_l4d_quickreset_peektime) / 2.0f;
 		float t;
@@ -193,8 +195,13 @@ typedef void (*VCALLCONV OnGameplayStart_func)(void *this);
 static OnGameplayStart_func orig_OnGameplayStart;
 static void VCALLCONV hook_OnGameplayStart(void *this) {
 	orig_OnGameplayStart(this);
-	if (mapchanging) reset(); // prevent bots walking around. note ffdelay is 45
-	mapchanging = false; // resume countdown!
+	if (nextmapnum) {
+		// if we changed map more than 1 time, cancel the reset. this'll happen
+		// if someone prematurely disconnects and then starts a new session.
+		if (nextmapnum != gameserver_spawncount()) ffdelay = 0;
+		else reset(); // prevent bots walking around. note ffdelay is stil 45
+	}
+	nextmapnum = 0; // resume countdown if there is one! otherwise do nothing.
 }
 // Simply reuse the above for L4D1, since the calling ABI is the exact same!
 #define UnfreezeTeam_func OnGameplayStart_func
@@ -262,13 +269,17 @@ DEF_CCMD_HERE_UNREG(sst_l4d_quickreset,
 	if (cmd->argc == 2 && (!campaign || strcasecmp(campaign, cmd->argv[1]))) {
 		change(cmd->argv[1]);
 		campaign = cmd->argv[1];
-		mapchanging = true;
+		nextmapnum = gameserver_spawncount() + 1; // immediate next changelevel
 	}
 	else {
 		reset();
-		// same-map reset is delayed by about a second - save that time here
-		// also, set mapchanging back to false in case it got stuck somehow
-		if (!(mapchanging = !l4dmm_firstmap())) fastfwd(0.8, 10);
+		if (l4dmm_firstmap()) {
+			fastfwd(0.8, 10); // same-map reset is delayed by about a second
+			nextmapnum = 0; // reset this just in case it got stuck... somehow?
+		}
+		else {
+			nextmapnum = gameserver_spawncount() + 1; // same as above
+		}
 	}
 	if (campaign && con_getvari(sst_l4d_quickreset_fastfwd) &&
 			(ffidx = getffidx(campaign)) != -1) {
