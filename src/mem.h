@@ -31,7 +31,7 @@ static inline u32 mem_loadu32(const void *p) {
 	//return (u32)cp[0] | (u32)cp[1] << 8 | (u32)cp[2] << 16 | (u32)cp[3] << 24;
 }
 
-/* Retreives a signed 32-bit integer from an unaligned pointer. */
+/* Retrieves a signed 32-bit integer from an unaligned pointer. */
 static inline s32 mem_loads32(const void *p) {
 	return (s32)mem_loadu32(p);
 }
@@ -42,7 +42,7 @@ static inline u64 mem_loadu64(const void *p) {
 	return (u64)mem_loadu32(p) | (u64)mem_loadu32((uchar *)p + 4) << 32;
 }
 
-/* Retreives a signed 64-bit integer from an unaligned pointer. */
+/* Retrieves a signed 64-bit integer from an unaligned pointer. */
 static inline s64 mem_loads64(const void *p) {
 	return (s64)mem_loadu64(p);
 }
@@ -56,12 +56,12 @@ static inline void *mem_loadptr(const void *p) {
 #endif
 }
 
-/* Retreives a signed size/offset value from an unaligned pointer. */
+/* Retrieves a signed size/offset value from an unaligned pointer. */
 static inline ssize mem_loadssize(const void *p) {
 	return (ssize)mem_loadptr(p);
 }
 
-/* Retreives an unsigned size or raw address value from an unaligned pointer. */
+/* Retrieves an unsigned size or raw address value from an unaligned pointer. */
 static inline usize mem_loadusize(const void *p) {
 	return (usize)mem_loadptr(p);
 }
