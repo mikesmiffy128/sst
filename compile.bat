@@ -77,6 +77,7 @@ setlocal DisableDelayedExpansion
 :+ gamedata.c
 :+ gameinfo.c
 :+ gameserver.c
+:+ hexcolour.c
 :+ hook.c
 :+ hud.c
 :+ kvsys.c
@@ -88,6 +89,7 @@ setlocal DisableDelayedExpansion
 :+ portalcolours.c
 :+ rinput.c
 :+ sst.c
+:+ xhair.c
 :+ x86.c
 :: just tack these on, whatever (repeated condition because of expansion memes)
 if "%dbg%"=="1" set src=%src% src/dbg.c

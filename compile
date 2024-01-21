@@ -70,6 +70,7 @@ src="\
 	gamedata.c
 	gameinfo.c
 	gameserver.c
+	hexcolour.c
 	hook.c
 	hud.c
 	kvsys.c
@@ -79,6 +80,7 @@ src="\
 	nosleep.c
 	portalcolours.c
 	sst.c
+	xhair.c
 	x86.c"
 if [ "$dbg" = 1 ]; then src="$src \
 	dbg.c

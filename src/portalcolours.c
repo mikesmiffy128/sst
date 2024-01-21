@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,8 +19,9 @@
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"
-#include "gametype.h"
 #include "feature.h"
+#include "gametype.h"
+#include "hexcolour.h"
 #include "hook.h"
 #include "intdefs.h"
 #include "mem.h"
@@ -34,55 +35,25 @@ REQUIRE_GLOBAL(clientlib)
 
 // It's like the thing Portal Tools does, but at runtime!
 
-DEF_CVAR_UNREG(sst_portal_colour0, "Crosshair colour for gravity beam (hex)",
+DEF_CVAR_UNREG(sst_portal_colour0, "Crosshair colour for gravity beam (RGB hex)",
 		"F2CAA7", CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR_UNREG(sst_portal_colour1, "Crosshair colour for left portal (hex)",
+DEF_CVAR_UNREG(sst_portal_colour1, "Crosshair colour for left portal (RGB hex)",
 		"40A0FF", CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR_UNREG(sst_portal_colour2, "Crosshair colour for right portal (hex)",
+DEF_CVAR_UNREG(sst_portal_colour2, "Crosshair colour for right portal (RGB hex)",
 		"FFA020", CON_ARCHIVE | CON_HIDDEN)
 static struct rgba colours[3] = {
 		{242, 202, 167, 255}, {64, 160, 255, 255}, {255, 160, 32, 255}};
 
-static void hexparse(uchar out[static 4], const char *s) {
-	const char *p = s;
-	for (uchar *q = out; q - out < 3; ++q) {
-		if (*p >= '0' && *p <= '9') {
-			*q = *p++ - '0' << 4;
-		}
-		else if ((*p | 32) >= 'a' && (*p | 32) <= 'f') {
-			*q = 10 + (*p++ | 32) - 'a' << 4;
-		}
-		else {
-			// screw it, just fall back on white, I guess.
-			// note: this also handles *p == '\0' so we don't overrun the string
-			memset(out, 255, 4); // write 4 rather than 3, prolly faster?
-			return;
-		}
-		// repetitive unrolled nonsense
-		if (*p >= '0' && *p <= '9') {
-			*q |= *p++ - '0';
-		}
-		else if ((*p | 32) >= 'a' && (*p | 32) <= 'f') {
-			*q |= 10 + (*p++ | 32) - 'a';
-		}
-		else {
-			memset(out, 255, 4);
-			return;
-		}
-	}
-	//out[3] = 255; // never changes!
-}
-
 static void colourcb(struct con_var *v) {
 	// this is stupid and ugly and has no friends, too bad!
 	if (v == sst_portal_colour0) {
-		hexparse(colours[0].bytes, con_getvarstr(v));
+		hexcolour_rgb(colours[0].bytes, con_getvarstr(v));
 	}
 	else if (v == sst_portal_colour1) {
-		hexparse(colours[1].bytes, con_getvarstr(v));
+		hexcolour_rgb(colours[1].bytes, con_getvarstr(v));
 	}
 	else /* sst_portal_colour2 */ {
-		hexparse(colours[2].bytes, con_getvarstr(v));
+		hexcolour_rgb(colours[2].bytes, con_getvarstr(v));
 	}
 }
 
