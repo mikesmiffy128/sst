@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -157,7 +157,7 @@ _( "				const char *varname = mem_loadptr(mem_offset(p, off_SP_varname));")
 				pp - c->props.data < c->props.sz; ++pp) {
 F( "				%sif (!strcmp(varname, \"%s\")) {", else2, (*pp)->propname)
 F( "					has_%s = true;", (*pp)->varname)
-F( "					%s = mem_load32(mem_offset(p, off_SP_offset));",
+F( "					%s = mem_loads32(mem_offset(p, off_SP_offset));",
 		(*pp)->varname)
 _( "					if (!--needprops) break;")
 _( "				}")

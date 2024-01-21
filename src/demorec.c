@@ -1,6 +1,6 @@
 /*
  * Copyright © 2021 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -193,12 +193,12 @@ static inline bool find_recmembers(void *StopRecording) {
 		// m_nDemoNumber = 0 -> mov dword ptr [<reg> + off], 0
 		// XXX: might end up wanting constants for the MRM field masks?
 		if (p[0] == X86_MOVMIW && (p[1] & 0xC0) == 0x80 &&
-				mem_load32(p + 6) == 0) {
-			demonum = mem_offset(demorecorder, mem_load32(p + 2));
+				mem_loads32(p + 6) == 0) {
+			demonum = mem_offset(demorecorder, mem_loads32(p + 2));
 		}
 		// m_bRecording = false -> mov byte ptr [<reg> + off], 0
 		else if (p[0] == X86_MOVMI8 && (p[1] & 0xC0) == 0x80 && p[6] == 0) {
-			recording = mem_offset(demorecorder, mem_load32(p + 2));
+			recording = mem_offset(demorecorder, mem_loads32(p + 2));
 		}
 		if (recording && demonum) return true; // blegh
 		NEXT_INSN(p, "recording state variables");
@@ -217,7 +217,7 @@ static inline bool find_demoname(void *StartRecording) {
 		// `this` - look for a LEA some time *before* the first call instruction
 		if (p[0] == X86_CALL) return false;
 		if (p[0] == X86_LEA && (p[1] & 0xC0) == 0x80) {
-			demorec_basename = mem_offset(demorecorder, mem_load32(p + 2));
+			demorec_basename = mem_offset(demorecorder, mem_loads32(p + 2));
 			return true;
 		}
 		NEXT_INSN(p, "demo basename variable");

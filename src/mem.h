@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,8 +19,8 @@
 
 #include "intdefs.h"
 
-/* Retrieves a 32-bit integer from an unaligned pointer. */
-static inline u32 mem_load32(const void *p) {
+/* Retrieves an unsigned 32-bit integer from an unaligned pointer. */
+static inline u32 mem_loadu32(const void *p) {
 	// XXX: Turns out the pedantically-safe approach below causes most compilers
 	// to generate horribly braindead x86 output in at least some cases (and the
 	// cases also differ by compiler). So, for now, use the simple pointer cast
@@ -31,24 +31,39 @@ static inline u32 mem_load32(const void *p) {
 	//return (u32)cp[0] | (u32)cp[1] << 8 | (u32)cp[2] << 16 | (u32)cp[3] << 24;
 }
 
-/* Retrieves a 64-bit integer from an unaligned pointer. */
-static inline u64 mem_load64(const void *p) {
+/* Retreives a signed 32-bit integer from an unaligned pointer. */
+static inline s32 mem_loads32(const void *p) {
+	return (s32)mem_loadu32(p);
+}
+
+/* Retrieves an unsigned 64-bit integer from an unaligned pointer. */
+static inline u64 mem_loadu64(const void *p) {
 	// this seems not to get butchered as badly in most cases?
-	return (u64)mem_load32(p) | (u64)mem_load32((uchar *)p + 4) << 32;
+	return (u64)mem_loadu32(p) | (u64)mem_loadu32((uchar *)p + 4) << 32;
+}
+
+/* Retreives a signed 64-bit integer from an unaligned pointer. */
+static inline s64 mem_loads64(const void *p) {
+	return (s64)mem_loadu64(p);
 }
 
 /* Retrieves a pointer from an unaligned pointer-to-pointer. */
 static inline void *mem_loadptr(const void *p) {
 #if defined(_WIN64) || defined(__x86_64__)
-	return (void *)mem_load64(p);
+	return (void *)mem_loadu64(p);
 #else
-	return (void *)mem_load32(p);
+	return (void *)mem_loadu32(p);
 #endif
 }
 
-/* Retreives a signed offset from an unaligned pointer. */
-static inline ssize mem_loadoffset(const void *p) {
+/* Retreives a signed size/offset value from an unaligned pointer. */
+static inline ssize mem_loadssize(const void *p) {
 	return (ssize)mem_loadptr(p);
+}
+
+/* Retreives an unsigned size or raw address value from an unaligned pointer. */
+static inline usize mem_loadusize(const void *p) {
+	return (usize)mem_loadptr(p);
 }
 
 /* Adds a byte count to a pointer and returns a freely-assignable pointer. */

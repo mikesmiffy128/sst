@@ -1,6 +1,6 @@
 /*
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -318,7 +318,7 @@ static inline bool find_voteissues(const uchar *insns) {
 	for (const uchar *p = insns; p - insns < 16;) {
 		// Look for the last call before the ret - that has to be ListIssues()
 		if (p[0] == X86_CALL && p[5] == X86_RET) {
-			insns = p + 5 + mem_loadoffset(p + 1);
+			insns = p + 5 + mem_loads32(p + 1);
 			goto ok;
 		}
 		NEXT_INSN(p, "ListIssues call");
@@ -329,7 +329,7 @@ ok:	for (const uchar *p = insns; p - insns < 96;) {
 		// Each pointer is loaded from a CUtlVector at an offset from `this`, so
 		// we can find that offset from the mov into ECX.
 		if (p[0] == X86_MOVRMW && (p[1] & 0xF8) == 0x88) {
-			int off = mem_loadoffset(p + 2);
+			int off = mem_loads32(p + 2);
 			if (off > 800) { // sanity check: offset is always fairly high
 				off_voteissues = off;
 				return true;
@@ -357,8 +357,8 @@ static inline bool find_votecallers(void *votectrlspawn) {
 		// to happen), but the vector of interest always comes 8 bytes later.
 		// "mov dword ptr [<reg> + off], 0", mod == 0b11
 		if (p[0] == X86_MOVMIW && (p[1] & 0xC0) == 0x80 &&
-				mem_load32(p + 6) == 0) {
-			off_callerrecords = mem_load32(p + 2) + 8;
+				mem_loads32(p + 6) == 0) {
+			off_callerrecords = mem_loads32(p + 2) + 8;
 			return true;
 		}
 		NEXT_INSN(p, "offset to vote caller record vector");
@@ -394,7 +394,7 @@ static inline bool find_UnfreezeTeam(void *GameFrame) { // note: L4D1 only
 		if (p[0] == X86_MOVRMW && p[1] == X86_MODRM(0, 1, 5) &&
 				mem_loadptr(mem_loadptr(p + 2)) == director &&
 				p[6] == X86_CALL) {
-			p += 11 + mem_loadoffset(p + 7);
+			p += 11 + mem_loads32(p + 7);
 			insns = p;
 			goto ok;
 		}
@@ -406,7 +406,7 @@ ok: // Director::Update calls UnfreezeTeam after the first jmp instruction
 		// jz XXX; mov ecx, <reg>; call Director::UnfreezeTeam
 		if (p[0] == X86_JZ && p[2] == X86_MOVRMW && (p[3] & 0xF8) == 0xC8 &&
 				p[4] == X86_CALL) {
-			p += 9 + mem_loadoffset(p + 5);
+			p += 9 + mem_loads32(p + 5);
 			orig_UnfreezeTeam = (UnfreezeTeam_func)p;
 			return true;
 		}

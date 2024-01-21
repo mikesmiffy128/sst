@@ -144,7 +144,7 @@ static bool find_toolspanel(void *enginevgui) {
 		// pointer to the specified panel
 		if (p[0] == X86_CALL) {
 			typedef void *(*VCALLCONV GetRootPanel_func)(void *this, int);
-			int off = mem_load32(p + 1);
+			int off = mem_loads32(p + 1);
 			GetRootPanel_func GetRootPanel = (GetRootPanel_func)(p + 5 + off);
 			toolspanel = GetRootPanel(enginevgui, /*PANEL_TOOLS*/ 3);
 			return true;

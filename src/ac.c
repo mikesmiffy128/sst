@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -327,7 +327,7 @@ static bool find_Key_Event(void) {
 ok:	insns = (const uchar *)VFUNC(cgame, DispatchAllStoredGameMessages);
 	for (const uchar *p = insns; p - insns < 128;) {
 		if (p[0] == X86_CALL) {
-			orig_Key_Event = (Key_Event_func)(p + 5 + mem_loadoffset(p + 1));
+			orig_Key_Event = (Key_Event_func)(p + 5 + mem_loads32(p + 1));
 			goto ok2;
 		}
 		NEXT_INSN(p, "DispatchInputEvent/Key_Event function");
@@ -342,7 +342,7 @@ ok2:
 	// DispatchInputEvent and this CALL points to Key_Event.
 	for (const uchar *p = insns; p - insns < 32;) {
 		if (p[0] == X86_CALL) {
-			orig_Key_Event = (Key_Event_func)(p + 5 + mem_loadoffset(p + 1));
+			orig_Key_Event = (Key_Event_func)(p + 5 + mem_loads32(p + 1));
 			break;
 		}
 		NEXT_INSN(p, "Key_Event function");

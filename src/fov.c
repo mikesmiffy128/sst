@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2022 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -56,7 +56,7 @@ static bool find_SetDefaultFOV(struct con_cmd *fov) {
 		// direct calls, SetDefaultFOV() is the third.
 		if (p[0] == X86_CALL && ++callcnt == 3) {
 			orig_SetDefaultFOV = (SetDefaultFOV_func)(p + 5 +
-					mem_loadoffset(p + 1));
+					mem_loads32(p + 1));
 			return true;
 		}
 		NEXT_INSN(p, "SetDefaultFOV function");

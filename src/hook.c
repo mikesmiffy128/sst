@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2022 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -59,7 +59,7 @@ void *hook_inline(void *func_, void *target) {
 	uchar *func = func_;
 	// dumb hack: if we hit some thunk that immediately jumps elsewhere (which
 	// seems common for win32 API functions), hook the underlying thing instead.
-	while (*func == X86_JMPIW) func += mem_loadoffset(func + 1) + 5;
+	while (*func == X86_JMPIW) func += mem_loads32(func + 1) + 5;
 	if (!os_mprot(func, 5, PAGE_EXECUTE_READWRITE)) return false;
 	int len = 0;
 	for (;;) {
@@ -105,7 +105,7 @@ void *hook_inline(void *func_, void *target) {
 void unhook_inline(void *orig) {
 	uchar *p = orig;
 	int len = p[-1];
-	int off = mem_load32(p + len + 1);
+	int off = mem_loads32(p + len + 1);
 	uchar *q = p + off + 5;
 	memcpy(q, p, 5); // XXX: not atomic atm! (does any of it even need to be?)
 	iflush(q, 5);

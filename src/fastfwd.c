@@ -1,6 +1,6 @@
 /*
  * Copyright © 2023 Matthew Wozniak <sirtomato999@gmail.com>
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -101,7 +101,7 @@ static inline void *find_HostState_Frame(void *Frame) {
 			NEXT_INSN(p, "HostState_Frame");
 			while (p - insns < 640) {
 				if (p[0] == X86_CALL) {
-					return (uchar *)p + 5 + mem_loadoffset(p + 1);
+					return (uchar *)p + 5 + mem_loads32(p + 1);
 				}
 				NEXT_INSN(p, "HostState_Frame");
 			}
@@ -120,7 +120,7 @@ static inline void *find_FrameUpdate(void *HostState_Frame) {
 	// HostState_Frame() calls another non-virtual member function (FrameUpdate)
 	const uchar *insns = (const uchar *)HostState_Frame;
 	for (const uchar *p = insns; p - insns < 384;) {
-		if (p[0] == X86_CALL) return (uchar *)p + 5 + mem_loadoffset(p + 1);
+		if (p[0] == X86_CALL) return (uchar *)p + 5 + mem_loads32(p + 1);
 		NEXT_INSN(p, "CHostState::FrameUpdate");
 	}
 #else
@@ -138,7 +138,7 @@ static inline bool find_Host_AccumulateTime(void *_Host_RunFrame) {
 			while (p - insns < 384) {
 				if (p[0] == X86_CALL) {
 					orig_Host_AccumulateTime = (Host_AccumulateTime_func)(
-							p + 5 + mem_loadoffset(p + 1));
+							p + 5 + mem_loads32(p + 1));
 					return true;
 				}
 				NEXT_INSN(p, "Host_AccumulateTime");
@@ -173,7 +173,7 @@ static void *find_floatcall(void *func, int fldcnt, const char *name) {
 			NEXT_INSN(p, name);
 			while (p - insns < 384) {
 				if (p[0] == X86_CALL) {
-					if (!--fldcnt) return (uchar *)p + 5 + mem_loadoffset(p + 1);
+					if (!--fldcnt) return (uchar *)p + 5 + mem_loads32(p + 1);
 					goto next;
 				}
 				NEXT_INSN(p, name);

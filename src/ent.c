@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -113,11 +113,11 @@ static inline ctor_func findctor(const struct CEntityFactory *factory,
 		else {
 			if (p[0] == X86_MOVRMW && (p[1] & 0xF8) == 0xC8
 					&& p[2] == X86_CALL) {
-				return (ctor_func)(p + 7 + mem_loadoffset(p + 3));
+				return (ctor_func)(p + 7 + mem_loads32(p + 3));
 			}
 			if (p[0] == X86_RET || p[0] == X86_RETI16) {
 				if (seencall && --depth) {
-					p = seencall + 5 + mem_loadoffset(seencall + 1); insns = p;
+					p = seencall + 5 + mem_loads32(seencall + 1); insns = p;
 					seencall = 0;
 					continue;
 				}

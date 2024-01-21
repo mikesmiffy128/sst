@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -91,7 +91,7 @@ static bool find_WriteMessages(void) {
 	// RecordPacket calls WriteMessages right away, so just look for a call
 	for (const uchar *p = insns; p - insns < 32;) {
 		if (*p == X86_CALL) {
-			WriteMessages = (WriteMessages_func)(p + 5 + mem_loadoffset(p + 1));
+			WriteMessages = (WriteMessages_func)(p + 5 + mem_loads32(p + 1));
 			return true;
 		}
 		NEXT_INSN(p, "WriteMessages function");
