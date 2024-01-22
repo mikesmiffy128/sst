@@ -14,6 +14,9 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifndef INC_HEXCOLOUR_H
+#define INC_HEXCOLOUR_H
+
 #include "intdefs.h"
 
 /*
@@ -32,5 +35,7 @@ void hexcolour_rgb(uchar out[static 4], const char *s);
  * value is malformed in some other way, falls back on solid white.
  */
 void hexcolour_rgba(uchar out[static 4], const char *s);
+
+#endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
