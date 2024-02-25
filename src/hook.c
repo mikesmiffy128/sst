@@ -60,7 +60,7 @@ void *hook_inline(void *func_, void *target) {
 	// dumb hack: if we hit some thunk that immediately jumps elsewhere (which
 	// seems common for win32 API functions), hook the underlying thing instead.
 	while (*func == X86_JMPIW) func += mem_loads32(func + 1) + 5;
-	if (!os_mprot(func, 5, PAGE_EXECUTE_READWRITE)) return false;
+	if (!os_mprot(func, 5, PAGE_EXECUTE_READWRITE)) return 0;
 	int len = 0;
 	for (;;) {
 		// FIXME: these cases may result in somewhat dodgy error messaging. They

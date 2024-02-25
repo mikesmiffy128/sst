@@ -24,8 +24,8 @@ void *memcpy(void *restrict x, const void *restrict y, unsigned int sz) {
 #ifdef __clang__
 	__asm__ volatile (
 		"rep movsb\n" :
-		"=D" (x), "=S" (y), "=c" (sz) :
-		"0" (x), "1" (y), "2" (sz) :
+		"+D" (x), "+S" (y), "+c" (sz) :
+		:
 		"memory"
 	);
 #else // terrible fallback just in case someone wants to use this with MSVC

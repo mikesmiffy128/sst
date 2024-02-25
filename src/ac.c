@@ -16,9 +16,6 @@
  */
 
 #include <stdlib.h>
-#ifdef _WIN32
-#include <immintrin.h>
-#endif
 
 #include "alias.h"
 #include "bind.h"
