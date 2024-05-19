@@ -1,5 +1,6 @@
 /*
  * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -32,7 +33,19 @@ struct KeyValues {
 	bool hasescapes;
 	bool evalcond;
 	//char unused;
-	struct KeyValues *next, *child, *chain;
+	union {
+		struct {
+			struct KeyValues *next, *child, *chain;
+		} v1;
+		struct {
+			void *kvsys;
+			bool haskvsys; // wasting 3 bytes for no reason, brilliant
+			struct KeyValues *next, *child, *chain;
+		} v2;
+	};
+	// this was supposedly added here at some point but we don't use it:
+	// typedef bool (*GetSymbolProc_t)(const char *pKey);
+	// GetSymbolProc_t m_pExpressionGetSymbolProc;
 };
 
 /* Wraps the engine IKeyValuesSystem::GetStringForSymbol() call. */
@@ -49,7 +62,7 @@ struct KeyValues *kvsys_getsubkey(struct KeyValues *kv, int sym);
  * IMPORTANT: currently does not automatically coerce types like the engine
  * does. This can be added later if actually required.
  */
-const char *kvsys_getstrval(struct KeyValues *kv);
+const char *kvsys_getstrval(const struct KeyValues *kv);
 
 /* Free a KV object and all its subkeys. */
 void kvsys_free(struct KeyValues *kv);
