@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -219,6 +219,16 @@ DEF_CCMD_HERE(sst_autoload_disable, "Stop loading SST on game startup", 0) {
 DEF_CCMD_HERE(sst_printversion, "Display plugin version information", 0) {
 	con_msg("v" VERSION "\n");
 }
+
+// ugly temporary hack until demo verification things are fleshed out: let
+// interested parties identify the version of SST used by just writing a dummy
+// cvar to the top of the demo. this will be removed later, once there's a less
+// stupid way of achieving the same goal.
+#if VERSION_MAJOR != 0 || VERSION_MINOR != 6
+#error Need to change this manually, since codegen requires it to be spelled \
+out in DEF_CVAR - better yet, can we get rid of this yet?
+#endif
+DEF_CVAR(__sst_0_6_beta, "", 0, CON_HIDDEN | CON_DEMO)
 
 // most plugin callbacks are unused - define dummy functions for each signature
 static void VCALLCONV nop_v_v(void *this) {}
