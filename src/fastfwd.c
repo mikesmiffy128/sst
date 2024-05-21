@@ -185,6 +185,13 @@ next:	NEXT_INSN(p, name);
 	return 0;
 }
 
+PREINIT {
+	// currently only used for l4d quick reset stuff, and conflicts with SPT's
+	// tas_pause hook. so, disable for non-L4D games for now, to be polite.
+	// TODO(compat): come up with a real solution for this if/when required
+	return GAMETYPE_MATCHES(L4Dbased);
+}
+
 INIT {
 	void *hldsapi = factory_engine("VENGINE_HLDS_API_VERSION002", 0);
 	if (!hldsapi) {
