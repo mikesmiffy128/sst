@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,6 +25,9 @@
  */
 
 #ifdef _WIN32 // Windows RTTI stuff, obviously only used on Windows.
+
+// also this: number of virtual destructor entries (used all over the place)
+#define NVDTOR 1
 
 // MSVC RTTI is quite a black box, but thankfully there's some useful sources:
 // - https://doxygen.reactos.org/d0/dcf/cxx_8h_source.html
@@ -92,6 +95,8 @@ mod const struct msvc_rtti_locator name = { \
 };
 
 #else
+
+#define NVDTOR 2 // *stupid* ABI, btw
 
 struct itanium_type_info_vtable {
 	void *dtor1, *dtor2;

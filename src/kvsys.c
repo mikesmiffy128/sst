@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2024 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -15,6 +15,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "abi.h"
 #include "con_.h"
 #include "engineapi.h"
 #include "extmalloc.h"
@@ -74,13 +75,6 @@ static const char *VCALLCONV hook_GetStringForSymbol(void *this, int s) {
 	if (!strcmp(ret, "OnClientPluginWarning")) ret = "sstBlockedThisEvent";
 	return ret;
 }
-
-// XXX: 5th instance of this in the codebase, should REALLY tidy up soon
-#ifdef _WIN32
-#define NVDTOR 1
-#else
-#define NVDTOR 2
-#endif
 
 static void detectabichange(void **kvsvt) {
 	// When no virtual destructor is present, the 6th function in the KVS vtable

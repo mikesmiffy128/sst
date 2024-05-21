@@ -1,6 +1,6 @@
 /* THIS FILE SHOULD BE CALLED `con.c` BUT WINDOWS IS STUPID */
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -255,12 +255,6 @@ static int VCALLCONV GetSplitScreenPlayerSlot(void *thisoff) { return 0; }
 static void VCALLCONV Create_var(void *thisoff, const char *name,
 		const char *defaultval, int flags, const char *helpstr, bool hasmin,
 		float min, bool hasmax, float max, void *cb) {}
-
-#ifdef _WIN32
-#define NVDTOR 1
-#else
-#define NVDTOR 2 // Itanium ABI has 2 because I said so
-#endif
 
 // the first few members of ConCommandBase are the same between versions
 void *_con_vtab_cmd[14 + NVDTOR] = {

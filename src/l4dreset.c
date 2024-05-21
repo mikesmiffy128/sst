@@ -17,6 +17,7 @@
 
 #include <string.h>
 
+#include "abi.h"
 #include "con_.h"
 #include "engineapi.h"
 #include "ent.h"
@@ -66,13 +67,6 @@ static void *director; // "TheDirector" server global
 	int last_issueidx;
 	bool last_passed;
 };*/
-
-// XXX: duping this again here... what makes sense to tidy this up?
-#ifdef _WIN32
-#define NVDTOR 1
-#else
-#define NVDTOR 2
-#endif
 
 struct CVoteIssue;
 DECL_VFUNC(const char *, SetIssueDetails, 1 + NVDTOR, const char *)
