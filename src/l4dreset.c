@@ -1,6 +1,7 @@
 /*
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
  * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Hayden K <imaciidz@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -100,48 +101,92 @@ static inline void change(const char *missionid) {
 	ExecuteCommand(issue);
 }
 
-// Encoding: skip segment[, another[, another...]]. Negative marks the last one.
+// Encoding: skip segment[, another[, another...]]. The last one is negative.
 // Cutscenes of same length can share an entry to save a few bytes :)
-// TODO(compat): add popular custom campaigns too:
-// - dark blood 2
-// - grey scale
-// - left 4 mario
-// - ravenholm
-// - warcelona
-// - tour of terror
-// - dam it
-// - carried off
 static const schar ffsegs[] = {
-	- 9, // No Mercy
+	- 9, // No Mercy; Ravenholm (short cutscene); Dam It Complete; Day Break;
+		 // Hard Rain: Downpour; Dead Before Dawn Too
 	  4, // Swamp Fever
 	  3, // - seen first propane
-	-12, // - second propane. Also: Death Toll; Dead Air (L4D1); Dark Carnival
+	-12, // - second propane. Also: Death Toll; Dead Air (L4D1); Dark Carnival;
+		 // Cold Front; Riptide
 	-15, // Blood Harvest (L4D1); The Sacrifice (L4D1)
-	- 8, // Crash Course; Hard Rain
-	-13, // Dead Center; The Parish; Dead Air (L4D2)
-	-10, // The Passing
+	- 8, // Crash Course; Hard Rain; Left 4 Mario; Alley War
+	-13, // Dead Center; The Parish; Dead Air (L4D2); Dark Blood 2; Grey Scale;
+		 //	Tour of Terror; Carried Off; 2evileyes; Urban Flight; Detour Ahead;
+		 // Energy Crisis; Deadly Dispatch; Blood Proof; Centro
+	-10, // The Passing; Ceda Fever
 	 11, // The Sacrifice (L4D2)
 	- 4, // - view of biles
 	-16, // Blood Harvest (L4D2), The Last Stand
-	-18, // Cold Stream
+	-18, // Cold Stream, Warcelona
+	- 7, // One 4 Nine
+	-14, // Roadkill; Haunted Forest; Suicide Blitz 2
+	-19, // Journey to Splash Mountain
+	-23, // Dark Woods (Extended)
+	-25, // Dark Carnival Remix
+	-28, // Diescraper Redux
+	-31, // Chernobyl: Chapter One, The Curse of Lazar Castle
+	-33, // RedemptionII
+	-36, // Deathcraft II
+	- 2, // Outrun
+	-11, // Arena of the Dead
 };
 #define FFIDX_NOMERCY 0
+#define FFIDX_RAVENHOLM 0
+#define FFIDX_DAMIT 0
+#define FFIDX_DAYBREAK 0
+#define FFIDX_HARDRAINREMIX 0
+#define FFIDX_DEADBEFOREDAWNTOO 0
 #define FFIDX_SWAMP 1
 #define FFIDX_DEATHTOLL 3
 #define FFIDX_DEADAIR_L4D1 3
 #define FFIDX_CARNIVAL 3
+#define FFIDX_COLDFRONT 3
+#define FFIDX_RIPTIDE 3
 #define FFIDX_HARVEST_L4D1 4
 #define FFIDX_SACRIFICE_L4D1 4
 #define FFIDX_CRASHCOURSE 5
 #define FFIDX_HARDRAIN 5
+#define FFIDX_MARIO 5
+#define FFIDX_ALLEYWAR 5
 #define FFIDX_CENTER 6
 #define FFIDX_PARISH 6
 #define FFIDX_DEADAIR_L4D2 6
+#define FFIDX_DARKBLOOD2 6
+#define FFIDX_GREYSCALE 6
+#define FFIDX_TOUROFTERROR 6
+#define FFIDX_CARRIEDOFF 6
+#define FFIDX_2EVILEYES 6
+#define FFIDX_URBANFLIGHT 6
+#define FFIDX_CITY17 6
+#define FFIDX_DETOURAHEAD 6
+#define FFIDX_ENERGYCRISIS 6
+#define FFIDX_DEADLYDISPATCH 6
+#define FFIDX_BLOODPROOF 6
+#define FFIDX_CENTRO 6
 #define FFIDX_PASSING 7
+#define FFIDX_CEDAFEVER 7
 #define FFIDX_SACRIFICE_L4D2 8
 #define FFIDX_HARVEST_L4D2 10
 #define FFIDX_TLS 10
 #define FFIDX_STREAM 11
+#define FFIDX_WARCELONA 11
+#define FFIDX_ONE4NINE 12
+#define FFIDX_ROADKILL 13
+#define FFIDX_HAUNTEDFOREST 13
+#define FFIDX_SUICIDEBLITZ2 13
+#define FFIDX_SPLASHMTN 14
+#define FFIDX_BLOODTRACKS 14
+#define FFIDX_DARKWOODS 15
+#define FFIDX_CARNIVALREMIX 16
+#define FFIDX_DIESCRAPER 17
+#define FFIDX_CHERNOBYL 18
+#define FFIDX_LAZARCASTLE 18
+#define FFIDX_REDEMPTIONII 19
+#define FFIDX_DEATHCRAFT 20
+#define FFIDX_OUTRUN 21
+#define FFIDX_ARENAOFTHEDEAD 22
 
 static schar ffidx;
 static short ffdelay = 0;
@@ -241,8 +286,55 @@ static int getffidx(const char *campaign) {
 			if (campaign[6]) return -1;
 			return ret;
 		}
+		// slow but uncommon case: this giant list of custom campaigns, for fun.
+		// TODO(opt): come up with something smart to do here on some rainy day?
+		if (!strcmp(campaign, "darkblood2")) return FFIDX_DARKBLOOD2;
+		if (!strcmp(campaign, "Greyscale")) return FFIDX_GREYSCALE;
+		if (!strcmp(campaign, "yomimario2")) return FFIDX_MARIO;
+		// TODO(compat): ravenholm cutscene length is actually random; this is
+		// the short one only. we'll want to solve that some day, somehow...
+		if (!strcmp(campaign, "ravenholmwar2")) return FFIDX_RAVENHOLM;
+		if (!strcmp(campaign, "warcelona")) return FFIDX_WARCELONA;
+		if (!strcmp(campaign, "tot")) return FFIDX_TOUROFTERROR;
+		if (!strcmp(campaign, "damitcomplete")) return FFIDX_DAMIT;
+		if (!strcmp(campaign, "CarriedOff")) return FFIDX_CARRIEDOFF;
+		if (!strcmp(campaign, "JourneyToSplashMountain")) return FFIDX_SPLASHMTN;
+		if (!strcmp(campaign, "rkls")) return FFIDX_ROADKILL;
+		if (!strcmp(campaign, "CedaFever")) return FFIDX_CEDAFEVER;
+		if (!strcmp(campaign, "coldfront")) return FFIDX_COLDFRONT;
+		if (!strcmp(campaign, "DarkCarnivalRemix")) return FFIDX_CARNIVALREMIX;
+		if (!strncmp(campaign, "DayBreak", 8)) {
+			if (campaign[8] == '\0' || !strcmp(campaign + 8, "v3")) {
+				return FFIDX_DAYBREAK;
+			}
+			return -1;
+		}
+		if (!strcmp(campaign, "Downpour")) return FFIDX_HARDRAINREMIX;
+		if (!strcmp(campaign, "red")) return FFIDX_REDEMPTIONII;
+		if (!strcmp(campaign, "Diescraper362")) return FFIDX_DIESCRAPER;
+		if (!strcmp(campaign, "dbd2")) return FFIDX_DEADBEFOREDAWNTOO;
+		if (!strcmp(campaign, "2evileyes")) return FFIDX_2EVILEYES;
+		if (!strcmp(campaign, "Chernobyl")) return FFIDX_CHERNOBYL;
+		if (!strcmp(campaign, "darkwood")) return FFIDX_DARKWOODS;
+		if (!strcmp(campaign, "TheCurseofLazarCastle")) return FFIDX_LAZARCASTLE;
+		if (!strcmp(campaign, "urbanflight")) return FFIDX_URBANFLIGHT;
+		if (!strcmp(campaign, "BloodTracks")) return FFIDX_BLOODTRACKS;
+		if (!strcmp(campaign, "City17l4d2")) return FFIDX_CITY17;
+		if (!strcmp(campaign, "Deathcraft")) return FFIDX_DEATHCRAFT;
+		if (!strcmp(campaign, "detourahead")) return FFIDX_DETOURAHEAD;
+		if (!strcmp(campaign, "hauntedforest")) return FFIDX_HAUNTEDFOREST;
+		if (!strcmp(campaign, "One4Nine")) return FFIDX_ONE4NINE;
+		if (!strcmp(campaign, "suicideblitz2")) return FFIDX_SUICIDEBLITZ2;
+		if (!strcmp(campaign, "energycrisis")) return FFIDX_ENERGYCRISIS;
+		if (!strcmp(campaign, "DDCW")) return FFIDX_DEADLYDISPATCH;
+		if (!strcmp(campaign, "Outrun")) return FFIDX_OUTRUN;
+		if (!strcmp(campaign, "BloodProof")) return FFIDX_BLOODPROOF;
+		if (!strcmp(campaign, "centro")) return FFIDX_CENTRO;
+		if (!strcmp(campaign, "riptide")) return FFIDX_RIPTIDE;
+		if (!strcmp(campaign, "jsarena2")) return FFIDX_ARENAOFTHEDEAD;
+		if (!strcmp(campaign, "AlleyWar")) return FFIDX_ALLEYWAR;
 	}
-	return -1; // if unknown, just don't skip, I guess.
+	return -1; // if unknown, just don't fast-forward, I guess.
 }
 
 DEF_CVAR_UNREG(sst_l4d_quickreset_fastfwd,
