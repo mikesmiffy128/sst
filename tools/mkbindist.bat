@@ -21,8 +21,8 @@ md TEMP-%name% || exit /B
 copy sst.dll TEMP-%name%\sst.dll || exit /B
 copy dist\LICENCE.windows TEMP-%name%\LICENCE || exit /B
 :: using midnight on release day to make zip deterministic! change on next release!
-powershell (Get-Item TEMP-%name%\sst.dll).LastWriteTime = new-object DateTime 2023, 6, 11, 0, 0, 0
-powershell (Get-Item TEMP-%name%\LICENCE).LastWriteTime = new-object DateTime 2023, 6, 11, 0, 0, 0
+powershell (Get-Item TEMP-%name%\sst.dll).LastWriteTime = new-object DateTime 2024, 5, 27, 0, 0, 0
+powershell (Get-Item TEMP-%name%\LICENCE).LastWriteTime = new-object DateTime 2024, 5, 27, 0, 0, 0
 pushd TEMP-%name%
 "%SEVENZIP%" a -mtc=off %name%.zip sst.dll LICENCE || exit /B
 move %name%.zip ..\release\%name%.zip
