@@ -1,6 +1,6 @@
 /* THIS FILE SHOULD BE CALLED `con.h` BUT WINDOWS IS STUPID */
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -219,7 +219,7 @@ extern struct _con_vtab_iconvar_wrap {
 	ssize topoffset;
 	const struct itanium_vmi_type_info *rtti;
 #endif
-	void *vtable[7];
+	void *vtable[8];
 } _con_vtab_iconvar_wrap;
 #define _con_vtab_iconvar _con_vtab_iconvar_wrap.vtable
 

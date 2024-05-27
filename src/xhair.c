@@ -19,12 +19,16 @@
 #include "con_.h"
 #include "engineapi.h"
 #include "feature.h"
+#include "gamedata.h"
 #include "hexcolour.h"
 #include "hud.h"
 #include "intdefs.h"
+#include "vcall.h"
 
 FEATURE("crosshair drawing")
 REQUIRE(hud)
+
+DECL_VFUNC_DYN(bool, IsInGame)
 
 DEF_CVAR(sst_xhair, "Enable custom crosshair", 0, CON_ARCHIVE | CON_HIDDEN)
 DEF_CVAR(sst_xhair_colour, "Colour for alternative crosshair (RGBA hex)",
@@ -51,8 +55,10 @@ static inline void drawrect(int x0, int y0, int x1, int y1, struct rgba colour,
 	hud_drawrect(x0, y0, x1, y1, colour, true);
 	if (outline) hud_drawrect(x0, y0, x1, y1, (struct rgba){.a = 255}, false);
 }
+
 HANDLE_EVENT(HudPaint, void) {
 	if (!con_getvari(sst_xhair)) return;
+	if (has_vtidx_IsInGame && engclient && !IsInGame(engclient)) return;
 	int w, h;
 	hud_screensize(&w, &h);
 	int thick = con_getvari(sst_xhair_thickness);
