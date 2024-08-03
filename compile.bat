@@ -1,7 +1,5 @@
 :: This file is dedicated to the public domain.
 @echo off
-
-:: don't leak vars into the environment
 setlocal
 
 if not exist .build\ (
@@ -51,7 +49,7 @@ set objs=%objs% .build/%basename%.o
 :: predefined bool/true/false before compilers start doing that by default
 %CC% -c -flto -mno-stack-arg-probe %cflags% %warnings% -I.build/include ^
 -D_CRT_SECURE_NO_WARNINGS -D_DLL -DWIN32_LEAN_AND_MEAN -DNOMINMAX%dmodname% ^
--Dtypeof=__typeof -include stdbool.h -o .build/%basename%.o %1 || exit /b
+-Dtypeof=__typeof -include stdbool.h -o .build/%basename%.o %1 || goto :end
 goto :eof
 
 :src
@@ -115,17 +113,17 @@ if %host64%==1 (
 %CC% -fuse-ld=lld -shared -O0 -w -o .build/vstdlib.dll src/stubs/vstdlib.c
 
 %HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
--L.build %lbcryptprimitives_host% -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c src/os.c || exit /b
+-L.build %lbcryptprimitives_host% -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c src/os.c || goto :end
 %HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
--L.build %lbcryptprimitives_host% -o .build/mkgamedata.exe src/build/mkgamedata.c src/kv.c src/os.c || exit /b
+-L.build %lbcryptprimitives_host% -o .build/mkgamedata.exe src/build/mkgamedata.c src/kv.c src/os.c || goto :end
 %HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
--L.build %lbcryptprimitives_host% -o .build/mkentprops.exe src/build/mkentprops.c src/kv.c src/os.c || exit /b
+-L.build %lbcryptprimitives_host% -o .build/mkentprops.exe src/build/mkentprops.c src/kv.c src/os.c || goto :end
 .build\codegen.exe%src% || goto :end
 .build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv ^
-gamedata/matchmaking.kv gamedata/vgui2.kv gamedata/vguimatsurface.kv || exit /b
-.build\mkentprops.exe gamedata/entprops.kv || exit /b
-llvm-rc /FO .build\dll.res src\dll.rc || exit /b
-for %%b in (%src%) do ( call :cc %%b || exit /b )
+gamedata/matchmaking.kv gamedata/vgui2.kv gamedata/vguimatsurface.kv || goto :end
+.build\mkentprops.exe gamedata/entprops.kv || goto :end
+llvm-rc /FO .build\dll.res src\dll.rc || goto :end
+for %%b in (%src%) do ( call :cc %%b || goto :end )
 :: we need different library names for debugging because Microsoft...
 :: actually, it's different anyway because we don't use vcruntime for releases
 :: any more. see comment in wincrt.c
@@ -136,20 +134,21 @@ if "%dbg%"=="1" (
 )
 %CC% -fuse-ld=lld -shared -flto %ldflags% -Wl,/IMPLIB:.build/sst.lib,/Brepro,/nodefaultlib ^
 -L.build %clibs% -lkernel32 -luser32 -lbcryptprimitives -lshlwapi -ld3d9 -ldsound ^
--ltier0 -lvstdlib -lntdll -o sst.dll%objs% .build/dll.res || exit /b
+-ltier0 -lvstdlib -lntdll -o sst.dll%objs% .build/dll.res || goto :end
 :: get rid of another useless file (can we just not create this???)
 del .build\sst.lib
 
-%HOSTCC% -fuse-ld=lld -O2 -g -include test/test.h -o .build/bitbuf.test.exe test/bitbuf.test.c || exit /b
-.build\bitbuf.test.exe || exit /b
+%HOSTCC% -fuse-ld=lld -O2 -g -include test/test.h -o .build/bitbuf.test.exe test/bitbuf.test.c || goto :end
+.build\bitbuf.test.exe || goto :end
 :: special case: test must be 32-bit
-%HOSTCC% -fuse-ld=lld -m32 -O2 -g -L.build -lbcryptprimitives -include test/test.h -o .build/hook.test.exe test/hook.test.c || exit /b
-.build\hook.test.exe || exit /b
-%HOSTCC% -fuse-ld=lld -O2 -g -include test/test.h -o .build/kv.test.exe test/kv.test.c || exit /b
-.build\kv.test.exe || exit /b
-%HOSTCC% -fuse-ld=lld -O2 -g -include test/test.h -o .build/x86.test.exe test/x86.test.c || exit /b
-.build\x86.test.exe || exit /b
+%HOSTCC% -fuse-ld=lld -m32 -O2 -g -L.build -lbcryptprimitives -include test/test.h -o .build/hook.test.exe test/hook.test.c || goto :end
+.build\hook.test.exe || goto :end
+%HOSTCC% -fuse-ld=lld -O2 -g -include test/test.h -o .build/kv.test.exe test/kv.test.c || goto :end
+.build\kv.test.exe || goto :end
+%HOSTCC% -fuse-ld=lld -O2 -g -include test/test.h -o .build/x86.test.exe test/x86.test.c || goto :end
+.build\x86.test.exe || goto :end
 
-endlocal
+:end
+exit /b %errorlevel%
 
 :: vi: sw=4 tw=4 noet tw=80 cc=80
