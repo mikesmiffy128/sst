@@ -1,5 +1,9 @@
 #include "chibicc.h"
 
+#ifdef _WIN32
+#define strncasecmp _strnicmp
+#endif
+
 // Input file
 static File *current_file;
 

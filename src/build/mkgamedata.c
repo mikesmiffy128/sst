@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -211,13 +211,13 @@ _( "}")
 
 int OS_MAIN(int argc, os_char *argv[]) {
 	for (++argv; *argv; ++argv) {
-		int fd = os_open(*argv, O_RDONLY);
+		int fd = os_open_read(*argv);
 		if (fd == -1) die("couldn't open file");
 		struct kv_parser kv = {0};
 		struct parsestate state = {*argv, &kv, &root};
 		char buf[1024];
 		int nread;
-		while (nread = read(fd, buf, sizeof(buf))) {
+		while (nread = os_read(fd, buf, sizeof(buf))) {
 			if (nread == -1) die("couldn't read file");
 			if (!kv_parser_feed(&kv, buf, nread, &kv_cb, &state)) goto ep;
 		}
@@ -226,7 +226,7 @@ ep:			fprintf(stderr, "mkgamedata: %" fS ":%d:%d: bad syntax: %s\n",
 					*argv, kv.line, kv.col, kv.errmsg);
 			exit(1);
 		}
-		close(fd);
+		os_close(fd);
 	}
 
 	FILE *out = fopen(".build/include/gamedata.gen.h", "wb");

@@ -78,6 +78,7 @@ src="\
 	l4dreset.c
 	l4dwarp.c
 	nosleep.c
+	os.c
 	portalcolours.c
 	sst.c
 	xhair.c

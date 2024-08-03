@@ -1,6 +1,6 @@
 /*
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,15 +18,16 @@
 // TODO(linux): this is currently only built on Windows, but a linux
 // implementation would be also useful for some games e.g. L4D2
 
+// NOTE: all three of these headers must be in this order. annoyingly.
+#include <Windows.h>
+#include <mmeapi.h>
+#include <dsound.h>
+
 #include "con_.h"
 #include "errmsg.h"
 #include "feature.h"
 #include "os.h"
 #include "sst.h"
-
-// these have to come after Windows.h (via os.h) and in this order
-#include <mmeapi.h>
-#include <dsound.h>
 
 FEATURE("inactive window audio control")
 

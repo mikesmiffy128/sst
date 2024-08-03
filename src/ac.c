@@ -17,6 +17,13 @@
 
 #include <stdlib.h>
 
+#ifdef _WIN32
+#include <Windows.h>
+#include <werapi.h>
+#else
+#include <sys/mman.h>
+#endif
+
 #include "alias.h"
 #include "bind.h"
 #include "chunklets/fastspin.h"
@@ -40,10 +47,6 @@
 #include "vcall.h"
 #include "x86.h"
 #include "x86util.h"
-
-#ifdef _WIN32
-#include <werapi.h> // must be after Windows.h (via os.h)
-#endif
 
 FEATURE()
 REQUIRE(bind)

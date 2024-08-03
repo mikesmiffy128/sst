@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,6 +16,15 @@
 
 #ifndef INC_ERRMSG_H
 #define INC_ERRMSG_H
+
+#ifdef _WIN32
+#include <stdarg.h>
+
+// note: redundant declspec avoids warnings if Windows.h was also included
+__declspec(dllimport) unsigned long __stdcall FormatMessageA(unsigned long,
+		const void *, unsigned long, unsigned long, char *, unsigned long,
+		va_list *);
+#endif
 
 #include "con_.h"
 #include "os.h"
@@ -48,14 +57,17 @@ extern const char msg_note[], msg_warn[], msg_error[];
 
 #ifdef _WIN32
 #define _errmsg_sys(msg, ...) do { \
-	char _warnsys_buf[512]; \
-	OS_WINDOWS_ERROR(_warnsys_buf); \
-	_errmsg_msg(_ERRMSG_STR(MODULE_NAME), msg, __VA_ARGS__, _warnsys_buf); \
+	char _errmsg_buf[512]; \
+	FormatMessageA(/*FORMAT_MESSAGE_FROM_SYSTEM*/ 4096, 0, os_lasterror(), \
+			/*MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT)*/ 1024, _errmsg_buf, \
+			sizeof(_errmsg_buf), 0); \
+	_errmsg_msg(_ERRMSG_STR(MODULE_NAME), msg, __VA_ARGS__, _errmsg_buf); \
 } while (0)
 #define _errmsg_dl _errmsg_sys
 #else
 #define _errmsg_sys _errmsg_std
 static inline const char *_errmsg_dlerror(void) {
+	char *dlerror(void);
 	const char *e = dlerror();
 	if (!e) return "Unknown error"; // just in case, better avoid weirdness!
 	return e;

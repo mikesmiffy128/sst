@@ -13,6 +13,13 @@ if not exist .build\include\ md .build\include
 if "%CC%"=="" set CC=clang --target=i686-pc-windows-msvc
 if "%HOSTCC%"=="" set HOSTCC=clang
 
+set host64=0
+(
+	echo:#ifndef _WIN64
+	echo:#error
+	echo:#endif
+) | %HOSTCC% -E - >nul 2>nul && set host64=1
+
 set warnings=-Wall -pedantic -Wno-parentheses -Wno-missing-braces ^
 -Wno-gnu-zero-variadic-macro-arguments -Werror=implicit-function-declaration ^
 -Werror=vla
@@ -86,6 +93,7 @@ setlocal DisableDelayedExpansion
 :+ l4dwarp.c
 :+ nomute.c
 :+ nosleep.c
+:+ os.c
 :+ portalcolours.c
 :+ rinput.c
 :+ sst.c
@@ -96,19 +104,27 @@ if "%dbg%"=="1" set src=%src% src/dbg.c
 if "%dbg%"=="1" set src=%src% src/udis86.c
 if "%dbg%"=="0" set src=%src% src/wincrt.c
 
-%HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h -ladvapi32 ^
--o .build/codegen.exe src/build/codegen.c src/build/cmeta.c || exit /b
+%CC% -fuse-ld=lld -shared -O0 -w -o .build/bcryptprimitives.dll -Wl,-def:src/stubs/bcryptprimitives.def src/stubs/bcryptprimitives.c
+set lbcryptprimitives_host=-lbcryptprimitives
+if %host64%==1 (
+	:: note: no mangling madness on x64, so we can just call the linker directly
+	lld-link -machine:x64 -def:src/stubs/bcryptprimitives.def -implib:.build/bcryptprimitives64.lib
+	set lbcryptprimitives_host=-lbcryptprimitives64
+)
+%CC% -fuse-ld=lld -shared -O0 -w -o .build/tier0.dll src/stubs/tier0.c
+%CC% -fuse-ld=lld -shared -O0 -w -o .build/vstdlib.dll src/stubs/vstdlib.c
+
 %HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
--o .build/mkgamedata.exe src/build/mkgamedata.c src/kv.c || exit /b
-%HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h -ladvapi32 ^
--o .build/mkentprops.exe src/build/mkentprops.c src/kv.c || exit /b
-.build\codegen.exe%src% || exit /b
+-L.build %lbcryptprimitives_host% -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c src/os.c || exit /b
+%HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
+-L.build %lbcryptprimitives_host% -o .build/mkgamedata.exe src/build/mkgamedata.c src/kv.c src/os.c || exit /b
+%HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
+-L.build %lbcryptprimitives_host% -o .build/mkentprops.exe src/build/mkentprops.c src/kv.c src/os.c || exit /b
+.build\codegen.exe%src% || goto :end
 .build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv ^
 gamedata/matchmaking.kv gamedata/vgui2.kv gamedata/vguimatsurface.kv || exit /b
 .build\mkentprops.exe gamedata/entprops.kv || exit /b
 llvm-rc /FO .build\dll.res src\dll.rc || exit /b
-%CC% -fuse-ld=lld -shared -O0 -w -o .build/tier0.dll src/stubs/tier0.c
-%CC% -fuse-ld=lld -shared -O0 -w -o .build/vstdlib.dll src/stubs/vstdlib.c
 for %%b in (%src%) do ( call :cc %%b || exit /b )
 :: we need different library names for debugging because Microsoft...
 :: actually, it's different anyway because we don't use vcruntime for releases
@@ -119,7 +135,7 @@ if "%dbg%"=="1" (
 	set clibs=-lucrt
 )
 %CC% -fuse-ld=lld -shared -flto %ldflags% -Wl,/IMPLIB:.build/sst.lib,/Brepro,/nodefaultlib ^
--L.build %clibs% -lkernel32 -luser32 -ladvapi32 -lshlwapi -ld3d9 -ldsound ^
+-L.build %clibs% -lkernel32 -luser32 -lbcryptprimitives -lshlwapi -ld3d9 -ldsound ^
 -ltier0 -lvstdlib -lntdll -o sst.dll%objs% .build/dll.res || exit /b
 :: get rid of another useless file (can we just not create this???)
 del .build\sst.lib
@@ -127,7 +143,7 @@ del .build\sst.lib
 %HOSTCC% -fuse-ld=lld -O2 -g -include test/test.h -o .build/bitbuf.test.exe test/bitbuf.test.c || exit /b
 .build\bitbuf.test.exe || exit /b
 :: special case: test must be 32-bit
-%HOSTCC% -fuse-ld=lld -m32 -O2 -g -ladvapi32 -include test/test.h -o .build/hook.test.exe test/hook.test.c || exit /b
+%HOSTCC% -fuse-ld=lld -m32 -O2 -g -L.build -lbcryptprimitives -include test/test.h -o .build/hook.test.exe test/hook.test.c || exit /b
 .build\hook.test.exe || exit /b
 %HOSTCC% -fuse-ld=lld -O2 -g -include test/test.h -o .build/kv.test.exe test/kv.test.c || exit /b
 .build\kv.test.exe || exit /b

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -102,15 +102,15 @@ static void die(const char *s) {
 	exit(100);
 }
 
-static char *readsource(const os_char *f) {
-	int fd = os_open(f, O_RDONLY);
-	if (fd == -1) return 0;
+static char *readsource(const os_char *path) {
+	int f = os_open_read(path);
+	if (f == -1) return 0;
 	uint bufsz = 8192;
 	char *buf = malloc(bufsz);
 	if (!buf) die("couldn't allocate memory");
 	int nread;
 	int off = 0;
-	while ((nread = read(fd, buf + off, bufsz - off)) > 0) {
+	while ((nread = os_read(f, buf + off, bufsz - off)) > 0) {
 		off += nread;
 		if (off == bufsz) {
 			bufsz *= 2;
@@ -122,24 +122,24 @@ static char *readsource(const os_char *f) {
 	}
 	if (nread == -1) die("couldn't read file");
 	buf[off] = 0;
-	close(fd);
+	os_close(f);
 	return buf;
 }
 
 // as per cmeta.h this is totally opaque; it's actually just a Token in disguise
 struct cmeta;
 
-const struct cmeta *cmeta_loadfile(const os_char *f) {
-	char *buf = readsource(f);
+const struct cmeta *cmeta_loadfile(const os_char *path) {
+	char *buf = readsource(path);
 	if (!buf) return 0;
 #ifdef _WIN32
-	char *realname = malloc(wcslen(f) + 1);
+	char *realname = malloc(wcslen(path) + 1);
 	if (!realname) die("couldn't allocate memory");
 	// XXX: being lazy about Unicode right now; a general purpose tool should
 	// implement WTF8 or something. SST itself doesn't have any unicode paths
 	// though, so don't really care as much.
-	*realname = *f;
-	for (const ushort *p = f + 1; p[-1]; ++p) realname[p - f] = *p;
+	*realname = *path;
+	for (const ushort *p = path + 1; p[-1]; ++p) realname[p - path] = *p;
 #else
 	const char *realname = f;
 #endif

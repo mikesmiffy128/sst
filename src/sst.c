@@ -14,13 +14,14 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _WIN32
-#include <stdlib.h> // unsetenv
-#endif
 #include <string.h>
 
 #ifdef _WIN32
+#include <Windows.h>
 #include <shlwapi.h>
+#else
+#include <stdlib.h> // unsetenv
+#include <sys/uio.h>
 #endif
 
 #include "con_.h"
@@ -74,8 +75,6 @@ static void *ownhandle(void) {
 	}
 	return cached;
 }
-
-struct gnu_link_map *_os_lmbase = 0; // XXX: stupid place to put this, oh well
 #endif
 
 #ifdef _WIN32
@@ -99,7 +98,7 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 	const os_char *startdir;
 	if (ifacever == 2) {
 		startdir = _startdir;
-		os_getcwd(_startdir, PATH_MAX); // if this fails, OS devs are all fired.
+		os_getcwd(_startdir);
 #ifdef _WIN32
 		// note: strictly speaking we *could* allow this with an absolute path
 		// since old builds allow absolute plugin_load paths but since it's less
@@ -112,13 +111,12 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 			errmsg_errorx("path to game is too long");
 			return;
 		}
-		memcpy(_startdir + len,
 #ifdef _WIN32
-				L"\\bin", // PathRelativePathToW actually NEEDS a backslash, UGH
+		// PathRelativePathToW actually NEEDS a backslash, UGH
+		os_spancopy(_startdir + len, L"\\bin", 5);
 #else
-				"/bin",
+		os_spancopy(_startdir + len, L"/bin", 5);
 #endif
-				5 * sizeof(os_char));
 	}
 	else /* ifacever == 3 */ {
 		// newer games load from the mod dir instead of engine bin, and search
@@ -143,8 +141,17 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 		errmsg_errorsys("couldn't compute a relative path");
 		return;
 	}
-	// arbitrary aesthetic judgement
-	for (ushort *p = relpath; *p; ++p) if (*p == L'\\') *p = L'/';
+	// arbitrary aesthetic judgement - use forward slashes. while we're at it,
+	// also make sure there's no unicode in there, just in case...
+	int rellen = 0;
+	for (ushort *p = relpath; *p; ++p, ++rellen) {
+		if (*p > 127) {
+			errmsg_errorx("mod dir contains Unicode characters which Source "
+					"doesn't handle well - autoload file not created");
+			return;
+		}
+		if (*p == L'\\') *p = L'/';
+	}
 #else
 	const char *p = path, *q = startdir;
 	int slash = 0;
@@ -177,27 +184,34 @@ c:	memcpy(r, p + slash + 1, rellen);
 		errmsg_errorx("path to VDF is too long");
 		return;
 	}
-	memcpy(path, gameinfo_gamedir, len * sizeof(*gameinfo_gamedir));
-	memcpy(path + len, OS_LIT("/addons"), 8 * sizeof(os_char));
-	if (os_mkdir(path) == -1 && errno != EEXIST) {
-		errmsg_errorstd("couldn't create %" fS, path);
+	os_spancopy(path, gameinfo_gamedir, len);
+	os_spancopy(path + len, OS_LIT("/addons"), 8);
+	if (!os_mkdir(path) && os_lasterror() != OS_EEXIST) {
+		errmsg_errorsys("couldn't create %" fS, path);
 		return;
 	}
-	memcpy(path + len + sizeof("/addons") - 1,
+	os_spancopy(path + len + sizeof("/addons") - 1,
 			OS_LIT("/") OS_LIT(VDFBASENAME) OS_LIT(".vdf"),
-			sizeof("/" VDFBASENAME ".vdf") * sizeof(os_char));
-	FILE *f = os_fopen(path, OS_LIT("wb"));
-	if (!f) {
-		errmsg_errorstd("couldn't open %" fS, path);
-		return;
+			sizeof("/" VDFBASENAME ".vdf"));
+	int f = os_open_write(path);
+	if (f == -1) { errmsg_errorsys("couldn't open %" fS, path); return; }
+#ifdef _WIN32
+	char buf[19 + PATH_MAX];
+	memcpy(buf, "Plugin { file \"", 15);
+	for (int i = 0; i < rellen; ++i) buf[i + 15] = relpath[i];
+	memcpy(buf + 15 + rellen, "\" }\n", 4);
+	if (os_write(f, buf, rellen + 19) == -1) { // blegh
+#else
+	struct iovec iov[3] = {
+		{"Plugin { file \"", 15},
+		{relpath, rellen},
+		{"\" }\n", 4}
+	};
+	if (writev(fd, &iov, 3) == -1) {
+#endif
+		errmsg_errorsys("couldn't write to %" fS, path);
 	}
-	// XXX: oh crap, we're clobbering unicode again. welp, let's continue
-	// relying on the theory that the engine would fail to deal with it anyway.
-	if (fprintf(f, "Plugin { file \"%" fS "\" }\n", relpath) < 0 ||
-			fflush(f) == -1) {
-		errmsg_errorstd("couldn't write to %" fS, path);
-	}
-	fclose(f);
+	os_close(f);
 }
 
 DEF_CCMD_HERE(sst_autoload_disable, "Stop loading SST on game startup", 0) {
@@ -208,11 +222,11 @@ DEF_CCMD_HERE(sst_autoload_disable, "Stop loading SST on game startup", 0) {
 		errmsg_errorx("path to VDF is too long");
 		return;
 	}
-	memcpy(path, gameinfo_gamedir, len * sizeof(*gameinfo_gamedir));
-	memcpy(path + len, OS_LIT("/addons/") OS_LIT(VDFBASENAME) OS_LIT(".vdf"),
-			sizeof("/addons/" VDFBASENAME ".vdf") * sizeof(os_char));
-	if (os_unlink(path) == -1 && errno != ENOENT) {
-		errmsg_warnstd("couldn't delete %" fS, path);
+	os_spancopy(path, gameinfo_gamedir, len);
+	os_spancopy(path + len, OS_LIT("/addons/") OS_LIT(VDFBASENAME) OS_LIT(".vdf"),
+			sizeof("/addons/" VDFBASENAME ".vdf"));
+	if (!os_unlink(path) && os_lasterror() != OS_ENOENT) {
+		errmsg_warnsys("couldn't delete %" fS, path);
 	}
 }
 

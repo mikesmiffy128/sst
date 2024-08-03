@@ -174,13 +174,13 @@ _( "}")
 
 int OS_MAIN(int argc, os_char *argv[]) {
 	for (++argv; *argv; ++argv) {
-		int fd = os_open(*argv, O_RDONLY);
-		if (fd == -1) die("couldn't open file");
+		int f = os_open_read(*argv);
+		if (f == -1) die("couldn't open file");
 		struct kv_parser kv = {0};
 		struct parsestate state = {*argv, &kv};
 		char buf[1024];
 		int nread;
-		while (nread = read(fd, buf, sizeof(buf))) {
+		while (nread = os_read(f, buf, sizeof(buf))) {
 			if (nread == -1) die("couldn't read file");
 			if (!kv_parser_feed(&kv, buf, nread, &kv_cb, &state)) goto ep;
 		}
@@ -189,7 +189,7 @@ ep:			fprintf(stderr, "mkentprops: %" fS ":%d:%d: bad syntax: %s\n",
 					*argv, kv.line, kv.col, kv.errmsg);
 			exit(1);
 		}
-		close(fd);
+		os_close(f);
 	}
 
 	FILE *out = fopen(".build/include/entprops.gen.h", "wb");

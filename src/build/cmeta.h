@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -21,7 +21,7 @@
 
 struct cmeta;
 
-const struct cmeta *cmeta_loadfile(const os_char *f);
+const struct cmeta *cmeta_loadfile(const os_char *path);
 
 /*
  * Iterates through all the #include directives in a file, passing each one in

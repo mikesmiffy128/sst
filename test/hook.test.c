@@ -6,6 +6,7 @@
 
 #include "../src/x86.c"
 #include "../src/hook.c"
+#include "../src/os.c"
 
 #include <stdarg.h>
 #include <stdio.h>

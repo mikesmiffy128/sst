@@ -1,0 +1,7 @@
+; This file is dedicated to the public domain.
+
+LIBRARY bcryptprimitives
+EXPORTS
+	ProcessPrng
+
+; vi: sw=4 ts=4 noet tw=80 cc=80

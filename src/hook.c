@@ -23,6 +23,13 @@
 #include "os.h"
 #include "x86.h"
 
+#ifdef _WIN32
+// try to avoid pulling in all of Windows.h for this... (redundant dllimport
+// avoids warnings in hook.test.c where Windows.h is included via test.h)
+__declspec(dllimport) int __stdcall FlushInstructionCache(
+		void *, const void *, usize);
+#endif
+
 // Warning: half-arsed hacky implementation (because that's all we really need)
 // Almost certainly breaks in some weird cases. Oh well! Most of the time,
 // vtable hooking is more reliable, this is only for, uh, emergencies.
