@@ -20,7 +20,7 @@
 
 #include "../intdefs.h"
 #include "../kv.h"
-#include "../noreturn.h"
+#include "../langext.h"
 #include "../os.h"
 #include "vec.h"
 

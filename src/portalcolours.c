@@ -24,6 +24,7 @@
 #include "hexcolour.h"
 #include "hook.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "os.h"
 #include "ppmagic.h"
@@ -102,13 +103,13 @@ PREINIT {
 
 INIT {
 #ifdef _WIN32
-	if (!find_UTIL_Portal_Color(clientlib)) {
+	if_cold (!find_UTIL_Portal_Color(clientlib)) {
 		errmsg_errorx("couldn't find UTIL_Portal_Color");
 		return false;
 	}
 	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)hook_inline(
 			(void *)orig_UTIL_Portal_Color, (void *)&hook_UTIL_Portal_Color);
-	if (!orig_UTIL_Portal_Color) {
+	if_cold (!orig_UTIL_Portal_Color) {
 		errmsg_errorsys("couldn't hook UTIL_Portal_Color");
 		return false;
 	}
@@ -126,7 +127,7 @@ INIT {
 }
 
 END {
-	if (!sst_userunloaded) return;
+	if_hot (!sst_userunloaded) return;
 	unhook_inline((void *)orig_UTIL_Portal_Color);
 }
 

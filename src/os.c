@@ -31,6 +31,7 @@
 #endif
 
 #include "intdefs.h"
+#include "langext.h"
 
 #ifdef _WIN32
 
@@ -65,7 +66,7 @@ int os_write(int f, const void *buf, int len) {
 
 vlong os_fsize(int f) {
 	vlong ret;
-	if (!GetFileSizeEx((void *)(ssize)f, (LARGE_INTEGER *)&ret)) return -1;
+	if_cold (!GetFileSizeEx((void *)(ssize)f, (LARGE_INTEGER *)&ret)) return -1;
 	return ret;
 }
 
@@ -90,13 +91,13 @@ void *os_dlsym(void *restrict lib, const char *restrict s) {
 }
 int os_dlfile(void *lib, ushort *buf, int sz) {
 	unsigned int n = GetModuleFileNameW(lib, buf, sz);
-	if (n == 0 || n == sz) return -1;
+	if_cold (n == 0 || n == sz) return -1;
 	// get the canonical capitalisation, as for some reason GetModuleFileName()
 	// returns all lowercase. this doesn't really matter except it looks nicer
 	GetLongPathNameW(buf, buf, n + 1);
 	// the drive letter will also be lower case, if it is an actual drive letter
 	// of course. it should be; I'm not gonna lose sleep over UNC paths and such
-	if (buf[0] >= L'a' && buf[0] <= L'z' && buf[1] == L':') buf[0] &= ~32u;
+	if_hot (buf[0] >= L'a' && buf[0] <= L'z' && buf[1] == L':') buf[0] &= ~32u;
 	return n;
 }
 
@@ -124,7 +125,7 @@ void os_close(int f) { close(f); }
 
 vlong os_fsize(int f) {
 	struct stat s;
-	if (stat(f, &s) == -1) return -1;
+	if_cold (stat(f, &s) == -1) return -1;
 	return s.st_size;
 }
 
@@ -166,7 +167,7 @@ static struct link_map *lmbase = 0;
 
 void *os_dlhandle(const char *name) {
 	extern struct link_map *lmbase; // note: defined in sst.c for now
-	if (!lmbase) { // IMPORTANT: not thread safe. don't forget later!
+	if_cold (!lmbase) { // IMPORTANT: not thread safe. don't forget later!
 		lmbase = (struct link_map *)dlopen("libc.so.6", RTLD_LAZY | RTLD_NOLOAD);
 		dlclose(lmbase); // assume success
 		while (lmbase->l_prev) lmbase = lmbase->l_prev;
@@ -195,7 +196,7 @@ void *os_dlhandle(const char *name) {
 int os_dlfile(void *lib, char *buf, int sz) {
 	struct link_map *lm = lib;
 	int ssz = strlen(lm->l_name) + 1;
-	if (ssz > sz) { errno = ENAMETOOLONG; return -1; }
+	if_cold (ssz > sz) { errno = ENAMETOOLONG; return -1; }
 	memcpy(buf, lm->l_name, ssz);
 	return ssz;
 }

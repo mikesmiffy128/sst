@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,8 +20,9 @@
 #include "feature.h"
 #include "gamedata.h"
 #include "gametype.h"
-#include "intdefs.h"
 #include "hook.h"
+#include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "os.h"
 #include "vcall.h"
@@ -76,7 +77,7 @@ static bool unprot(void *gm) {
 // reimplementing cheats check for dumb and bad reasons, see below
 static struct con_var *sv_cheats;
 static void cheatcb(struct con_var *this) {
-	if (this->ival && !con_getvari(sv_cheats)) {
+	if (this->ival) if_cold(!con_getvari(sv_cheats)) {
 		con_warn("Can't use cheat cvar sst_autojump, unless server has "
 				"sv_cheats set to 1.\n");
 		con_setvari(this, 0);
@@ -85,17 +86,17 @@ static void cheatcb(struct con_var *this) {
 
 INIT {
 	gmsv = factory_server("GameMovement001", 0);
-	if (!gmsv) {
+	if_cold (!gmsv) {
 		errmsg_errorx("couldn't get server-side game movement interface");
 		return false;
 	}
-	if (!unprot(gmsv)) return false;
+	if_cold (!unprot(gmsv)) return false;
 	gmcl = factory_client("GameMovement001", 0);
-	if (!gmcl) {
+	if_cold (!gmcl) {
 		errmsg_errorx("couldn't get client-side game movement interface");
 		return false;
 	}
-	if (!unprot(gmcl)) return false;
+	if_cold (!unprot(gmcl)) return false;
 	origsv = (CheckJumpButton_func)hook_vtable(*(void ***)gmsv,
 			vtidx_CheckJumpButton, (void *)&hooksv);
 	origcl = (CheckJumpButton_func)hook_vtable(*(void ***)gmcl,

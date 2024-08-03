@@ -9,7 +9,7 @@
 #include "../src/kv.c"
 
 #include "../src/intdefs.h"
-#include "../src/noreturn.h"
+#include "../src/langext.h"
 
 static noreturn die(const struct kv_parser *kvp) {
 	fprintf(stderr, "parse error: %d:%d: %s\n", kvp->line, kvp->col,

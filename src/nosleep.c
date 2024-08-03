@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,6 +20,7 @@
 #include "feature.h"
 #include "gamedata.h"
 #include "hook.h"
+#include "langext.h"
 #include "mem.h"
 #include "os.h"
 #include "vcall.h"
@@ -48,7 +49,7 @@ PREINIT {
 
 INIT {
 	vtable = mem_loadptr(inputsystem);
-	if (!os_mprot(vtable + vtidx_SleepUntilInput, sizeof(void *),
+	if_cold (!os_mprot(vtable + vtidx_SleepUntilInput, sizeof(void *),
 			PAGE_READWRITE)) {
 		errmsg_errorx("couldn't make virtual table writable");
 		return false;

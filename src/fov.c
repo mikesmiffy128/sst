@@ -27,6 +27,7 @@
 #include "gametype.h"
 #include "hook.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "sst.h"
 #include "vcall.h"
@@ -67,7 +68,7 @@ static bool find_SetDefaultFOV(struct con_cmd *fov) {
 // replacement cvar needs to actively set player fov if in a map
 static void fovcb(struct con_var *v) {
 	void *player = ent_get(1); // NOTE: singleplayer only!
-	if (player) orig_SetDefaultFOV(player, con_getvari(v));
+	if_hot (player) orig_SetDefaultFOV(player, con_getvari(v));
 }
 
 // ensure FOV is applied on load, if the engine wouldn't do that itself
@@ -87,7 +88,7 @@ PREINIT {
 
 INIT {
 	cmd_fov = con_findcmd("fov");
-	if (!cmd_fov) return false; // shouldn't really happen but just in case!
+	if_cold (!cmd_fov) return false; // shouldn't happen but just in case!
 	if (real_fov_desired = con_findvar("fov_desired")) {
 		// latest steampipe already goes up to 120 fov
 		if (real_fov_desired->parent->maxval == 120) return false;
@@ -98,13 +99,13 @@ INIT {
 		con_reg(fov_desired);
 		real_fov_desired = fov_desired;
 	}
-	if (!find_SetDefaultFOV(cmd_fov)) {
+	if_cold (!find_SetDefaultFOV(cmd_fov)) {
 		errmsg_errorx("couldn't find SetDefaultFOV function");
 		return false;
 	}
 	orig_SetDefaultFOV = (SetDefaultFOV_func)hook_inline(
 			(void *)orig_SetDefaultFOV, (void *)&hook_SetDefaultFOV);
-	if (!orig_SetDefaultFOV) {
+	if_cold (!orig_SetDefaultFOV) {
 		errmsg_errorsys("couldn't hook SetDefaultFOV function");
 		return false;
 	}
@@ -118,7 +119,7 @@ INIT {
 }
 
 END {
-	if (!sst_userunloaded) return;
+	if_hot (!sst_userunloaded) return;
 	if (real_fov_desired && real_fov_desired != fov_desired) {
 		real_fov_desired->parent->maxval = 90;
 		if (con_getvarf(real_fov_desired) > 90) {

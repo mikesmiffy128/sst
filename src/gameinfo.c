@@ -23,6 +23,7 @@
 #include "errmsg.h"
 #include "gamedata.h"
 #include "gametype.h"
+#include "langext.h"
 #include "os.h"
 #include "vcall.h"
 
@@ -41,7 +42,7 @@ const char *gameinfo_title = title;
 DECL_VFUNC_DYN(const char *, GetGameDirectory)
 
 bool gameinfo_init(void) {
-	if (!has_vtidx_GetGameDirectory) {
+	if_cold (!has_vtidx_GetGameDirectory) {
 		errmsg_errorx("unsupported VEngineClient interface");
 		return false;
 	}
@@ -53,8 +54,8 @@ bool gameinfo_init(void) {
 	// using e.g. Cyrillic folder names and successfully loading their
 	// speedgames won't be able to load SST. Thanks Windows!
 	const char *lcpgamedir = GetGameDirectory(engclient);
-	if (!MultiByteToWideChar(CP_ACP, 0, lcpgamedir, strlen(lcpgamedir), gamedir,
-			sizeof(gamedir) / sizeof(*gamedir))) {
+	if_cold (!MultiByteToWideChar(CP_ACP, 0, lcpgamedir, strlen(lcpgamedir),
+			gamedir, countof(gamedir))) {
 		errmsg_errorsys("couldn't convert game directory path character set");
 		return false;
 	}
@@ -73,7 +74,7 @@ bool gameinfo_init(void) {
 		// XXX: this same FindWindow call happens in ac.c - maybe factor out?
 		void *gamewin = FindWindowW(L"Valve001", 0);
 		// assuming: all games/mods use narrow chars only; this won't fail.
-		int len = GetWindowTextA(gamewin, title, sizeof(title));
+		int len = GetWindowTextA(gamewin, title, ssizeof(title));
 		// argh, why did they start doing this, it's so pointless!
 		// hopefully nobody included these suffixes in their mod names, lol
 		if (len > 13 && !memcmp(title + len - 13, " - Direct3D 9", 13)) {

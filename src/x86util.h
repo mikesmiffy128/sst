@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,14 +18,15 @@
 #define INC_X86UTIL_H
 
 #include "errmsg.h"
+#include "langext.h"
 #include "x86.h"
 
 // XXX: don't know where else to put this, or how else to design this, so this
-// is very much a plonk-it-here-for-now scenario.
+// is very much a plonk-it-here-for-now scenario (and has been for years!)
 
 #define NEXT_INSN(p, tgt) do { \
 	int _len = x86_len(p); \
-	if (_len == -1) { \
+	if_cold (_len == -1) { \
 		errmsg_errorx("unknown or invalid instruction looking for %s", tgt); \
 		return false; \
 	} \

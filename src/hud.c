@@ -1,5 +1,6 @@
 /*
  * Copyright © 2022 Matthew Wozniak <sirtomato999@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -23,6 +24,7 @@
 #include "hook.h"
 #include "hud.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "os.h"
 #include "sst.h"
@@ -92,7 +94,10 @@ static void *matsurf, *toolspanel, *scheme;
 typedef void (*VCALLCONV Paint_func)(void *);
 static Paint_func orig_Paint;
 void VCALLCONV hook_Paint(void *this) {
-	if (this == toolspanel) EMIT_HudPaint();
+	// hopefully a smart branch predictor can figure this out - but we still
+	// want it to be the "slow" path, so that every other path does *not* need a
+	// prediction record. or.. I dunno, in theory that does make sense. shrug.
+	if_cold (this == toolspanel) EMIT_HudPaint();
 	orig_Paint(this);
 }
 
@@ -156,21 +161,21 @@ static bool find_toolspanel(void *enginevgui) {
 
 INIT {
 	matsurf = factory_engine("MatSystemSurface006", 0);
-	if (!matsurf) {
+	if_cold (!matsurf) {
 		errmsg_errorx("couldn't get MatSystemSurface006 interface");
 		return false;
 	}
 	void *schememgr = factory_engine("VGUI_Scheme010", 0);
-	if (!schememgr) {
+	if_cold (!schememgr) {
 		errmsg_errorx("couldn't get VGUI_Scheme010 interface");
 		return false;
 	}
-	if (!find_toolspanel(vgui)) {
+	if_cold (!find_toolspanel(vgui)) {
 		errmsg_errorx("couldn't find engine tools panel");
 		return false;
 	}
 	void **vtable = *(void ***)toolspanel;
-	if (!os_mprot(vtable + vtidx_Paint, sizeof(void *),
+	if_cold (!os_mprot(vtable + vtidx_Paint, sizeof(void *),
 			PAGE_READWRITE)) {
 		errmsg_errorsys("couldn't make virtual table writable");
 		return false;
@@ -184,8 +189,8 @@ INIT {
 }
 
 END {
-	// don't unhook toolspanel if exiting, it's already long gone!
-	if (sst_userunloaded) {
+	// don't unhook toolspanel if exiting: it's already long gone!
+	if_cold (sst_userunloaded) {
 		unhook_vtable(*(void ***)toolspanel, vtidx_Paint, (void *)orig_Paint);
 		SetPaintEnabled(toolspanel, false);
 	}

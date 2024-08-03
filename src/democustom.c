@@ -24,6 +24,7 @@
 #include "feature.h"
 #include "gamedata.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "ppmagic.h"
 #include "vcall.h"
@@ -46,7 +47,7 @@ static union {
 	bitbuf_cell _align; // just in case...
 } bb_buf;
 static struct bitbuf bb = {
-	{bb_buf.x}, sizeof(bb_buf), sizeof(bb_buf) * 8, 0, false, false, "SST"
+	{bb_buf.x}, ssizeof(bb_buf), ssizeof(bb_buf) * 8, 0, false, false, "SST"
 };
 
 static const void *createhdr(struct bitbuf *msg, int len, bool last) {

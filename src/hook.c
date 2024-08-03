@@ -19,6 +19,7 @@
 
 #include "con_.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "os.h"
 #include "x86.h"
@@ -67,7 +68,7 @@ void *hook_inline(void *func_, void *target) {
 	// dumb hack: if we hit some thunk that immediately jumps elsewhere (which
 	// seems common for win32 API functions), hook the underlying thing instead.
 	while (*func == X86_JMPIW) func += mem_loads32(func + 1) + 5;
-	if (!os_mprot(func, 5, PAGE_EXECUTE_READWRITE)) return 0;
+	if_cold (!os_mprot(func, 5, PAGE_EXECUTE_READWRITE)) return 0;
 	int len = 0;
 	for (;;) {
 		// FIXME: these cases may result in somewhat dodgy error messaging. They
@@ -91,7 +92,7 @@ void *hook_inline(void *func_, void *target) {
 		}
 	}
 	// for simplicity, just bump alloc the trampoline. no need to free anyway
-	if (nexttrampoline - trampolines > sizeof(trampolines) - len - 6) {
+	if_cold (nexttrampoline - trampolines > sizeof(trampolines) - len - 6) {
 		con_warn("hook_inline: out of trampoline space\n");
 		return 0;
 	}

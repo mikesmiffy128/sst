@@ -31,6 +31,7 @@
 #include "gameserver.h"
 #include "hook.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "l4dmm.h"
 #include "mem.h"
 #include "sst.h"
@@ -84,14 +85,13 @@ static struct CVoteIssue *getissue(const char *textkey) {
 
 static inline void reset(void) {
 	// reset the vote cooldowns if possible (will skip L4D1). only necessary on
-	// versions >2045 and on map 1, but it's easiest to do unconditionally
-	if (off_callerrecords != -1) {
-		// This is equivalent to CUtlVector::RemoveAll() as there's no
-		// destructors to call. The result as is if nobody had ever voted.
-		struct CUtlVector *recordvector = mem_offset(*votecontroller,
-				off_callerrecords);
-		recordvector->sz = 0;
-	}
+	// versions >2045 and on map 1, but it's easiest to do unconditionally.
+	// the way this is written will *hopefully* produce a nice neat lea+cmovne.
+	struct CUtlVector *recordvector = mem_offset(*votecontroller,
+			off_callerrecords);
+	// This is equivalent to CUtlVector::RemoveAll() as there's no
+	// destructors to call. The result as is if nobody had ever voted.
+	if_random (off_callerrecords != -1) recordvector->sz = 0;
 	ExecuteCommand(getissue("#L4D_vote_restart_game"));
 }
 
@@ -503,24 +503,24 @@ ok: // Director::Update calls UnfreezeTeam after the first jmp instruction
 
 INIT {
 	struct con_cmd *cmd_listissues = con_findcmd("listissues");
-	if (!cmd_listissues) {
+	if_cold (!cmd_listissues) {
 		errmsg_errorx("couldn't find \"listissues\" command");
 		return false;
 	}
 	con_cmdcbv1 listissues_cb = con_getcmdcbv1(cmd_listissues);
 	const uchar *nextinsns = find_votecontroller(listissues_cb);
-	if (!nextinsns) {
+	if_cold (!nextinsns) {
 		errmsg_errorx("couldn't find vote controller variable");
 		return false;
 	}
-	if (!find_voteissues(nextinsns)) {
+	if_cold (!find_voteissues(nextinsns)) {
 		errmsg_errorx("couldn't find vote issues list offset\n");
 		return false;
 	}
 	void **vtable;
 #ifdef _WIN32
 	void *GameShutdown = (*(void ***)srvdll)[vtidx_GameShutdown];
-	if (!find_TheDirector(GameShutdown)) {
+	if_cold (!find_TheDirector(GameShutdown)) {
 		errmsg_errorx("couldn't find TheDirector variable");
 		return false;
 	}
@@ -532,7 +532,7 @@ INIT {
 	if (GAMETYPE_MATCHES(L4D2)) {
 #endif
 		vtable = mem_loadptr(director);
-		if (!os_mprot(vtable + vtidx_OnGameplayStart, sizeof(*vtable),
+		if_cold (!os_mprot(vtable + vtidx_OnGameplayStart, sizeof(*vtable),
 				PAGE_READWRITE)) {
 			errmsg_errorsys("couldn't make virtual table writable");
 			return false;
@@ -543,7 +543,7 @@ INIT {
 	}
 	else /* L4D1 */ {
 		void *GameFrame = (*(void ***)srvdll)[vtidx_GameFrame];
-		if (!find_UnfreezeTeam(GameFrame)) {
+		if_cold (!find_UnfreezeTeam(GameFrame)) {
 			errmsg_errorx("couldn't find UnfreezeTeam function");
 			return false;
 		}
@@ -556,16 +556,16 @@ INIT {
 		// g_voteController is invalid if not running a server so get the
 		// vtable by inspecting the ent factory code instead
 		const struct CEntityFactory *factory = ent_getfactory("vote_controller");
-		if (!factory) {
+		if_cold (!factory) {
 			errmsg_errorx("couldn't find vote controller entity factory");
 			goto nocd;
 		}
 		vtable = ent_findvtable(factory, "CVoteController");
-		if (!vtable) {
+		if_cold (!vtable) {
 			errmsg_errorx("couldn't find CVoteController vtable");
 			goto nocd;
 		}
-		if (!find_votecallers(vtable[vtidx_Spawn])) {
+		if_cold (!find_votecallers(vtable[vtidx_Spawn])) {
 			errmsg_errorx("couldn't find vote callers list offset");
 nocd:		errmsg_note("resetting a first map will not clear vote cooldowns");
 		}

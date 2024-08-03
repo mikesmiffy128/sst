@@ -20,7 +20,7 @@
 
 #include "../intdefs.h"
 #include "../kv.h"
-#include "../noreturn.h"
+#include "../langext.h"
 #include "../os.h"
 #include "skiplist.h"
 #include "vec.h"
@@ -73,7 +73,7 @@ static noreturn badparse(struct parsestate *state, const char *e) {
 
 static void kv_cb(enum kv_token type, const char *p, uint len, void *ctxt) {
 	struct parsestate *state = ctxt;
-	switch (type) {
+	switch_exhaust_enum (kv_token, type) {
 		case KV_IDENT: case KV_IDENT_QUOTED:
 			state->lastvar = malloc(len + 1);
 			if (!state->lastvar) die("couldn't allocate memory");

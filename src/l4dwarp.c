@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,6 +25,7 @@
 #include "gamedata.h"
 #include "gametype.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "vcall.h"
 
@@ -41,7 +42,7 @@ DECL_VFUNC_DYN(void, Teleport, const struct vec3f */*pos*/,
 DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you",
 		CON_SERVERSIDE | CON_CHEAT) {
 	struct edict *ed = ent_getedict(con_cmdclient + 1);
-	if (!ed) { errmsg_errorx("couldn't access player entity"); return; }
+	if_cold (!ed) { errmsg_errorx("couldn't access player entity"); return; }
 	void *e = GetBaseEntity(ed->ent_unknown); // is this call required?
 	struct vec3f *org = mem_offset(e, off_entpos);
 	struct vec3f *ang = mem_offset(e, off_eyeang);

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -155,9 +155,7 @@ int msg_putu32(unsigned char *out, unsigned int val) {
 }
 
 int msg_puts(unsigned char *out, long long val) {
-	if (val >= -2147483648 && val <= 2147483647) {
-		return msg_puts32(out, val);
-	}
+	if (val >= -2147483648 && val <= 2147483647) return msg_puts32(out, val);
 	out[0] = 0xD3;
 	doput64(out, val);
 	return 9;

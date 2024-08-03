@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -94,10 +94,10 @@ INIT {
 	if (GAMETYPE_MATCHES(Portal2)) return false;
 
 	struct con_cmd *cmd_alias = con_findcmd("alias");
-	if (!find_alias_head(con_getcmdcb(cmd_alias))) {
+	if_cold (!find_alias_head(con_getcmdcb(cmd_alias))) {
 		errmsg_warnx("couldn't find alias list");
 		return false;
-	};
+	}
 	con_reg(sst_alias_clear);
 	con_reg(sst_alias_remove);
 	return true;

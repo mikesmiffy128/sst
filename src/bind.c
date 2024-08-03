@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,6 +20,7 @@
 #include "feature.h"
 #include "hook.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "x86.h"
 #include "x86util.h"
@@ -57,7 +58,7 @@ static bool find_keyinfo(con_cmdcb klbc_cb) {
 INIT {
 	struct con_cmd *cmd_key_listboundkeys = con_findcmd("key_listboundkeys");
 	con_cmdcb cb = con_getcmdcb(cmd_key_listboundkeys);
-	if (!find_keyinfo(cb)) {
+	if_cold (!find_keyinfo(cb)) {
 		errmsg_warnx("couldn't find key binding list");
 		return false;
 	}

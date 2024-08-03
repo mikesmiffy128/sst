@@ -1,0 +1,64 @@
+/* This file is dedicated to the public domain. */
+
+#ifndef INC_LANGEXT_H
+#define INC_LANGEXT_H
+
+#include "intdefs.h"
+
+#define ssizeof(x) ((ssize)sizeof(x))
+#define countof(x) (ssizeof(x) / ssizeof(*x))
+
+#if defined(__GNUC__) || defined(__clang__)
+#define if_hot(x) if (__builtin_expect(!!(x), 1))
+#define if_cold(x)  if (__builtin_expect(!!(x), 0))
+#define if_random(x) if (__builtin_expect_with_probability(!!(x), 1, 0.5))
+#define unreachable __builtin_unreachable()
+#define assume(x) ((void)(!!(x) || (unreachable, 0)))
+#define cold __attribute__((__cold__, __noinline__))
+#else
+#define if_hot(x) if (x)
+#define if_cold(x) if (x)
+#define if_random(x) if (x)
+#ifdef _MSC_VER
+#define unreachable __assume(0)
+#define assume(x) ((void)(__assume(x), 0))
+#define cold __declspec(noinline)
+#else
+#define unreachable ((void)(0)) // might still give some warnings, but too bad
+#define assume(x) ((void)0)
+#define cold
+#endif
+#endif
+
+#define switch_exhaust(x) switch (x) if (0) default: unreachable; else
+#if defined(__GNUC__) || defined(__clang__)
+#define switch_exhaust_enum(E, x) \
+	_Pragma("GCC diagnostic push") \
+	_Pragma("GCC diagnostic error \"-Wswitch-enum\"") \
+	switch_exhaust ((enum E)(x)) \
+	_Pragma("GCC diagnostic pop")
+#else
+// NOTE: pragma trick doesn't work in MSVC (the pop seems to happen before the
+// switch is evaluated, so nothing happens) but you can still get errors using
+// -we4061. This doesn't matter for sst but might come in handy elsewhere...
+#define switch_exhaust_enum(E, x) switch_exhaust ((enum E)(x))
+#endif
+
+#define noreturn _Noreturn void
+
+#ifdef _WIN32
+#define import __declspec(dllimport) // only needed for variables
+#define export __declspec(dllexport)
+#else
+#define import
+#ifdef __GNUC__
+// N.B. we assume -fvisibility=hidden
+#define export __attribute__((visibility("default"))
+#else
+#define export int exp[-!!"compiler needs a way to export symbols!"];
+#endif
+#endif
+
+#endif
+
+// vi: sw=4 ts=4 noet tw=80 cc=80

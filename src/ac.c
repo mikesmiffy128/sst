@@ -40,6 +40,7 @@
 #include "gamedata.h"
 #include "gametype.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "os.h"
 #include "ppmagic.h"
@@ -102,34 +103,37 @@ static ulong inhooktid;
 
 static ssize __stdcall kproc(int code, usize wp, ssize lp) {
 	KBDLLHOOKSTRUCT *data = (KBDLLHOOKSTRUCT *)lp;
-	if (enabled && data->flags & LLKHF_INJECTED &&
-			GetForegroundWindow() == gamewin) {
-		// maybe this input is reasonable, but log it for closer inspection
-		// TODO(rta): figure out what to do with this stuff
-		// something like the following, but with a proper abstraction...
-		//uchar buf[28 + 16], *p = buf;
-		//msg_putasz4(p, 2); p += 1;
-		//	msg_putssz5(p, 8); memcpy(p + 1, "FakeKey", 7); p += 8;
-		//	msg_putmsz4(p, 2); p += 1;
-		//		msg_putssz5(p, 3); memcpy(p + 1, "vk", 2); p += 3;
-		//			p += msg_putu32(p, data->vkCode);
-		//		msg_putssz5(p, 3); memcpy(p + 1, "scan", 4); p += 5;
-		//			p += msg_putu32(p, data->scanCode);
-		//++keybox->nonce;
-		//// append mac at end of message
-		//crypto_aead_lock_djb(buf, p, keybox->shr, keybox->nonce_bytes, 0, 0,
-		//		buf, p - buf);
-		//democustom_write(buf, p - buf + 16);
+	if_cold (enabled && data->flags & LLKHF_INJECTED) {
+		// fast-path the next branch because alt-tabbed speed is irrelevant
+		if_hot (GetForegroundWindow() == gamewin) {
+			// maybe this input is reasonable, but log it for closer inspection
+			// TODO(rta): figure out what to do with this stuff
+			// something like the following, but with a proper abstraction...
+			//uchar buf[28 + 16], *p = buf;
+			//msg_putasz4(p, 2); p += 1;
+			//	msg_putssz5(p, 8); memcpy(p + 1, "FakeKey", 7); p += 8;
+			//	msg_putmsz4(p, 2); p += 1;
+			//		msg_putssz5(p, 3); memcpy(p + 1, "vk", 2); p += 3;
+			//			p += msg_putu32(p, data->vkCode);
+			//		msg_putssz5(p, 3); memcpy(p + 1, "scan", 4); p += 5;
+			//			p += msg_putu32(p, data->scanCode);
+			//++keybox->nonce;
+			//// append mac at end of message
+			//crypto_aead_lock_djb(buf, p, keybox->shr, keybox->nonce_bytes, 0,
+			//		0, buf, p - buf);
+			//democustom_write(buf, p - buf + 16);
+		}
 	}
 	return CallNextHookEx(0, code, wp, lp);
 }
 
 static ssize __stdcall mproc(int code, usize wp, ssize lp) {
 	MSLLHOOKSTRUCT *data = (MSLLHOOKSTRUCT *)lp;
-	if (enabled && data->flags & LLMHF_INJECTED &&
-			GetForegroundWindow() == gamewin) {
-		// no way this input would ever be reasonable. just discard it
-		return 1;
+	if_cold (enabled && data->flags & LLMHF_INJECTED) {
+		if_hot (GetForegroundWindow() == gamewin) {
+			// no way this input would ever be reasonable. just discard it
+			return 1;
+		}
 	}
 	return CallNextHookEx(0, code, wp, lp);
 }
@@ -138,7 +142,7 @@ static ssize __stdcall mproc(int code, usize wp, ssize lp) {
 // hook gets silently removed. plus, we don't wanna incur latency anyway.
 static ulong __stdcall inhookthrmain(void *param) {
 	volatile int *sig = param;
-	if (!SetWindowsHookExW(WH_KEYBOARD_LL, (HOOKPROC)&kproc, 0, 0) ||
+	if_cold (!SetWindowsHookExW(WH_KEYBOARD_LL, (HOOKPROC)&kproc, 0, 0) ||
 			!SetWindowsHookExW(WH_MOUSE_LL, (HOOKPROC)&mproc, 0, 0)) {
 		fastspin_raise(sig, 2);
 		return -1;
@@ -151,29 +155,31 @@ static ulong __stdcall inhookthrmain(void *param) {
 
 static ssize orig_wndproc;
 static ssize __stdcall hook_wndproc(void *wnd, uint msg, usize wp, ssize lp) {
-	if (msg == WM_COPYDATA && enabled) return DefWindowProcW(wnd, msg, wp, lp);
+	if_cold (msg == WM_COPYDATA && enabled) {
+		return DefWindowProcW(wnd, msg, wp, lp);
+	}
 	return CallWindowProcA((WNDPROC)orig_wndproc, wnd, msg, wp, lp);
 }
 
-static bool win32_init(void) {
+static inline bool win32_init(void) {
 	// note: using A instead of W to avoid some weirdness with handles...
 	gamewin = FindWindowA("Valve001", 0);
 	// note: error messages here are a bit cryptic on purpose, but easy to find
 	// in the code. in other words, we're hiding in plain sight :-)
-	if (!gamewin) {
+	if_cold (!gamewin) {
 		errmsg_errorsys("failed to find window");
 		return false;
 	}
 	orig_wndproc = SetWindowLongPtrA(gamewin, GWLP_WNDPROC,
 			(ssize)&hook_wndproc);
-	if (!orig_wndproc) { // XXX: assuming 0 won't be legitimately returned
+	if_cold (!orig_wndproc) { // XXX: assuming 0 won't be legitimately returned
 		errmsg_errorsys("failed to attach message handler");
 		return false;
 	}
 	return true;
 }
 
-static void win32_end(void) {
+static inline void win32_end(void) {
 	// no error handling here because we'd crash either way. good luck!
 	SetWindowLongPtrA(gamewin, GWLP_WNDPROC, orig_wndproc);
 }
@@ -188,7 +194,7 @@ static void inhook_check(void) {
 	if (WaitForSingleObject(inhookthr, 0) == WAIT_OBJECT_0) {
 		ulong status;
 		GetExitCodeThread(inhookthr, &status);
-		if (status) {
+		if_cold (status) {
 			// XXX: if this ever happens, it's a disaster! users might not
 			// notice their run just dying all of a sudden. with any luck it
 			// won't matter in practice but... this kind of sucks.
@@ -209,7 +215,7 @@ static void inhook_stop(void) {
 		// assume WAIT_OBJECT_0
 		ulong status;
 		GetExitCodeThread(inhookthr, &status);
-		if (status) {
+		if_cold (status) {
 			// not much else we can do now!
 			errmsg_errorx("message loop didn't shut down cleanly\n");
 		}
@@ -224,17 +230,18 @@ static void inhook_stop(void) {
 #endif
 
 bool ac_enable(void) {
-	if (enabled) return true;
+	if (!enabled) {
 #ifdef _WIN32
-	volatile int sig = 0;
-	inhook_start(&sig);
-	fastspin_wait(&sig);
-	if (sig == 2) { // else 1 for success
-		con_warn("** sst: ERROR starting message loop, can't continue! **");
-		CloseHandle(inhookthr);
-		return false;
-	}
+		volatile int sig = 0;
+		inhook_start(&sig);
+		fastspin_wait(&sig);
+		if_cold (sig == 2) { // else 1 for success
+			con_warn("** sst: ERROR starting message loop, can't continue! **");
+			CloseHandle(inhookthr);
+			return false;
+		}
 #endif
+	}
 	enabled = true;
 	return true;
 }
@@ -248,10 +255,11 @@ HANDLE_EVENT(Tick, bool simulating) {
 }
 
 void ac_disable(void) {
-	if (!enabled) return;
+	if (enabled) {
 #ifdef _WIN32
-	inhook_stop();
+		inhook_stop();
 #endif
+	}
 	enabled = false;
 }
 
@@ -308,7 +316,7 @@ static bool find_Key_Event(void) {
 	//   -> CGame::DispatchAllStoredGameMessages vfunc
 	//    -> First call instruction (either DispatchInputEvent or Key_Event)
 	void *gameuifuncs = factory_engine("VENGINE_GAMEUIFUNCS_VERSION005", 0);
-	if (!gameuifuncs) {
+	if_cold (!gameuifuncs) {
 		errmsg_errorx("couldn't get engine game UI interface");
 		return false;
 	}
@@ -355,7 +363,7 @@ ok2:
 }
 
 HANDLE_EVENT(AllowPluginLoading, bool loading) {
-	if (enabled && demorec_demonum() != -1) {
+	if_cold(enabled) if_hot(demorec_demonum() != -1) {
 		con_warn("sst: plugins cannot be %s while recording a run\n",
 				loading ? "loaded" : "unloaded");
 		return false;
@@ -375,39 +383,39 @@ PREINIT {
 }
 
 INIT {
-	if (!find_Key_Event()) return false;
+	if_cold (!find_Key_Event()) return false;
 	orig_Key_Event = (Key_Event_func)hook_inline((void *)orig_Key_Event,
 			(void *)&hook_Key_Event);
-	if (!orig_Key_Event) {
+	if_cold (!orig_Key_Event) {
 		errmsg_errorsys("couldn't hook Key_Event function");
 		return false;
 	}
 
 #ifdef _WIN32
 	keybox = VirtualAlloc(0, 4096, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	if (!keybox) {
+	if_cold (!keybox) {
 		errmsg_errorsys("couldn't allocate memory for session state");
 		return false;
 	}
-	if (!VirtualLock(keybox, 4096)) {
+	if_cold (!VirtualLock(keybox, 4096)) {
 		errmsg_errorsys("couldn't secure session state");
 		goto e2;
 	}
-	if (WerRegisterExcludedMemoryBlock(keybox, 4096) != S_OK) {
+	if_cold (WerRegisterExcludedMemoryBlock(keybox, 4096) != S_OK) {
 		// FIXME: stringify errors properly here
 		errmsg_errorx("couldn't secure session state");
 		goto e2;
 	}
-	if (!win32_init()) goto e;
+	if_cold (!win32_init()) goto e;
 #else
 	keybox = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
-	if (keybox == MAP_FAILED) {
+	if_cold (keybox == MAP_FAILED) {
 		errmsg_errorstd("couldn't allocate memory for session state");
 		return false;
 	}
 	// linux-specific madvise stuff (there are some equivalents in OpenBSD and
 	// FreeBSD, if anyone's wondering, but we don't need to worry about those)
-	if (madvise(keybox, 4096, MADV_DONTFORK) == -1 ||
+	if_cold (madvise(keybox, 4096, MADV_DONTFORK) == -1 ||
 			madvise(keybox, 4096, MADV_DONTDUMP) == - 1 ||
 			mlock(keybox, 4096) == -1) {
 		errmsg_errorstd("couldn't secure session state");

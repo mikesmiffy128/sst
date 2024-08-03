@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,6 +19,7 @@
 #include "feature.h"
 #include "gamedata.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "x86.h"
 #include "vcall.h"
@@ -66,7 +67,7 @@ static bool find_sv(con_cmdcb pause_cb) {
 
 INIT {
 	struct con_cmd *pause = con_findcmd("pause");
-	if (!find_sv(pause->cb)) {
+	if_cold (!find_sv(pause->cb)) {
 		errmsg_errorx("couldn't find game server object\n");
 		return false;
 	}

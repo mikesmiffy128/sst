@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -28,6 +28,7 @@
 #include "gamedata.h"
 #include "hook.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "sst.h"
 #include "vcall.h"
@@ -68,12 +69,12 @@ DEF_CVAR_MINMAX(sst_mouse_factor, "Number of hardware mouse counts per step",
 static ssize __stdcall inproc(void *wnd, uint msg, usize wp, ssize lp) {
 	switch (msg) {
 		case WM_INPUT:;
-			char buf[sizeof(RAWINPUTHEADER) + sizeof(RAWMOUSE) /* = 40 */];
+			char buf[ssizeof(RAWINPUTHEADER) + ssizeof(RAWMOUSE) /* = 40 */];
 			uint sz = sizeof(buf);
-			if (GetRawInputData((void *)lp, RID_INPUT, buf, &sz,
+			if_hot (GetRawInputData((void *)lp, RID_INPUT, buf, &sz,
 					sizeof(RAWINPUTHEADER)) != -1) {
 				RAWINPUT *ri = (RAWINPUT *)buf;
-				if (ri->header.dwType == RIM_TYPEMOUSE) {
+				if_hot (ri->header.dwType == RIM_TYPEMOUSE) {
 					int d = con_getvari(sst_mouse_factor);
 					int dx = rx + ri->data.mouse.lLastX;
 					int dy = ry + ri->data.mouse.lLastY;
@@ -129,8 +130,8 @@ INIT {
 		if (!inputsystem) return false;
 		vtable_insys = mem_loadptr(inputsystem);
 		// XXX: this is kind of duping nosleep, but that won't always init...
-		if (!os_mprot(vtable_insys + vtidx_GetRawMouseAccumulators,
-				sizeof(void *), PAGE_READWRITE)) {
+		if_cold (!os_mprot(vtable_insys + vtidx_GetRawMouseAccumulators,
+				ssizeof(void *), PAGE_READWRITE)) {
 			errmsg_errorx("couldn't make virtual table writable");
 			return false;
 		}
@@ -149,7 +150,7 @@ INIT {
 		.lpfnWndProc = (WNDPROC)&inproc,
 		.lpszClassName = L"RInput"
 	};
-	if (!RegisterClassExW(&wc)) {
+	if_cold (!RegisterClassExW(&wc)) {
 		struct rgba gold = {255, 210, 0, 255};
 		struct rgba blue = {45, 190, 190, 255};
 		struct rgba white = {200, 200, 200, 255};
@@ -158,7 +159,7 @@ INIT {
 				"Consider launching without that and using ");
 		con_colourmsg(&gold, "m_rawinput 1");
 		con_colourmsg(&blue, " instead!\n");
-		if (has_rawinput) {
+		if_cold (has_rawinput) { // slow path because this'd be kinda weird!
 			con_colourmsg(&white, "This is built into this version of game, and"
 					" will also get provided by SST in older versions. ");
 		}
@@ -181,18 +182,18 @@ INIT {
 
 	orig_GetCursorPos = (GetCursorPos_func)hook_inline((void *)&GetCursorPos,
 			(void *)&hook_GetCursorPos);
-	if (!orig_GetCursorPos) {
+	if_cold (!orig_GetCursorPos) {
 		errmsg_errorsys("couldn't hook %s", "GetCursorPos");
 		goto e0;
 	}
 	orig_SetCursorPos = (SetCursorPos_func)hook_inline((void *)&SetCursorPos,
 			(void *)&hook_SetCursorPos);
-	if (!orig_SetCursorPos) {
+	if_cold (!orig_SetCursorPos) {
 		errmsg_errorsys("couldn't hook %s", "SetCursorPos");
 		goto e1;
 	}
 	inwin = CreateWindowExW(0, L"RInput", L"RInput", 0, 0, 0, 0, 0, 0, 0, 0, 0);
-	if (!inwin) {
+	if_cold (!inwin) {
 		errmsg_errorsys("couldn't create input window");
 		goto e2;
 	}
@@ -201,7 +202,7 @@ INIT {
 		.usUsagePage = USAGEPAGE_MOUSE,
 		.usUsage = USAGE_MOUSE
 	};
-	if (!RegisterRawInputDevices(&rd, 1, sizeof(rd))) {
+	if_cold (!RegisterRawInputDevices(&rd, 1, sizeof(rd))) {
 		errmsg_errorsys("couldn't create raw mouse device");
 		goto e3;
 	}
@@ -218,8 +219,8 @@ e0:	UnregisterClassW(L"RInput", 0);
 }
 
 END {
-	if (!sst_userunloaded) return;
-	if (orig_SetCursorPos) { // if null, we didn't init our own implementation
+	if_hot (!sst_userunloaded) return;
+	if_hot (orig_SetCursorPos) { // we inited our own implementation
 		RAWINPUTDEVICE rd = {
 			.dwFlags = RIDEV_REMOVE,
 			.hwndTarget = 0,
@@ -232,7 +233,7 @@ END {
 		unhook_inline((void *)orig_GetCursorPos);
 		unhook_inline((void *)orig_SetCursorPos);
 	}
-	else {
+	else { // we must have hooked the *existing* implementation
 		unhook_vtable(vtable_insys, vtidx_GetRawMouseAccumulators,
 				(void *)orig_GetRawMouseAccumulators);
 	}

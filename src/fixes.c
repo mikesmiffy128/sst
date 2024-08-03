@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2023 Hayden K <imaciidz@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -24,6 +24,7 @@
 
 #include "con_.h"
 #include "gametype.h"
+#include "langext.h"
 
 static void chflags(const char *name, int unset, int set) {
 	struct con_var *v = con_findvar(name);
@@ -118,7 +119,7 @@ static void l4d2specific(void) {
 	// possible on these earlier versions (who knows if that breaks
 	// something...).
 	struct con_var *v = con_findvar("mat_queue_mode");
-	if (v && !(v->parent->base.flags & CON_ARCHIVE)) { // not already fixed
+	if_hot (v && !(v->parent->base.flags & CON_ARCHIVE)) { // not already fixed
 		v->parent->base.flags = v->parent->base.flags &
 				~(CON_HIDDEN | CON_DEVONLY) | CON_ARCHIVE;
 		v->parent->hasmin = true; v->parent->minval = -1;
@@ -132,15 +133,14 @@ static void l4d2specific(void) {
 	// so just blanket enable it if the primary adapter is Intel, since it
 	// doesn't seem to break anything else anyway.
 	v = con_findvar("mat_tonemapping_occlusion_use_stencil");
-	if (!v || con_getvari(v)) goto e;
+	if_cold (!v || con_getvari(v)) goto e;
 	// considered getting d3d9 object from actual game, but it's way easier
 	// to just create another one
 	IDirect3D9 *d3d9 = Direct3DCreate9(D3D_SDK_VERSION);
-	if (!d3d9) goto e;
+	if_cold (!d3d9) goto e;
 	D3DADAPTER_IDENTIFIER9 ident;
-	if (IDirect3D9_GetAdapterIdentifier(d3d9, 0, 0, &ident) == D3D_OK &&
-			ident.VendorId == 0x8086) { // neat vendor id, btw!
-		con_setvari(v, 1);
+	if_hot (IDirect3D9_GetAdapterIdentifier(d3d9, 0, 0, &ident) == D3D_OK) {
+		if (ident.VendorId == 0x8086) con_setvari(v, 1); // neat vendor id, btw!
 	}
 	IDirect3D9_Release(d3d9);
 e:;

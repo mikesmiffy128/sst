@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -77,11 +77,12 @@ static inline void bitbuf_appendbuf(struct bitbuf *bb, const char *buf,
 		// shift the stored value (if it were big endian, the shift would have
 		// to be the other way, or something)
 		_bitbuf_append(bb, *p >> (unalign << 3), (bitbuf_align - unalign) << 3);
-		buf += sizeof(bitbuf_cell) - unalign;
+		buf += (int)sizeof(bitbuf_cell) - unalign;
 		len -= unalign;
 	}
 	bitbuf_cell *aligned = (bitbuf_cell *)buf;
-	for (; len >= sizeof(bitbuf_cell); len -= sizeof(bitbuf_cell), ++aligned) {
+	for (; len >= (int)sizeof(bitbuf_cell); len -= (int)sizeof(bitbuf_cell),
+			++aligned) {
 		_bitbuf_append(bb, *aligned, bitbuf_cell_bits);
 	}
 	// unaligned end bytes

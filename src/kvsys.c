@@ -24,6 +24,7 @@
 #include "gametype.h"
 #include "hook.h"
 #include "kvsys.h"
+#include "langext.h"
 #include "mem.h"
 #include "os.h"
 #include "vcall.h"
@@ -31,7 +32,7 @@
 
 FEATURE()
 
-IMPORT void *KeyValuesSystem(void); // vstlib symbol
+void *KeyValuesSystem(void); // vstlib symbol
 static void *kvs;
 static int vtidx_GetSymbolForString = 3, vtidx_GetStringForSymbol = 4;
 static bool iskvv2 = false;
@@ -101,7 +102,7 @@ INIT {
 	if (GAMETYPE_MATCHES(L4D2x)) {
 		void **kvsvt = mem_loadptr(kvs);
 		detectabichange(kvsvt);
-		if (!os_mprot(kvsvt + vtidx_GetStringForSymbol, sizeof(void *),
+		if_cold (!os_mprot(kvsvt + vtidx_GetStringForSymbol, sizeof(void *),
 				PAGE_READWRITE)) {
 			errmsg_warnx("couldn't make KeyValuesSystem vtable writable");
 			errmsg_note("won't be able to prevent any nag messages");

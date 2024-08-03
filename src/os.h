@@ -24,9 +24,6 @@
 
 #include <wchar.h> // XXX: there's kind of a lot of junk in this header!
 
-#define IMPORT __declspec(dllimport) // only needed for variables
-#define EXPORT __declspec(dllexport)
-
 typedef unsigned short os_char;
 #define _OS_CAT(x, y) x##y
 #define OS_LIT(x) _OS_CAT(L, x)
@@ -74,13 +71,6 @@ typedef unsigned short os_char;
 #else
 
 #include <errno.h> // meh
-
-#define IMPORT
-#ifdef __GNUC__
-#define EXPORT __attribute__((visibility("default"))
-#else
-#define EXPORT int exp[-!!"compiler needs a way to export symbols!"];
-#endif
 
 // trying to avoid pulling in unnecessary headers as much as possible: define
 // our own constants for os_mprot() / mprotect()

@@ -22,6 +22,7 @@
 #include "gamedata.h"
 #include "gametype.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "vcall.h"
 #include "x86.h"
@@ -35,8 +36,8 @@ static struct edict **edicts = 0;
 struct edict *ent_getedict(int idx) {
 	if (edicts) {
 		// globalvars->edicts seems to be null when disconnected
-		if (!*edicts) return 0;
-		return mem_offset(*edicts, sz_edict * idx);
+		if_hot (*edicts) return mem_offset(*edicts, sz_edict * idx);
+		return 0;
 	}
 	else {
 		return PEntityOfEntIndex(engserver, idx);
@@ -45,8 +46,8 @@ struct edict *ent_getedict(int idx) {
 
 void *ent_get(int idx) {
 	struct edict *e = ent_getedict(idx);
-	if (!e) return 0;
-	return e->ent_unknown;
+	if_hot(e) return e->ent_unknown;
+	return 0;
 }
 
 struct CEntityFactory {
@@ -143,14 +144,14 @@ void **ent_findvtable(const struct CEntityFactory *factory,
 		const char *classname) {
 #ifdef _WIN32
 	ctor_func ctor = findctor(factory, classname);
-	if (!ctor) return 0;
+	if_cold (!ctor) return 0;
 	const uchar *insns = (const uchar *)ctor;
 	// the constructor itself should do *(void**)this = &vtable; almost right
 	// away, so look for the first immediate load into indirect register
 	for (const uchar *p = insns; p - insns < 32;) {
 		if (p[0] == X86_MOVMIW && (p[1] & 0xF8) == 0) return mem_loadptr(p + 2);
 		int len = x86_len(p);
-		if (len == -1) {
+		if_cold (len == -1) {
 			errmsg_errorx("unknown or invalid instruction looking for %s "
 					"vtable pointer", classname);
 			return 0;
@@ -166,7 +167,8 @@ void **ent_findvtable(const struct CEntityFactory *factory,
 INIT {
 #ifdef _WIN32 // TODO(linux): above
 	struct con_cmd *dumpentityfactories = con_findcmd("dumpentityfactories");
-	if (!dumpentityfactories || !find_entfactorydict(dumpentityfactories->cb)) {
+	if_cold (!dumpentityfactories ||
+			!find_entfactorydict(dumpentityfactories->cb)) {
 		errmsg_warnx("server entity factories unavailable");
 	}
 #endif

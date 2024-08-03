@@ -26,6 +26,7 @@
 #include "gameinfo.h"
 #include "hook.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "os.h"
 #include "ppmagic.h"
@@ -99,7 +100,7 @@ static struct con_cmd *cmd_record, *cmd_stop;
 static con_cmdcb orig_record_cb, orig_stop_cb;
 
 static void hook_record_cb(const struct con_cmdargs *args) {
-	if (!CHECK_DemoControlAllowed()) return;
+	if_cold (!CHECK_DemoControlAllowed()) return;
 	bool was = *recording;
 	if (!was && args->argc == 2 || args->argc == 3) {
 		// safety check: make sure a directory exists, otherwise recording
@@ -162,7 +163,7 @@ static void hook_record_cb(const struct con_cmdargs *args) {
 }
 
 static void hook_stop_cb(const struct con_cmdargs *args) {
-	if (!CHECK_DemoControlAllowed()) return;
+	if_cold (!CHECK_DemoControlAllowed()) return;
 	wantstop = true;
 	orig_stop_cb(args);
 	wantstop = false;
@@ -258,21 +259,21 @@ INIT {
 	orig_record_cb = con_getcmdcb(cmd_record);
 	cmd_stop = con_findcmd("stop");
 	orig_stop_cb = con_getcmdcb(cmd_stop);
-	if (!find_demorecorder()) {
+	if_cold (!find_demorecorder()) {
 		errmsg_errorx("couldn't find demo recorder instance");
 		return false;
 	}
 	void **vtable = mem_loadptr(demorecorder);
 	// XXX: 16 is totally arbitrary here! figure out proper bounds later
-	if (!os_mprot(vtable, 16 * sizeof(void *), PAGE_READWRITE)) {
+	if_cold (!os_mprot(vtable, 16 * sizeof(void *), PAGE_READWRITE)) {
 		errmsg_errorsys("couldn't make virtual table writable");
 		return false;
 	}
-	if (!find_recmembers(vtable[vtidx_StopRecording])) {
+	if_cold (!find_recmembers(vtable[vtidx_StopRecording])) {
 		errmsg_errorx("couldn't find recording state variables");
 		return false;
 	}
-	if (!find_demoname(vtable[vtidx_StartRecording])) {
+	if_cold (!find_demoname(vtable[vtidx_StartRecording])) {
 		errmsg_errorx("couldn't find demo basename variable");
 		return false;
 	}
@@ -290,7 +291,7 @@ INIT {
 }
 
 END {
-	if (!sst_userunloaded) return;
+	if_hot (!sst_userunloaded) return;
 	// avoid dumb edge case if someone somehow records and immediately unloads
 	if (*recording && *demonum == 0) *demonum = 1;
 	void **vtable = *(void ***)demorecorder;

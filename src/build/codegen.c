@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "../intdefs.h"
+#include "../langext.h"
 #include "../os.h"
 #include "cmeta.h"
 #include "skiplist.h"
@@ -45,8 +46,8 @@ static struct conent {
 static int nconents;
 
 #define PUT(name_, isvar_, unreg_) do { \
-	if (nconents == sizeof(conents) / sizeof(*conents)) { \
-		fprintf(stderr, "codegen: out of space; make ents bigger!\n"); \
+	if (nconents == countof(conents)) { \
+		fprintf(stderr, "codegen: out of space; make conents bigger!\n"); \
 		exit(1); \
 	} \
 	conents[nconents].name = name_; \
@@ -116,7 +117,7 @@ static struct skiplist_hdr_feature_bydesc features_bydesc = {0};
 static void onfeatinfo(enum cmeta_featmacro type, const char *param,
 		void *ctxt) {
 	struct feature *f = ctxt;
-	switch (type) {
+	switch_exhaust_enum (cmeta_featmacro, type) {
 		case CMETA_FEAT_REQUIRE:; bool optional = false; goto dep;
 		case CMETA_FEAT_REQUEST: optional = true;
 dep:;		struct feature *dep = skiplist_get_feature(&features, param);

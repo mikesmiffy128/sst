@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -22,6 +22,7 @@
 #include "gamedata.h"
 #include "gametype.h"
 #include "kvsys.h"
+#include "langext.h"
 #include "mem.h"
 #include "os.h"
 #include "vcall.h"
@@ -62,7 +63,7 @@ const char *l4dmm_curcampaign(void) {
 	if (!matchfwk) { // we must have oldmmiface, then
 		struct contextval *ctxt = unknown_contextlookup(oldmmiface,
 				"CONTEXT_L4D_CAMPAIGN");
-		if (!ctxt) return 0;
+		if_cold (!ctxt) return 0;
 		// HACK: since this context symbol stuff was the best that was found for
 		// this old MM interface, just map things back to their names manually.
 		// bit stupid, but it gets the (rather difficult) job done
@@ -76,18 +77,18 @@ const char *l4dmm_curcampaign(void) {
 #endif
 	void *ctrlr = GetMatchNetworkMsgController(matchfwk);
 	struct KeyValues *kv = GetActiveGameServerDetails(ctrlr, 0);
-	if (!kv) return 0; // not in server, probably
+	if_cold (!kv) return 0; // not in server, probably
 	const char *ret = 0;
 	struct KeyValues *subkey = kvsys_getsubkey(kv, sym_game);
-	if (subkey) subkey = kvsys_getsubkey(subkey, sym_campaign);
-	if (subkey) ret = kvsys_getstrval(subkey);
-	if (ret) {
+	if_hot (subkey) subkey = kvsys_getsubkey(subkey, sym_campaign);
+	if_hot (subkey) ret = kvsys_getstrval(subkey);
+	if_hot (ret) {
 		// ugh, we have to free all the memory allocated by the engine, so copy
 		// this glorified global state to a buffer so the caller doesn't have to
 		// deal with freeing. this necessitates a length cap but it's hopefully
 		// reasonable...
-		int len = strlen(ret);
-		if (len > sizeof(campaignbuf) - 1) ret = 0;
+		usize len = strlen(ret);
+		if_cold (len > sizeof(campaignbuf) - 1) ret = 0;
 		else ret = memcpy(campaignbuf, ret, len + 1);
 	}
 	kvsys_free(kv);
@@ -112,8 +113,8 @@ bool l4dmm_firstmap(void) {
 	if (!kv) return false;
 	int chapter = 0;
 	struct KeyValues *subkey = kvsys_getsubkey(kv, sym_game);
-	if (subkey) subkey = kvsys_getsubkey(subkey, sym_chapter);
-	if (subkey) chapter = subkey->ival;
+	if_hot (subkey) subkey = kvsys_getsubkey(subkey, sym_chapter);
+	if_hot (subkey) chapter = subkey->ival;
 	kvsys_free(kv);
 	return chapter == 1;
 }
@@ -122,12 +123,12 @@ INIT {
 	void *mmlib = os_dlhandle(OS_LIT("matchmaking") OS_LIT(OS_DLSUFFIX));
 	if (mmlib) {
 		ifacefactory factory = (ifacefactory)os_dlsym(mmlib, "CreateInterface");
-		if (!factory) {
+		if_cold (!factory) {
 			errmsg_errordl("couldn't get matchmaking interface factory");
 			return false;
 		}
 		matchfwk = factory("MATCHFRAMEWORK_001", 0);
-		if (!matchfwk) {
+		if_cold (!matchfwk) {
 			errmsg_errorx("couldn't get IMatchFramework interface");
 			return false;
 		}
@@ -138,7 +139,7 @@ INIT {
 #ifdef _WIN32 // L4D1 has no Linux build, btw!
 	else {
 		oldmmiface = factory_engine("VENGINE_MATCHMAKING_VERSION001", 0);
-		if (!oldmmiface) {
+		if_cold (!oldmmiface) {
 			errmsg_errorx("couldn't get IMatchmaking interface");
 			return false;
 		}

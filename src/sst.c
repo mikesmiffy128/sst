@@ -33,6 +33,7 @@
 #include "gameinfo.h"
 #include "gametype.h"
 #include "hook.h"
+#include "langext.h"
 #include "os.h"
 #include "sst.h"
 #include "vcall.h"
@@ -70,7 +71,7 @@ int dladdr1(const void *addr, Dl_info *info, void **extra_info, int flags);
 static void *ownhandle(void) {
 	static void *cached = 0;
 	Dl_info dontcare;
-	if (!cached) {
+	if_cold (!cached) {
 		dladdr1((void *)&ownhandle, &dontcare, &cached, /*RTLD_DL_LINKMAP*/ 2);
 	}
 	return cached;
@@ -82,14 +83,14 @@ static void *ownhandle(void) {
 static inline bool checksamedrive(const ushort *restrict path1,
 		const ushort *restrict path2) {
 	bool ret = (path1[0] | 32) == (path2[0] | 32);
-	if (!ret) errmsg_errorx("game and plugin must be on the same drive\n");
+	if_cold (!ret) errmsg_errorx("game and plugin must be on the same drive\n");
 	return ret;
 }
 #endif
 
 DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 	os_char path[PATH_MAX];
-	if (os_dlfile(ownhandle(), path, sizeof(path) / sizeof(*path)) == -1) {
+	if_cold (os_dlfile(ownhandle(), path, countof(path)) == -1) {
 		// hopefully by this point this won't happen, but, like, never know
 		errmsg_errordl("failed to get path to plugin");
 		return;
@@ -104,10 +105,10 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 		// since old builds allow absolute plugin_load paths but since it's less
 		// reliable if e.g. a disk is removed, and also doesn't work for all
 		// games, just rule it out entirely to keep things simple.
-		if (!checksamedrive(path, startdir)) return;
+		if_cold (!checksamedrive(path, startdir)) return;
 #endif
 		int len = os_strlen(startdir);
-		if (len + sizeof("/bin") >= PATH_MAX) {
+		if_cold (len + ssizeof("/bin") >= PATH_MAX) {
 			errmsg_errorx("path to game is too long");
 			return;
 		}
@@ -128,7 +129,7 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 		// obscure gameinfo.txt arrangement could technically allow that to work
 		startdir = gameinfo_gamedir;
 #ifdef _WIN32
-		if (!checksamedrive(path, startdir)) return;
+		if_cold (!checksamedrive(path, startdir)) return;
 #endif
 	}
 	os_char relpath[PATH_MAX];
@@ -136,7 +137,7 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 	// note: dll isn't actually in gamedir if it's in a base mod directory
 	// note: gamedir doesn't account for if the dll is in a base mod's
 	// directory, although it will yield a valid/working relative path anyway.
-	if (!PathRelativePathToW(relpath, startdir, FILE_ATTRIBUTE_DIRECTORY,
+	if_cold (!PathRelativePathToW(relpath, startdir, FILE_ATTRIBUTE_DIRECTORY,
 			path, 0)) {
 		errmsg_errorsys("couldn't compute a relative path");
 		return;
@@ -145,12 +146,12 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 	// also make sure there's no unicode in there, just in case...
 	int rellen = 0;
 	for (ushort *p = relpath; *p; ++p, ++rellen) {
-		if (*p > 127) {
+		if_cold (*p > 127) {
 			errmsg_errorx("mod dir contains Unicode characters which Source "
 					"doesn't handle well - autoload file not created");
 			return;
 		}
-		if (*p == L'\\') *p = L'/';
+		if_random (*p == L'\\') *p = L'/';
 	}
 #else
 	const char *p = path, *q = startdir;
@@ -179,35 +180,34 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 c:	memcpy(r, p + slash + 1, rellen);
 #endif
 	int len = os_strlen(gameinfo_gamedir);
-	if (len + sizeof("/addons/" VDFBASENAME ".vdf") >
-			sizeof(path) / sizeof(*path)) {
+	if (len + ssizeof("/addons/" VDFBASENAME ".vdf") > countof(path)) {
 		errmsg_errorx("path to VDF is too long");
 		return;
 	}
 	os_spancopy(path, gameinfo_gamedir, len);
 	os_spancopy(path + len, OS_LIT("/addons"), 8);
-	if (!os_mkdir(path) && os_lasterror() != OS_EEXIST) {
+	if (!os_mkdir(path)) if_cold (os_lasterror() != OS_EEXIST) {
 		errmsg_errorsys("couldn't create %" fS, path);
 		return;
 	}
-	os_spancopy(path + len + sizeof("/addons") - 1,
+	os_spancopy(path + len + ssizeof("/addons") - 1,
 			OS_LIT("/") OS_LIT(VDFBASENAME) OS_LIT(".vdf"),
-			sizeof("/" VDFBASENAME ".vdf"));
+			ssizeof("/" VDFBASENAME ".vdf"));
 	int f = os_open_write(path);
-	if (f == -1) { errmsg_errorsys("couldn't open %" fS, path); return; }
+	if_cold (f == -1) { errmsg_errorsys("couldn't open %" fS, path); return; }
 #ifdef _WIN32
 	char buf[19 + PATH_MAX];
 	memcpy(buf, "Plugin { file \"", 15);
 	for (int i = 0; i < rellen; ++i) buf[i + 15] = relpath[i];
 	memcpy(buf + 15 + rellen, "\" }\n", 4);
-	if (os_write(f, buf, rellen + 19) == -1) { // blegh
+	if_cold (os_write(f, buf, rellen + 19) == -1) { // blegh
 #else
 	struct iovec iov[3] = {
 		{"Plugin { file \"", 15},
 		{relpath, rellen},
 		{"\" }\n", 4}
 	};
-	if (writev(fd, &iov, 3) == -1) {
+	if_cold (writev(fd, &iov, 3) == -1) {
 #endif
 		errmsg_errorsys("couldn't write to %" fS, path);
 	}
@@ -217,15 +217,14 @@ c:	memcpy(r, p + slash + 1, rellen);
 DEF_CCMD_HERE(sst_autoload_disable, "Stop loading SST on game startup", 0) {
 	os_char path[PATH_MAX];
 	int len = os_strlen(gameinfo_gamedir);
-	if (len + sizeof("/addons/" VDFBASENAME ".vdf") >
-			sizeof(path) / sizeof(*path)) {
+	if_cold (len + ssizeof("/addons/" VDFBASENAME ".vdf") > countof(path)) {
 		errmsg_errorx("path to VDF is too long");
 		return;
 	}
 	os_spancopy(path, gameinfo_gamedir, len);
 	os_spancopy(path + len, OS_LIT("/addons/") OS_LIT(VDFBASENAME) OS_LIT(".vdf"),
-			sizeof("/addons/" VDFBASENAME ".vdf"));
-	if (!os_unlink(path) && os_lasterror() != OS_ENOENT) {
+			ssizeof("/addons/" VDFBASENAME ".vdf"));
+	if (!os_unlink(path)) if_cold (os_lasterror() != OS_ENOENT) {
 		errmsg_warnsys("couldn't delete %" fS, path);
 	}
 }
@@ -277,23 +276,24 @@ static void do_featureinit(void) {
 	engineapi_lateinit();
 	// load libs that might not be there early (...at least on Linux???)
 	clientlib = os_dlhandle(OS_LIT("client") OS_LIT(OS_DLSUFFIX));
-	if (!clientlib) {
+	if_cold (!clientlib) {
 		errmsg_warndl("couldn't get the game's client library");
 	}
-	else if (!(factory_client = (ifacefactory)os_dlsym(clientlib,
+	else if_cold (!(factory_client = (ifacefactory)os_dlsym(clientlib,
 			"CreateInterface"))) {
 		errmsg_warndl("couldn't get client's CreateInterface");
 	}
 	void *inputsystemlib = os_dlhandle(OS_LIT("bin/") OS_LIT("inputsystem")
 			OS_LIT(OS_DLSUFFIX));
-	if (!inputsystemlib) {
+	if_cold (!inputsystemlib) {
 		errmsg_warndl("couldn't get the input system library");
 	}
-	else if (!(factory_inputsystem = (ifacefactory)os_dlsym(inputsystemlib,
+	else if_cold (!(factory_inputsystem = (ifacefactory)os_dlsym(inputsystemlib,
 			"CreateInterface"))) {
 		errmsg_warndl("couldn't get input system's CreateInterface");
 	}
-	else if (!(inputsystem = factory_inputsystem("InputSystemVersion001", 0))) {
+	else if_cold (!(inputsystem = factory_inputsystem(
+			"InputSystemVersion001", 0))) {
 		errmsg_warnx("missing input system interface");
 	}
 	// ... and now for the real magic!
@@ -301,7 +301,7 @@ static void do_featureinit(void) {
 
 	// if we're autoloaded and the external autoupdate script downloaded a new
 	// version, let the user know about the cool new stuff!
-	if (getenv("SST_UPDATED")) {
+	if_cold (getenv("SST_UPDATED")) {
 		// avoid displaying again if we're unloaded and reloaded in one session
 #ifdef _WIN32
 		SetEnvironmentVariableA("SST_UPDATED", 0);
@@ -338,7 +338,7 @@ DECL_VFUNC_DYN(bool, VGuiIsInitialized)
 //
 // Route credit to bill for helping figure a lot of this out - mike
 static bool deferinit(void) {
-	if (!vgui) {
+	if_cold (!vgui) {
 		errmsg_warnx("can't use VEngineVGui for deferred feature setup");
 		goto e;
 	}
@@ -348,7 +348,7 @@ static bool deferinit(void) {
 	// CEngineVGui::IsInitialized() which works everywhere.
 	if (VGuiIsInitialized(vgui)) return false;
 	sst_earlyloaded = true; // let other code know
-	if (!os_mprot(*(void ***)vgui + vtidx_VGuiConnect, sizeof(void *),
+	if_cold (!os_mprot(*(void ***)vgui + vtidx_VGuiConnect, ssizeof(void *),
 			PAGE_READWRITE)) {
 		errmsg_warnsys("couldn't make CEngineVGui vtable writable for deferred "
 				"feature setup");
@@ -392,7 +392,7 @@ static void hook_plugin_unload_cb(const struct con_cmdargs *args) {
 	if (!CHECK_AllowPluginLoading(false)) return;
 	int idx = atoi(args->argv[1]);
 	struct CPlugin **plugins = pluginhandler->plugins.m.mem;
-	if (idx >= 0 && idx < pluginhandler->plugins.sz) {
+	if_hot (idx >= 0 && idx < pluginhandler->plugins.sz) {
 		const struct CPlugin *plugin = plugins[idx];
 		// XXX: *could* memoise the ispluginv1 call, but... meh. effort.
 		const struct CPlugin_common *common = ispluginv1(plugin) ?
@@ -417,12 +417,12 @@ static void hook_plugin_unload_cb(const struct con_cmdargs *args) {
 }
 
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
-	if (!hook_init()) {
+	if_cold (!hook_init()) {
 		errmsg_warnsys("couldn't set up memory for function hooking");
 		return false;
 	}
 	factory_engine = enginef; factory_server = serverf;
-	if (!engineapi_init(ifacever)) return false;
+	if_cold (!engineapi_init(ifacever)) return false;
 	const void **p = vtable_firstdiff;
 	if (GAMETYPE_MATCHES(Portal2)) *p++ = (void *)&nop_p_v; // ClientFullyConnect
 	*p++ = (void *)&nop_p_v;		  // ClientDisconnect
@@ -437,7 +437,7 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	*p++ = (void *)&nop_p_v;		  // OnEdictAllocated
 	*p   = (void *)&nop_p_v;		  // OnEdictFreed
 	if (!deferinit()) { do_featureinit(); fixes_apply(); }
-	if (pluginhandler) {
+	if_hot (pluginhandler) {
 		cmd_plugin_load = con_findcmd("plugin_load");
 		orig_plugin_load_cb = cmd_plugin_load->cb;
 		cmd_plugin_load->cb = &hook_plugin_load_cb;
@@ -449,7 +449,8 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 }
 
 static void do_unload(void) {
-	if (sst_userunloaded) { // note: pluginhandler must also be set here
+	// slow path: reloading shouldn't happen all the time, prioritise fast exit
+	if_cold (sst_userunloaded) { // note: if we're here, pluginhandler is set
 		cmd_plugin_load->cb = orig_plugin_load_cb;
 		cmd_plugin_unload->cb = orig_plugin_unload_cb;
 #ifdef _WIN32 // this bit is only relevant in builds that predate linux support
@@ -470,7 +471,7 @@ static void do_unload(void) {
 
 static bool VCALLCONV Load(void *this, ifacefactory enginef,
 		ifacefactory serverf) {
-	if (already_loaded) {
+	if_cold (already_loaded) {
 		con_warn("Already loaded! Doing nothing!\n");
 		skip_unload = true;
 		return false;
@@ -482,7 +483,7 @@ static bool VCALLCONV Load(void *this, ifacefactory enginef,
 
 static void VCALLCONV Unload(void *this) {
 	// the game tries to unload on a failed load, for some reason
-	if (skip_unload) { skip_unload = false; return; }
+	if_cold (skip_unload) { skip_unload = false; return; }
 	do_unload();
 }
 
@@ -535,9 +536,9 @@ static const void **vtable_firstdiff = vtable + 10;
 // this is equivalent to a class with no members!
 static const void *const *const plugin_obj = vtable;
 
-EXPORT const void *CreateInterface(const char *name, int *ret) {
-	if (!strncmp(name, "ISERVERPLUGINCALLBACKS00", 24)) {
-		if (name[24] >= '1' && name[24] <= '3' && name[25] == '\0') {
+export const void *CreateInterface(const char *name, int *ret) {
+	if_hot (!strncmp(name, "ISERVERPLUGINCALLBACKS00", 24)) {
+		if_hot (name[24] >= '1' && name[24] <= '3' && name[25] == '\0') {
 			if (ret) *ret = 0;
 			ifacever = name[24] - '0';
 			return &plugin_obj;

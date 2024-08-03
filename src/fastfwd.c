@@ -26,6 +26,7 @@
 #include "feature.h"
 #include "hook.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "os.h"
 #include "ppmagic.h"
@@ -46,19 +47,14 @@ static float *realtime, *host_frametime;
 static float skiptime = 0.0, skiprate;
 static void hook_Host_AccumulateTime(float dt) {
 	float skipinc = skiprate * dt;
-	if (skiptime > skipinc) {
-		skiptime -= skipinc;
-		*realtime += skipinc;
-		*host_frametime = skipinc;
-	}
-	else if (skiptime > 0) {
-		*realtime += skiptime;
-		*host_frametime = skiptime;
-		skiptime = 0;
-	}
-	else {
+	if_hot (!skiptime) {
 		orig_Host_AccumulateTime(dt);
+		return;
 	}
+	if_random (skiptime <= skipinc) skipinc = skiptime; // should become fcmovbe
+	skiptime -= skipinc;
+	*realtime += skipinc;
+	*host_frametime = skipinc;
 }
 
 void fastfwd(float seconds, float timescale) {
@@ -194,67 +190,67 @@ PREINIT {
 
 INIT {
 	void *hldsapi = factory_engine("VENGINE_HLDS_API_VERSION002", 0);
-	if (!hldsapi) {
+	if_cold (!hldsapi) {
 		errmsg_errorx("couldn't find HLDS API interface");
 		return false;
 	}
 	void *enginetool = factory_engine("VENGINETOOL003", 0);
-	if (!enginetool) {
+	if_cold (!enginetool) {
 		errmsg_errorx("missing engine tool interface");
 		return false;
 	}
 	// behold: the greatest pointer chase of all time
 	realtime = find_float((*(void ***)enginetool)[vtidx_GetRealTime]);
-	if (!realtime) {
+	if_cold (!realtime) {
 		errmsg_errorx("couldn't find realtime variable");
 		return false;
 	}
 	host_frametime = find_float((*(void ***)enginetool)[vtidx_HostFrameTime]);
-	if (!host_frametime) {
+	if_cold (!host_frametime) {
 		errmsg_errorx("couldn't find host_frametime variable");
 		return false;
 	}
 	void *eng = find_eng((*(void ***)hldsapi)[vtidx_RunFrame]);
-	if (!eng) {
+	if_cold (!eng) {
 		errmsg_errorx("couldn't find eng global object");
 		return false;
 	}
 	void *func;
-	if (!(func = find_HostState_Frame((*(void ***)eng)[vtidx_Frame]))) {
+	if_cold (!(func = find_HostState_Frame((*(void ***)eng)[vtidx_Frame]))) {
 		errmsg_errorx("couldn't find HostState_Frame function");
 		return false;
 	}
-	if (!(func = find_FrameUpdate(func))) {
+	if_cold (!(func = find_FrameUpdate(func))) {
 		errmsg_errorx("couldn't find FrameUpdate function");
 		return false;
 	}
-	if (!(func = find_floatcall(func, GAMETYPE_MATCHES(L4D2_2147plus) ? 2 : 1,
-			"CHostState::State_Run"))) {
+	if_cold (!(func = find_floatcall(func, GAMETYPE_MATCHES(L4D2_2147plus) ?
+			2 : 1, "CHostState::State_Run"))) {
 		errmsg_errorx("couldn't find State_Run function");
 		return false;
 	}
-	if (!(func = find_floatcall(func, 1, "Host_RunFrame"))) {
+	if_cold (!(func = find_floatcall(func, 1, "Host_RunFrame"))) {
 		errmsg_errorx("couldn't find Host_RunFrame function");
 		return false;
 	}
-	if (!(func = find_floatcall(func, 1, "_Host_RunFrame"))) {
+	if_cold (!(func = find_floatcall(func, 1, "_Host_RunFrame"))) {
 		errmsg_errorx("couldn't find _Host_RunFrame");
 		return false;
 	}
-	if (!find_Host_AccumulateTime(func)) {
+	if_cold (!find_Host_AccumulateTime(func)) {
 		errmsg_errorx("couldn't find Host_AccumulateTime");
 		return false;
 	}
 	orig_Host_AccumulateTime = (Host_AccumulateTime_func)hook_inline(
 			(void *)orig_Host_AccumulateTime, (void *)hook_Host_AccumulateTime);
-	if (!orig_Host_AccumulateTime) {
+	if_cold (!orig_Host_AccumulateTime) {
 		errmsg_errorsys("couldn't hook Host_AccumulateTime function");
 	}
 	return true;
 }
 
 END {
-	if (!sst_userunloaded) return;
+	if_hot (!sst_userunloaded) return;
 	unhook_inline((void *)orig_Host_AccumulateTime);
 }
 

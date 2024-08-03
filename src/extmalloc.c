@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -41,6 +41,8 @@ void extfree(void *mem) { Free(g_pMemAlloc, mem); }
 
 #else
 
+#include "langext.h"
+
 void Error(const char *fmt, ...); // stub left out of con_.h (not that useful)
 
 // Linux Source doesn't seem to bother with the custom allocator stuff at all.
@@ -48,15 +50,16 @@ void Error(const char *fmt, ...); // stub left out of con_.h (not that useful)
 // right, not a privilege. Like func_vehicle.
 void *extmalloc(usize sz) {
 	void *ret = malloc(sz);
-	if (!ret) Error("sst: out of memory");
+	if_cold (!ret) Error("sst: out of memory");
 	return ret;
 }
 void *extrealloc(void *mem, usize sz) {
 	void *ret = realloc(mem, sz);
-	if (!ret) Error("sst: out of memory");
+	if_cold (!ret) Error("sst: out of memory");
 	return ret;
 }
 // note: extfree is #defined to free in the header
+
 #endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
