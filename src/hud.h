@@ -67,6 +67,6 @@ void hud_screensize(int *width, int *height);
 int hud_fontheight(ulong font);
 
 /* Returns the width of a font character, in pixels. */
-int hud_getcharwidth(ulong font, int ch);
+int hud_charwidth(ulong font, int ch);
 
 #endif
