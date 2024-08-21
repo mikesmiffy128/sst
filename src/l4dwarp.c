@@ -44,8 +44,8 @@ DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you",
 	struct edict *ed = ent_getedict(con_cmdclient + 1);
 	if_cold (!ed) { errmsg_errorx("couldn't access player entity"); return; }
 	void *e = GetBaseEntity(ed->ent_unknown); // is this call required?
-	struct vec3f *org = mem_offset(e, off_entpos);
-	struct vec3f *ang = mem_offset(e, off_eyeang);
+	const struct vec3f *org = mem_offset(e, off_entpos);
+	const struct vec3f *ang = mem_offset(e, off_eyeang);
 	// L4D idle warps go up to 10 units behind yaw, lessening based on pitch.
 	float pitch = ang->x * M_PI / 180, yaw = ang->y * M_PI / 180;
 	float shift = -10 * cos(pitch);

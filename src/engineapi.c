@@ -115,7 +115,8 @@ void engineapi_lateinit(void) {
 	// > can detect that and set the SPROP_IS_VECTOR_ELEM flag.
 	// by doing this at the deferred stage, we avoid having to abs() everything
 	if (srvdll && has_vtidx_GetAllServerClasses && has_sz_SendProp &&
-			has_off_SP_varname && has_off_SP_offset) {
+			has_off_SP_varname && has_off_SP_type && has_off_SP_offset &&
+			has_DT_DataTable) {
 		initentprops(GetAllServerClasses(srvdll));
 	}
 }

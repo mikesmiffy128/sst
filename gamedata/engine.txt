@@ -1,0 +1,162 @@
+# ICvar
+# XXX: const and non-const entries might be flipped here on Windows, not 100%
+# sure. kind of just choosing not to care thusfar, as it still works the same!
+vtidx_AllocateDLLIdentifier 5
+	Portal2 8
+vtidx_RegisterConCommand 6
+	Portal2 9
+vtidx_UnregisterConCommands 8
+	Portal2 11
+# unused:
+#vtidx_FindCommandBase 10
+#	Portal2 13
+vtidx_FindVar 12
+	Portal2 15
+vtidx_FindCommand 14
+	Portal2 17
+vtidx_CallGlobalChangeCallbacks 20
+	L4Dx 18
+	Portal2 21
+vtidx_ConsoleColorPrintf
+	OrangeBoxbased 23
+	L4Dx 21
+	Portal2 24
+
+# CDemoRecorder
+vtidx_StartRecording 2
+vtidx_SetSignonState 3
+vtidx_StopRecording 7
+vtidx_RecordPacket 11
+
+# VEngineClient
+vtidx_IsInGame
+	Client015 26
+	Client014
+		L4D2 28
+		2013 26
+	Client013 26
+		L4D1 27
+	# TODO(compat): unconfirmed, and OE support isn't really a thing yet anyway
+	#Client012 28
+vtidx_GetGameDirectory
+	Client015 35 # current Portal 2
+	Client014
+		L4D2 73 # YES IT'S SEVENTY THREE SOMEHOW ALL OF A SUDDEN.
+		2013 35
+	Client013 35
+		L4Dx 36 # AND THEY ACTUALLY CHANGED IT BACK LATER! (on 2.0.4.1)
+	Client012 37 # dmomm, ep1, ...
+vtidx_GetEngineBuildNumber
+	Client013
+		L4D2 99
+		Portal2 100
+	Client014
+		L4D2 31
+		2013 98
+	Portal1_3420 91
+	# TODO(compat): we'll need these... but need to detect first
+	#Portal1_5135 102
+	#L4D1_1005 99
+	#L4D1_Steam 97
+
+# IGameUIFuncs
+vtidx_GetDesktopResolution 5
+
+# IGame/CGame
+vtidx_DispatchAllStoredGameMessages 16
+
+# VEngineServer
+vtidx_PEntityOfEntIndex
+	OrangeBox 19 # probably OE too but ??
+vtidx_ServerCommand
+	OrangeBoxbased 36
+
+sz_edict 20
+	L4Dbased 16
+
+# vgui::Panel
+vtidx_SetPaintEnabled 67
+	Client013
+		L4D1 68
+		L4D2 71
+			L4D2_2147plus 72
+	Client014
+		L4D2 70
+vtidx_Paint 123
+	Client014
+		L4D2 126 # 2000
+	Client013
+		L4D2 127 # 2045
+			L4D2_2147plus 128
+
+# SendProp
+sz_SendProp
+	# wrapping all these in 005 for right now.
+	# will need at least 009 as well at some point!
+	SrvDLL005
+		OrangeBox	76
+		L4D1		80
+		L4D2		84
+		Portal2		84
+	#2013 80 # TODO(compat): not sure about 2013/009 yet
+off_SP_type 8
+off_SP_varname
+	SrvDLL005
+		OrangeBox	44
+		#L4Dbased	48 # TODO(compat): haven't tested Survivors
+		# for now do this instead:
+		L4D			48
+		Portal2		48
+	#2013 48 # TODO(compat): not sure about 2013/009 yet pt2
+off_SP_subtable
+	SrvDLL005
+		OrangeBox	64
+		L4D1		68
+		L4D2		72
+		Portal2		72
+	#2013 68 # TODO(compat): not sure about 2013/009 yet pt3
+off_SP_offset
+	SrvDLL005
+		OrangeBox	68
+		L4D1		72
+		L4D2		76
+		Portal2		76
+	#2013 72 # TODO(compat): not sure about 2013/009 yet pt4
+
+DT_DataTable 5 # constant value from SendPropType enum (XXX: name okay???)
+	L4Dbased 6
+
+# CBaseServer/CGameServer
+vtidx_GetSpawnCount
+	#OrangeBox 13 + NVDTOR # not used right now anyway
+	L4D1 13 + NVDTOR
+	L4D2 14 + NVDTOR # GetTimescale() added, pushed it down
+	# rest untested, add later if/when actually needed for something
+
+# IEngineVGuiInternal/CEngineVGui
+vtidx_GetPanel NVDTOR
+# note: actual name of this function is Connect() but that's too generic
+vtidx_VGuiConnect 3 + NVDTOR
+	L4Dbased 4 + NVDTOR # ActivateGameUI added
+		L4DS 5 + NVDTOR # some other crap added, god knows
+vtidx_VGuiIsInitialized 6 + NVDTOR # this is also just called IsInitialized()
+	L4Dbased 7 + NVDTOR
+		L4DS 8 + NVDTOR
+
+# CDedicatedServerAPI
+vtidx_RunFrame 7
+
+# IEngine
+vtidx_Frame 4 + NVDTOR
+
+# CEngineTool
+vtidx_GetRealTime 34 # HL2, P1, L4D1, BMS
+	# OE, DMoMM 24
+	L4D2 35
+	Portal2 36
+vtidx_HostFrameTime 35
+	# OE, DMoMM 25
+	L4D2 38
+	Portal2 39
+
+# vi: sw=4 ts=4 noet tw=80 cc=80

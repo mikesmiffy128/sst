@@ -62,7 +62,7 @@ static bool _vec_make_room(struct _vec *v, uint tsize, uint addcnt) {
 // internal: for reuse by vec0
 #define _vec_push(v, val, slack) ( \
 	((v)->sz + (slack) < (v)->max || \
-			_vec_make_room((struct _vec *)(v), sizeof(val), 1)) && \
+			_vec_make_room((struct _vec *)(v), sizeof(val), 1)) && /*NOLINT*/ \
 	((v)->data[(v)->sz++ - slack] = (val), true) \
 )
 

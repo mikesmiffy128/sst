@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -95,15 +95,6 @@ struct CMoveData {
 	float constraint_radius, constraint_width, constraint_speedfactor;
 	struct vec3f origin;
 };
-
-#define SENDPROP_INT 0
-#define SENDPROP_FLOAT 1
-#define SENDPROP_VEC 2
-#define SENDPROP_VECXY 3
-#define SENDPROP_STR 4
-#define SENDPROP_ARRAY 5
-#define SENDPROP_DTABLE 6
-#define SENDPROP_INT64 7
 
 // these have to be opaque because, naturally, they're unstable between
 // branches - access stuff using gamedata offsets as usual

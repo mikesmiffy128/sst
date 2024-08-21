@@ -89,15 +89,15 @@ if [ "$dbg" = 1 ]; then src="$src \
 fi
 
 $HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -include stdbool.h \
-		-o .build/codegen src/build/codegen.c src/build/cmeta.c
+		-o .build/codegen src/build/codegen.c src/build/cmeta.c src/os.c
 $HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -include stdbool.h \
-		-o .build/mkgamedata src/build/mkgamedata.c src/kv.c
+		-o .build/mkgamedata src/build/mkgamedata.c src/os.c
 $HOSTCC -O2 -fuse-ld=lld $warnings -D_FILE_OFFSET_BITS=64 -include stdbool.h \
-		-o .build/mkentprops src/build/mkentprops.c src/kv.c
+		-o .build/mkentprops src/build/mkentprops.c src/os.c
 .build/codegen `for s in $src; do echo "src/$s"; done`
-.build/mkgamedata gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv \
-gamedata/matchmaking.kv gamedata/vgui2.kv gamedata/vguimatsurface.kv
-.build/mkentprops gamedata/entprops.kv
+.build/mkgamedata gamedata/engine.txt gamedata/gamelib.txt gamedata/inputsystem.txt \
+gamedata/matchmaking.txt gamedata/vgui2.txt gamedata/vguimatsurface.txt
+.build/mkentprops gamedata/entprops.txt
 for s in $src; do cc "$s"; done
 $CC -shared -fpic -fuse-ld=lld -O0 -w -o .build/libtier0.so src/stubs/tier0.c
 $CC -shared -fpic -fuse-ld=lld -O0 -w -o .build/libvstdlib.so src/stubs/vstdlib.c

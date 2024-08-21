@@ -19,10 +19,8 @@
 #include <string.h>
 
 #include "../intdefs.h"
-#include "../kv.h"
 #include "../langext.h"
 #include "../os.h"
-#include "vec.h"
 
 #ifdef _WIN32
 #define fS "S"
@@ -30,214 +28,247 @@
 #define fS "s"
 #endif
 
-static noreturn die(const char *s) {
-	fprintf(stderr, "mkgamedata: %s\n", s);
-	exit(100);
+static noreturn die(int status, const char *s) {
+	fprintf(stderr, "mkentprops: %s\n", s);
+	exit(status);
+}
+
+// concatenated input file contents - string values are indices off this
+static char *sbase = 0;
+
+static const os_char *const *srcnames;
+static noreturn dieparse(int file, int line, const char *s) {
+	fprintf(stderr, "mkentprops: %" fS ":%d: %s\n", srcnames[file], line, s);
+	exit(2);
+}
+
+#define MAXENTS 32768
+static int tags[MAXENTS]; // varname/gametype
+static int exprs[MAXENTS];
+static uchar indents[MAXENTS]; // nesting level
+static schar srcfiles[MAXENTS];
+static int srclines[MAXENTS];
+static int nents = 0;
+
+static inline void handleentry(char *k, char *v, int indent,
+		int file, int line) {
+	int previndent = nents ? indents[nents - 1] : -1; // meh
+	if_cold (indent > previndent + 1) {
+		dieparse(file, line, "excessive indentation");
+	}
+	if_cold (indent == previndent && !exprs[nents - 1]) {
+		dieparse(file, line - 1, "missing a value and/or conditional(s)");
+	}
+	if_cold (nents == MAXENTS) die(2, "out of array indices");
+	tags[nents] = k - sbase;
+	exprs[nents] = v - sbase; // will produce garbage for null v. this is fine!
+	indents[nents] = indent;
+	srcfiles[nents] = file;
+	srclines[nents++] = line;
 }
 
 /*
- * We keep the gamedata KV format as simple as possible. Default values are
+ * -- Quick file format documentation! --
+ *
+ * We keep the gamedata format as simple as possible. Default values are
  * specified as direct key-value pairs:
  *
- *   <varname> <expr>
+ *  <varname> <expr>
  *
- * Game- or engine-specific values are set using blocks:
+ * Game- or engine-specific values are set using indented blocks:
  *
- *   <varname> { <gametype> <expr> <gametype> <expr> ... [default <expr>] }
+ *  <varname> <optional-default>
+ *  	<gametype1> <expr>
+ *  	<gametype2> <expr> # you can write EOL comments too!
+ *			<some-other-nested-conditional-gametype> <expr>
  *
  * The most complicated it can get is if conditionals are nested, which
- * basically translates directly into nested ifs:
- *   <varname> { <gametype> { <gametype> <expr> <gametype> <expr> } }
- *   [however many entries...]
+ * basically translates directly into nested ifs.
  *
- * If that doesn't make sense, just look at one of the existing data files and
- * then it should be obvious. :^)
- *
- * Note: if `default` isn't given in a conditional block, that piece of gamedata
- * is considered unavailable and modules that use it won't get initialised/used
- * unless all the conditions are met.
+ * Just be aware that whitespace is significant, and you have to use tabs.
+ * Any and all future complaints about that decision SHOULD - and MUST - be
+ * directed to the Python Software Foundation and the authors of the POSIX
+ * Makefile specification. In that order.
  */
-struct vec_ent VEC(struct ent *);
-struct ent {
-	const char *name; // (or condition tag, in a child node)
-	const char *defexpr;
-	struct vec_ent subents;
-	struct ent *parent; // to back up a level during parse
-};
-// root only contains subents list but it's easier to use the same struct
-static struct ent root = {0};
 
-struct parsestate {
-	const os_char *filename;
-	struct kv_parser *parser;
-	struct ent *curent; // current ent lol
-	bool haddefault; // blegh;
-};
-
-static noreturn badparse(struct parsestate *state, const char *e) {
-	fprintf(stderr, "mkgamedata: %" fS ":%d:%d: parse error: %s",
-			state->filename, state->parser->line, state->parser->col, e);
-	exit(1);
-}
-
-static void kv_cb(enum kv_token type, const char *p, uint len, void *ctxt) {
-	struct parsestate *state = ctxt;
-	switch (type) {
-		case KV_IDENT: case KV_IDENT_QUOTED:;
-			if (len == 7 && !memcmp(p, "default", 7)) { // special case!
-				if (state->curent == &root) {
-					badparse(state, "unexpected default keyword at top level");
+static void parse(int file, char *s, int len) {
+	if (s[len - 1] != '\n') dieparse(file, 0, "invalid text file (missing EOL)");
+	enum { BOL = 0, KEY = 4, KWS = 8, VAL = 12, COM = 16, ERR = -1 };
+	static const s8 statetrans[] = {
+		// layout: any, space|tab, #, \n
+		[BOL + 0] = KEY, [BOL + 1] = BOL, [BOL + 2] = COM, [BOL + 3] = BOL,
+		[KEY + 0] = KEY, [KEY + 1] = KWS, [KEY + 2] = COM, [KEY + 3] = BOL,
+		[KWS + 0] = VAL, [KWS + 1] = KWS, [KWS + 2] = COM, [KWS + 3] = BOL,
+		[VAL + 0] = VAL, [VAL + 1] = VAL, [VAL + 2] = COM, [VAL + 3] = BOL,
+		[COM + 0] = COM, [COM + 1] = COM, [COM + 2] = COM, [COM + 3] = BOL
+	};
+	char *key, *val = sbase; // 0 index by default (invalid value works as null)
+	for (int state = BOL, i = 0, line = 1, indent = 0; i < len; ++i) {
+		int transidx = state;
+		char c = s[i];
+		switch (c) {
+			case '\0': dieparse(file, line, "unexpected null byte");
+			case ' ':
+				if_cold (state == BOL) {
+					dieparse(file, line, "unexpected space at start of line");
 				}
-				struct ent *e = state->curent;
-				if (e->defexpr) {
-					badparse(state, "multiple default keywords");
-				}
-				state->haddefault = true;
+			case '\t':
+				transidx += 1;
 				break;
-			}
-			state->haddefault = false;
-			char *k = malloc(len + 1);
-			if (!k) die("couldn't allocate key string");
-			// FIXME(?): should check and prevent duplicate keys probably!
-			// need table.h or something to avoid O(n^2) :)
-			memcpy(k, p, len); k[len] = '\0';
-			struct ent *e = malloc(sizeof(*e));
-			if (!e) die("couldn't allocate memory");
-			e->name = k;
-			e->defexpr = 0;
-			e->subents = (struct vec_ent){0};
-			if (!vec_push(&state->curent->subents, e)) {
-				die("couldn't append to array");
-			}
-			e->parent = state->curent;
-			state->curent = e;
-			break;
-		case KV_NEST_START:
-			if (state->haddefault) badparse(state, "default cannot be a block");
-			break;
-		case KV_NEST_END:
-			if (!state->curent->parent) {
-				badparse(state, "unexpected closing brace");
-			}
-			state->curent = state->curent->parent;
-			break;
-		case KV_VAL: case KV_VAL_QUOTED:;
-			char *s = malloc(len + 1);
-			if (!s) die("couldn't allocate value string");
-			memcpy(s, p, len); s[len] = '\0';
-			state->curent->defexpr = s;
-			if (!state->haddefault) {
-				// a non-default value is just a node that itself only has a
-				// default value.
-				state->curent = state->curent->parent;
-			}
-			break;
-		case KV_COND_PREFIX: case KV_COND_SUFFIX:
-			badparse(state, "unexpected conditional");
+			case '#': transidx += 2; break;
+			case '\n': transidx += 3;
+		}
+		int newstate = statetrans[transidx];
+		switch_exhaust (newstate) {
+			case KEY: if_cold (state != KEY) key = s + i; break;
+			case KWS: if_cold (state != KWS) s[i] = '\0'; break;
+			case VAL: if_cold (state == KWS) val = s + i; break;
+			case BOL:
+				indent += state == BOL;
+				if_cold (indent > 255) { // this shouldn't happen if we're sober
+					dieparse(file, line, "exceeded max nesting level (255)");
+				}
+			case COM:
+				if_hot (state != BOL) {
+					if (state != COM) { // blegh!
+						int j = i;
+						while (s[j - 1] == ' ' || s[j - 1] == '\t') --j;
+						s[j] = '\0';
+						handleentry(key, val, indent, file, line);
+					}
+					val = sbase; // reset this again
+				}
+		}
+		if_cold (c == '\n') { // ugh, so much for state transitions.
+			indent = 0;
+			++line;
+		}
+		state = newstate;
 	}
 }
 
-static inline noreturn diewrite(void) { die("couldn't write to file"); }
-
-#define _doindent \
-	for (int _indent = 0; _indent < indent; ++_indent) { \
-		if (fputs("\t", out) == -1) diewrite(); \
-	}
-#define _(x) \
-	if (fprintf(out, "%s\n", x) < 0) diewrite();
-#define _i(x) _doindent _(x)
-#define F(f, ...) \
-	if (fprintf(out, f "\n", __VA_ARGS__) < 0) diewrite();
-#define Fi(...) _doindent F(__VA_ARGS__)
+static inline noreturn diewrite(void) { die(100, "couldn't write to file"); }
+#define _(x) if (fprintf(out, "%s\n", x) < 0) diewrite();
+#define _i(x) for (int i = 0; i < indent; ++i) fputc('\t', out); _(x)
+#define F(f, ...) if (fprintf(out, f "\n", __VA_ARGS__) < 0) diewrite();
+#define Fi(...) for (int i = 0; i < indent; ++i) fputc('\t', out); F(__VA_ARGS__)
 #define H() \
 _( "/* This file is autogenerated by src/build/mkgamedata.c. DO NOT EDIT! */") \
 _( "")
 
 static void decls(FILE *out) {
-	for (struct ent *const *pp = root.subents.data;
-			pp - root.subents.data < root.subents.sz; ++pp) {
-		if ((*pp)->defexpr) {
-F( "#define has_%s true", (*pp)->name)
-			if ((*pp)->subents.sz) {
-F( "extern int %s;", (*pp)->name)
-			}
-			else {
-F( "enum { %s = %s };", (*pp)->name, (*pp)->defexpr)
-			}
+	for (int i = 0; i < nents; ++i) {
+		if (indents[i] != 0) continue;
+F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
+		if (exprs[i]) { // default value is specified - entry always exists
+			// *technically* this case is redundant - the other has_ macro would
+			// still work. however, having a distinct case makes the generated
+			// header a little easier to read at a glance.
+F( "#define has_%s 1", sbase + tags[i])
 		}
-		else {
-F( "extern bool has_%s;", (*pp)->name)
-F( "extern int %s;", (*pp)->name)
+		else { // entry is missing unless a tag is matched
+			// implementation detail: INT_MIN is reserved for missing gamedata!
+			// XXX: for max robustness, should probably check for this in input?
+F( "#define has_%s (%s != -2147483648)", sbase + tags[i], sbase + tags[i])
 		}
-	}
-}
-
-static void inits(FILE *out, const char *var, struct vec_ent *v, bool needhas,
-		int indent) {
-	for (struct ent *const *pp = v->data; pp - v->data < v->sz; ++pp) {
-Fi("if (GAMETYPE_MATCHES(%s)) {", (*pp)->name)
-		if ((*pp)->defexpr) {
-			if (needhas) {
-Fi("	has_%s = true;", var);
-			}
-Fi("	%s = %s;", var, (*pp)->defexpr);
+F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
+		if_cold (i == nents - 1 || !indents[i + 1]) { // no tags - it's constant
+F( "enum { %s = (%s) };", sbase + tags[i], sbase + exprs[i])
 		}
-		inits(out, var, &(*pp)->subents, needhas && !(*pp)->defexpr, indent + 1);
-_i("}")
+		else { // global variable intialised by gamedata_init() call
+F( "extern int %s;", sbase + tags[i]);
+		}
 	}
 }
 
 static void defs(FILE *out) {
-	for (struct ent *const *pp = root.subents.data;
-			pp - root.subents.data < root.subents.sz; ++pp) {
-		if ((*pp)->defexpr) {
-			if ((*pp)->subents.sz) {
-F( "int %s = %s;", (*pp)->name, (*pp)->defexpr);
+	for (int i = 0; i < nents; ++i) {
+		if (indents[i] != 0) continue;
+		if_hot (i < nents - 1 && indents[i + 1]) {
+F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
+			if (exprs[i]) {
+F( "int %s = (%s);", sbase + tags[i], sbase + exprs[i])
+			}
+			else {
+F( "int %s = -2147483648;", sbase + tags[i])
 			}
 		}
+	}
+}
+
+static void init(FILE *out) {
+_( "void gamedata_init(void) {")
+	int varidx;
+	int indent = 0;
+	for (int i = 0; i < nents; ++i) {
+		if (indents[i] < indents[i - 1]) {
+			for (; indent != indents[i]; --indent) {
+_i("}")
+			}
+		}
+		if (indents[i] == 0) {
+			varidx = i;
+			continue;
+		}
+F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
+		if (indents[i] > indents[i - 1]) {
+Fi("	if (GAMETYPE_MATCHES(%s)) {", sbase + tags[i])
+			++indent;
+		}
 		else {
-F( "int %s;", (*pp)->name);
-F( "bool has_%s = false;", (*pp)->name);
+_i("}")
+F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
+Fi("else if (GAMETYPE_MATCHES(%s)) {", sbase + tags[i])
+		}
+		if (exprs[i]) {
+F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
+Fi("	%s = (%s);", sbase + tags[varidx], sbase + exprs[i])
 		}
 	}
-_( "")
-_( "void gamedata_init(void) {")
-	for (struct ent *const *pp = root.subents.data;
-			pp - root.subents.data < root.subents.sz; ++pp) {
-		inits(out, (*pp)->name, &(*pp)->subents, !(*pp)->defexpr, 1);
+	for (; indent != 0; --indent) {
+_i("}")
 	}
 _( "}")
 }
 
 int OS_MAIN(int argc, os_char *argv[]) {
-	for (++argv; *argv; ++argv) {
-		int fd = os_open_read(*argv);
-		if (fd == -1) die("couldn't open file");
-		struct kv_parser kv = {0};
-		struct parsestate state = {*argv, &kv, &root};
-		char buf[1024];
-		int nread;
-		while (nread = os_read(fd, buf, sizeof(buf))) {
-			if (nread == -1) die("couldn't read file");
-			if (!kv_parser_feed(&kv, buf, nread, &kv_cb, &state)) goto ep;
+	srcnames = (const os_char *const *)argv;
+	int sbase_len = 0, sbase_max = 65536;
+	sbase = malloc(sbase_max);
+	if (!sbase) die(100, "couldn't allocate memory");
+	int n = 1;
+	for (++argv; *argv; ++argv, ++n) {
+		int f = os_open_read(*argv);
+		if (f == -1) die(100, "couldn't open file");
+		vlong len = os_fsize(f);
+		if (sbase_len + len > 1u << 29) {
+			die(2, "combined input files are far too large");
 		}
-		if (!kv_parser_done(&kv)) {
-ep:			fprintf(stderr, "mkgamedata: %" fS ":%d:%d: bad syntax: %s\n",
-					*argv, kv.line, kv.col, kv.errmsg);
-			exit(1);
+		if (sbase_len + len > sbase_max) {
+			fprintf(stderr, "mkgamedata: warning: need to resize string. "
+					"increase sbase_max to avoid this extra work!\n");
+			sbase_max *= 4;
+			sbase = realloc(sbase, sbase_max);
+			if (!sbase) die(100, "couldn't grow memory allocation");
 		}
-		os_close(fd);
+		char *s = sbase + sbase_len;
+		if (os_read(f, s, len) != len) die(100, "couldn't read file");
+		os_close(f);
+		parse(n, s, len);
+		sbase_len += len;
 	}
 
 	FILE *out = fopen(".build/include/gamedata.gen.h", "wb");
-	if (!out) die("couldn't open gamedata.gen.h");
+	if (!out) die(100, "couldn't open gamedata.gen.h");
 	H();
 	decls(out);
 
 	out = fopen(".build/include/gamedatainit.gen.h", "wb");
-	if (!out) die("couldn't open gamedatainit.gen.h");
+	if (!out) die(100, "couldn't open gamedatainit.gen.h");
 	H();
 	defs(out);
+	_("")
+	init(out);
 	return 0;
 }
 

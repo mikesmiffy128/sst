@@ -1,0 +1,7 @@
+# ISchemeManager
+vtidx_GetIScheme 8
+
+# IScheme
+vtidx_GetFont 3
+
+# vi: sw=4 ts=4 noet tw=80 cc=80

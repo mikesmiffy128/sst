@@ -67,7 +67,7 @@ static inline usize mem_loadusize(const void *p) {
 }
 
 /* Adds a byte count to a pointer and returns a freely-assignable pointer. */
-static inline void *mem_offset(void *p, int off) { return (char *)p + off; }
+static inline void *mem_offset(const void *p, int off) { return (char *)p + off; }
 
 /* Returns the offset in bytes from one pointer to another (p - q). */
 static inline ssize mem_diff(const void *p, const void *q) {

@@ -115,13 +115,13 @@ if %host64%==1 (
 %HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
 -L.build %lbcryptprimitives_host% -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c src/os.c || goto :end
 %HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
--L.build %lbcryptprimitives_host% -o .build/mkgamedata.exe src/build/mkgamedata.c src/kv.c src/os.c || goto :end
-%HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
--L.build %lbcryptprimitives_host% -o .build/mkentprops.exe src/build/mkentprops.c src/kv.c src/os.c || goto :end
+-L.build %lbcryptprimitives_host% -o .build/mkgamedata.exe src/build/mkgamedata.c src/os.c || goto :end
+%HOSTCC% -fuse-ld=lld -municode -O2 -g %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
+-L.build %lbcryptprimitives_host% -o .build/mkentprops.exe src/build/mkentprops.c src/os.c || goto :end
 .build\codegen.exe%src% || goto :end
-.build\mkgamedata.exe gamedata/engine.kv gamedata/gamelib.kv gamedata/inputsystem.kv ^
-gamedata/matchmaking.kv gamedata/vgui2.kv gamedata/vguimatsurface.kv || goto :end
-.build\mkentprops.exe gamedata/entprops.kv || goto :end
+.build\mkgamedata.exe gamedata/engine.txt gamedata/gamelib.txt gamedata/inputsystem.txt ^
+gamedata/matchmaking.txt gamedata/vgui2.txt gamedata/vguimatsurface.txt || goto :end
+.build\mkentprops.exe gamedata/entprops.txt || goto :end
 llvm-rc /FO .build\dll.res src\dll.rc || goto :end
 for %%b in (%src%) do ( call :cc %%b || goto :end )
 :: we need different library names for debugging because Microsoft...
@@ -143,8 +143,6 @@ del .build\sst.lib
 :: special case: test must be 32-bit
 %HOSTCC% -fuse-ld=lld -m32 -O2 -g -L.build -lbcryptprimitives -include test/test.h -o .build/hook.test.exe test/hook.test.c || goto :end
 .build\hook.test.exe || goto :end
-%HOSTCC% -fuse-ld=lld -O2 -g -include test/test.h -o .build/kv.test.exe test/kv.test.c || goto :end
-.build\kv.test.exe || goto :end
 %HOSTCC% -fuse-ld=lld -O2 -g -include test/test.h -o .build/x86.test.exe test/x86.test.c || goto :end
 .build\x86.test.exe || goto :end
 
