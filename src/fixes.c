@@ -15,7 +15,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdlib.h>
 #include <string.h>
 
 #ifdef _WIN32
@@ -23,8 +22,13 @@
 #endif
 
 #include "con_.h"
+#include "errmsg.h"
 #include "gametype.h"
 #include "langext.h"
+#include "mem.h"
+#include "os.h"
+#include "ppmagic.h"
+#include "sst.h"
 
 static void chflags(const char *name, int unset, int set) {
 	struct con_var *v = con_findvar(name);
@@ -181,10 +185,35 @@ static void l4d1specific(void) {
 	chcmdflags("update_addon_paths", 0, CON_CCMDEXEC);
 }
 
+static void portal1specific(void) {
+#ifdef _WIN32
+	// TODO(compat): this is an absolutely atrocious way to implement this. it
+	// should only be temporary in the interests of getting 4104 working right
+	// away. since other versions also have broken demos, a more general fix
+	// should be done... eventually...
+	void *EyeAngles = mem_offset(clientlib, 0x19D1B0); // in C_PortalPlayer
+	static const char match[] =
+			HEXBYTES(56, 8B, F1, E8, 48, 50, EA, FF, 84, C0, 74, 25);
+	if (!memcmp(EyeAngles, match, sizeof(match))) {
+		char *patch = mem_offset(EyeAngles, 39);
+		if (patch[0] == 0x75 && patch[1] == 0x08) {
+			if_hot (os_mprot(patch, 2, PAGE_EXECUTE_READWRITE)) {
+				patch[0] = 0x90; patch[1] = 0x90; // replace je with nop
+			}
+			else {
+				errmsg_warnsys("unable to fix 4104 demo playback bug: "
+						"couldn't make memory writable");
+			}
+		}
+	}
+#endif
+}
+
 void fixes_apply(void) {
 	generalfixes();
 	if (GAMETYPE_MATCHES(L4D1)) l4d1specific();
 	else if (GAMETYPE_MATCHES(L4D2x)) l4d2specific();
+	else if (GAMETYPE_MATCHES(Portal1)) portal1specific();
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
