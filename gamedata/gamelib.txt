@@ -25,7 +25,7 @@ vtidx_Spawn
 	L4D2 22 + NVDTOR
 		TheLastStand 23 + NVDTOR
 vtidx_Teleport
-	L4D 104 + NVDTOR
+	L4D1 104 + NVDTOR
 	L4D2 116 + NVDTOR # TODO(linux): might actually be 119!?!?
 		TheLastStand 117 + NVDTOR # I dunno why JAiZ changed this
 
@@ -40,7 +40,7 @@ vtidx_GameShutdown 7
 
 # CDirector
 vtidx_OnGameplayStart
-	L4D2 11 # note: just happens the same on linux!
+	L4D2 11 # note: just happens to be the same on linux!
 	L4D1 11
 
 # vi: sw=4 ts=4 noet tw=80 cc=80
