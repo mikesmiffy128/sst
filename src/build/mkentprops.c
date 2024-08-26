@@ -277,11 +277,12 @@ _i("		if (mem_loads32(mem_offset(sp, off_SP_type)) == DT_DataTable) {")
 _i("			const struct SendTable *st = mem_loadptr(mem_offset(sp, off_SP_subtable));")
 _i("			// BEGIN SUBTABLE")
 Fi("			for (int i = 0, need = %d; i < st->nprops && need; ++i) {",
-art_leaves[idx].nsubs)
+art_leaves[idx].nsubs + art_leaves[idx].varstr != -1)
 _i("				const struct SendProp *sp = mem_offset(st->props, sz_SendProp * i);")
 _i("				const char *p = mem_loadptr(mem_offset(sp, off_SP_varname));")
 				dosendtables(out, art_leaves[idx].subtree, indent + 4);
 _i("			}")
+Fi("			--need;")
 _i("			// END SUBTABLE")
 _i("		}")
 			}
@@ -315,7 +316,7 @@ Fi("		p += %d;", art_cores[art].slen)
 			assume(art_leaves[idx].subtree != ART_NULL);
 _i("		const struct SendTable *st = class->table;")
 Fi("		for (int i = 0, need = %d; i < st->nprops && need; ++i) {",
-art_leaves[idx].nsubs)
+art_leaves[idx].nsubs + art_leaves[idx].varstr != -1)
 				// note: annoyingly long line here, but the generated code gets
 				// super nested anyway, so there's no point in caring really
 				// XXX: basically a dupe of dosendtables() - fold into above?
@@ -323,6 +324,7 @@ _i("			const struct SendProp *sp = mem_offset(st->props, sz_SendProp * i);")
 _i("			const char *p = mem_loadptr(mem_offset(sp, off_SP_varname));")
 			dosendtables(out, art_leaves[idx].subtree, indent + 3);
 _i("		}")
+Fi("		--need;")
 		}
 _i("	} break;")
 	}
@@ -344,8 +346,8 @@ F( "int %s = 0;", s);
 	}
 _( "")
 _( "static inline void initentprops(const struct ServerClass *class) {")
-_( "	const char *p = class->name;")
 F( "	for (int need = %d; need && class; class = class->next) {", nclasses)
+_( "		const char *p = class->name;")
 	doclasses(out, art_root, 2);
 _( "	}")
 _( "}")
