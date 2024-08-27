@@ -123,7 +123,7 @@ off_SP_offset
 		Portal2		76
 	#2013 72 # TODO(compat): not sure about 2013/009 yet pt4
 
-DT_DataTable 5 # constant value from SendPropType enum (XXX: name okay???)
+DPT_DataTable 5 # constant value from SendPropType enum (XXX: name okay???)
 	L4Dbased 6
 
 # CBaseServer/CGameServer

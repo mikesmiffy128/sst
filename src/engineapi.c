@@ -116,7 +116,7 @@ void engineapi_lateinit(void) {
 	// by doing this at the deferred stage, we avoid having to abs() everything
 	if (srvdll && has_vtidx_GetAllServerClasses && has_sz_SendProp &&
 			has_off_SP_varname && has_off_SP_type && has_off_SP_offset &&
-			has_DT_DataTable) {
+			has_DPT_DataTable) {
 		initentprops(GetAllServerClasses(srvdll));
 	}
 }

@@ -151,7 +151,8 @@ static struct art_leaf *helpgetleaf(u16 *art, const char *s, int len,
 		art_leaves[leaf.leafidx].subtree = ART_NULL;
 		++*countvar;
 	}
-	else if (parsefile) { // it's null if an existing entry is allowed
+	// if parsefile is null then we don't care about dupes (looking at subtable)
+	else if (parsefile && art_leaves[leaf.leafidx].varstr != VAR_NONE) {
 		dieparse(parsefile, parseline, "duplicate property name");
 	}
 	return art_leaves + leaf.leafidx;
@@ -186,7 +187,7 @@ static inline void handleentry(char *k, char *v, int vlen,
 		}
 		*nextpart++ = '\0';
 		sublen = nextpart - propname;
-		leaf = helpgetleaf(subtree, propname, sublen, file, line, &leaf->nsubs);
+		leaf = helpgetleaf(subtree, propname, sublen, 0, 0, &leaf->nsubs);
 		subtree = &leaf->subtree;
 		vlen -= sublen;
 		propname = nextpart;
@@ -250,42 +251,45 @@ _( "")
 static void dosendtables(FILE *out, u16 art, int indent) {
 _i("switch (*p) {")
 	while (art != ART_NULL) {
+		// stupid hack: figure out char literal in case of null byte
+		char charlit[3] = {art_firstbytes[art], '0'};
+		if_hot (charlit[0]) charlit[1] = '\0'; else charlit[0] = '\\';
 		if (art_cores[art].slen != 1) {
 			const char *tail = sbase + art_cores[art].soff + 1;
 			int len = art_cores[art].slen - 1;
-Fi("	case '%c': if (!strncmp(p + 1, \"%.*s\", %d)) {",
-art_firstbytes[art], len, tail, len)
+Fi("	case '%s': if (!strncmp(p + 1, \"%.*s\", %d)) {",
+charlit, len, tail, len)
 		}
 		else {
-Fi("	case '%c': {", art_firstbytes[art])
+Fi("	case '%s': {", charlit)
 		}
 		int idx = art_children[art];
 		// XXX: kind of a dumb and bad way to distinguish these. okay for now...
 		if (sbase[art_cores[art].soff + art_cores[art].slen - 1] != '\0') {
-			dosendtables(out, idx, indent + 1);
+Fi("		p += %d;", art_cores[art].slen)
+			dosendtables(out, idx, indent + 2);
 		}
 		else {
+			// XXX: do we actually want to prefetch this before the for loop?
+_i("		int off = baseoff + mem_loads32(mem_offset(sp, off_SP_offset));")
 			if (art_leaves[idx].varstr != VAR_NONE) {
-_i("		if (mem_loads32(mem_offset(sp, off_SP_type)) != DT_DataTable) {")
-Fi("			%s = mem_loads32(mem_offset(sp, off_SP_offset));",
-sbase + art_leaves[idx].varstr);
-Fi("			--need;")
-_i("		}")
+Fi("		%s = off;", sbase + art_leaves[idx].varstr);
 			}
 			if (art_leaves[idx].subtree != ART_NULL) {
-_i("		if (mem_loads32(mem_offset(sp, off_SP_type)) == DT_DataTable) {")
+_i("		if (mem_loads32(mem_offset(sp, off_SP_type)) == DPT_DataTable) {")
+_i("			int baseoff = off;")
 _i("			const struct SendTable *st = mem_loadptr(mem_offset(sp, off_SP_subtable));")
 _i("			// BEGIN SUBTABLE")
 Fi("			for (int i = 0, need = %d; i < st->nprops && need; ++i) {",
-art_leaves[idx].nsubs + art_leaves[idx].varstr != -1)
+art_leaves[idx].nsubs + (art_leaves[idx].varstr != -1))
 _i("				const struct SendProp *sp = mem_offset(st->props, sz_SendProp * i);")
 _i("				const char *p = mem_loadptr(mem_offset(sp, off_SP_varname));")
 				dosendtables(out, art_leaves[idx].subtree, indent + 4);
 _i("			}")
-Fi("			--need;")
 _i("			// END SUBTABLE")
 _i("		}")
 			}
+Fi("		--need;")
 		}
 _i("	} break;")
 		art = art_cores[art].next;
@@ -296,14 +300,17 @@ _i("}")
 static void doclasses(FILE *out, u16 art, int indent) {
 _i("switch (*p) {")
 	for (; art != ART_NULL; art = art_cores[art].next) {
+		// stupid hack 2: exact dupe boogaloo
+		char charlit[3] = {art_firstbytes[art], '0'};
+		if_hot (charlit[0]) charlit[1] = '\0'; else charlit[0] = '\\';
 		if (art_cores[art].slen != 1) {
 			const char *tail = sbase + art_cores[art].soff + 1;
 			int len = art_cores[art].slen - 1;
-Fi("	case '%c': if (!strncmp(p + 1, \"%.*s\", %d)) {",
-art_firstbytes[art], len, tail, len)
+Fi("	case '%s': if (!strncmp(p + 1, \"%.*s\", %d)) {",
+charlit, len, tail, len)
 		}
 		else {
-Fi("	case '%c': {", art_firstbytes[art])
+Fi("	case '%s': {", charlit)
 		}
 		int idx = art_children[art];
 		// XXX: same dumb-and-bad-ness as above. there must be a better way!
@@ -316,7 +323,7 @@ Fi("		p += %d;", art_cores[art].slen)
 			assume(art_leaves[idx].subtree != ART_NULL);
 _i("		const struct SendTable *st = class->table;")
 Fi("		for (int i = 0, need = %d; i < st->nprops && need; ++i) {",
-art_leaves[idx].nsubs + art_leaves[idx].varstr != -1)
+art_leaves[idx].nsubs + (art_leaves[idx].varstr != -1))
 				// note: annoyingly long line here, but the generated code gets
 				// super nested anyway, so there's no point in caring really
 				// XXX: basically a dupe of dosendtables() - fold into above?
@@ -346,6 +353,7 @@ F( "int %s = 0;", s);
 	}
 _( "")
 _( "static inline void initentprops(const struct ServerClass *class) {")
+_( "	enum { baseoff = 0 };") // can be shadowed for subtables.
 F( "	for (int need = %d; need && class; class = class->next) {", nclasses)
 _( "		const char *p = class->name;")
 	doclasses(out, art_root, 2);
