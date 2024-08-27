@@ -95,6 +95,7 @@ setlocal DisableDelayedExpansion
 :+ portalcolours.c
 :+ rinput.c
 :+ sst.c
+:+ trace.c
 :+ xhair.c
 :+ x86.c
 :: just tack these on, whatever (repeated condition because of expansion memes)

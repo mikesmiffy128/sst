@@ -81,6 +81,7 @@ src="\
 	os.c
 	portalcolours.c
 	sst.c
+	trace.c
 	xhair.c
 	x86.c"
 if [ "$dbg" = 1 ]; then src="$src \
