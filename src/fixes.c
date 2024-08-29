@@ -63,6 +63,7 @@ static void generalfixes(void) {
 	unhide("con_filter_enable");
 	unhide("con_filter_text");
 	unhide("con_filter_text_out");
+	unhide("con_logfile");
 
 	// things that could conceivably cause issues with speedrun verification
 	// and/or pedantic following of rules; throw on cheat flag. this could be
