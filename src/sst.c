@@ -498,8 +498,6 @@ static const char *VCALLCONV GetPluginDescription(void *this) {
 	return LONGNAME " v" VERSION;
 }
 
-DECL_VFUNC_DYN(void, ServerCommand, const char *)
-
 DEF_EVENT(ClientActive, struct edict */*player*/)
 DEF_EVENT(Tick, bool /*simulating*/)
 

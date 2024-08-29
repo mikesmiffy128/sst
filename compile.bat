@@ -66,6 +66,7 @@ setlocal DisableDelayedExpansion
 :+ alias.c
 :+ autojump.c
 :+ bind.c
+:+ clientcon.c
 :+ con_.c
 :+ chunklets/fastspin.c
 :+ chunklets/msg.c

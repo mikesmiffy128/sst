@@ -68,8 +68,11 @@ vtidx_DispatchAllStoredGameMessages 16
 # VEngineServer
 vtidx_PEntityOfEntIndex
 	OrangeBoxbased 19 # probably OE too but ??
-vtidx_ServerCommand
-	OrangeBoxbased 36
+#vtidx_ServerCommand # unused currently
+#	OrangeBoxbased 36
+vtidx_ClientPrintf
+	L4D1 45 # same in other engines, probably, but we don't need those for now
+	L4D2 46
 
 sz_edict 20
 	L4Dbased 16

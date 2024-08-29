@@ -70,6 +70,9 @@ bool engineapi_init(int pluginver) {
 	if (engserver = factory_engine("VEngineServer021", 0)) {
 		_gametype_tag |= _gametype_tag_Server021;
 	}
+	else if (engserver = factory_engine("VEngineServer022", 0)) {
+		//_gametype_tag |= _gametype_tag_Server022; // not needed yet
+	}
 	// else if (engserver = others as needed...) {
 	// }
 
