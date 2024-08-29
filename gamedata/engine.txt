@@ -162,4 +162,10 @@ vtidx_HostFrameTime 35
 	L4D2 38
 	Portal2 39
 
+# IVDebugOverlay
+vtidx_AddLineOverlay 3
+vtidx_AddBoxOverlay2
+	L4D1 19
+	L4D2 20
+
 # vi: sw=4 ts=4 noet tw=80 cc=80
