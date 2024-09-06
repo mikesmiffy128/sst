@@ -5,25 +5,15 @@
 #include "../src/x86.c"
 #include "../src/intdefs.h"
 
+#include "../src/ppmagic.h"
+
 TEST("The \"crazy\" instructions should be given correct lengths\n") {
-	const uchar test8[] = {
-		0xF6, 0x05, 0x12, 0x34, 0x56, 0x78, 0x12
-	};
-	const uchar test16[] = {
-		0x66, 0xF7, 0x05, 0x12, 0x34, 0x56, 0x78, 0x12, 0x34
-	};
-	const uchar test32[] = {
-		0xF7, 0x05, 0x12, 0x34, 0x56, 0x78, 0x12, 0x34, 0x56, 0x78
-	};
-	const uchar not8[] = {
-		0xF6, 0x15, 0x12, 0x34, 0x56, 0x78
-	};
-	const uchar not16[] = {
-		0x66, 0xF7, 0x15, 0x12, 0x34, 0x56, 0x78
-	};
-	const uchar not32[] = {
-		0xF7, 0x15, 0x12, 0x34, 0x56, 0x78
-	};
+	const uchar test8[] = HEXBYTES(F6, 05, 12, 34, 56, 78, 12);
+	const uchar test16[] = HEXBYTES(66, F7, 05, 12, 34, 56, 78, 12, 34);
+	const uchar test32[] = HEXBYTES(F7, 05, 12, 34, 56, 78, 12, 34, 56, 78);
+	const uchar not8[] = HEXBYTES(F6, 15, 12, 34, 56, 78);
+	const uchar not16[] = HEXBYTES(66, F7, 15, 12, 34, 56, 78);
+	const uchar not32[] = HEXBYTES(F7, 15, 12, 34, 56, 78);
 	if (x86_len(test8) != 7) return false;
 	if (x86_len(test16) != 9) return false;
 	if (x86_len(test32) != 10) return false;
@@ -34,8 +24,22 @@ TEST("The \"crazy\" instructions should be given correct lengths\n") {
 }
 
 TEST("SIB bytes should be decoded correctly") {
-	const uchar fstp[] = {0xD9, 0x1C, 0x24}; // old buggy case, for regressions
+	const uchar fstp[] = HEXBYTES(D9, 1C, 24); // old buggy case for regressions
 	return x86_len(fstp) == 3;
+}
+
+TEST("mov AL, moff8 instructions should be decoded correctly") {
+	// more fixed buggy cases for regressions
+	const uchar mov_moff8_al[] = HEXBYTES(A2, DA, 78, B4, 0D);
+	const uchar mov_al_moff8[] = HEXBYTES(A0, 28, DF, 5C, 66);
+	if (x86_len(mov_moff8_al) != 5) return false;
+	if (x86_len(mov_al_moff8) != 5) return false;
+	return true;
+}
+
+TEST("fiadd [off16] instructions should be decoded correctly") {
+	const uchar fiadd_off16[] = HEXBYTES(67, DA, 06, DF, 11);
+	return x86_len(fiadd_off16) == 5;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

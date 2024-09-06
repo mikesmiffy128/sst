@@ -143,8 +143,6 @@
 	X(X86_XORALI,  0x34) \
 	X(X86_CMPALI,  0x3C) \
 	X(X86_PUSHI8,  0x6A) \
-	X(X86_MOVALII, 0xA0) /* From offset (indirect) */ \
-	X(X86_MOVIIAL, 0xA2) /* To offset (indirect) */ \
 	X(X86_TESTALI, 0xA8) \
 	X(X86_JO,      0x70) \
 	X(X86_JNO,     0x71) \
@@ -190,7 +188,9 @@
 	X(X86_XOREAXI,  0x35) \
 	X(X86_CMPEAXI,  0x3D) \
 	X(X86_PUSHIW,   0x68) \
+	X(X86_MOVALII,  0xA0) /* From offset (indirect) */ \
 	X(X86_MOVEAXII, 0xA1) /* From offset (indirect) */ \
+	X(X86_MOVIIAL,  0xA2) /* To offset (indirect) */ \
 	X(X86_MOVIIEAX, 0xA3) /* To offset (indirect) */ \
 	X(X86_TESTEAXI, 0xA9) \
 	X(X86_MOVEAXI,  0xB8) \

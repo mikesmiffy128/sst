@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,6 +25,7 @@ static int mrmsib(const uchar *p, int addrlen) {
 	// But it's confusingly-written enough that the code I wrote before didn't
 	// work, so with any luck nobody will need to refer to it again and this is
 	// actually correct now. Fingers crossed.
+	if ((*p & 0xC6) == 0x06) return 3; // special case for disp16
 	if (addrlen == 4 || *p & 0xC0) {
 		int sib = addrlen == 4 && *p < 0xC0 && (*p & 7) == 4;
 		switch (*p & 0xC0) {
