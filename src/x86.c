@@ -25,7 +25,6 @@ static int mrmsib(const uchar *p, int addrlen) {
 	// But it's confusingly-written enough that the code I wrote before didn't
 	// work, so with any luck nobody will need to refer to it again and this is
 	// actually correct now. Fingers crossed.
-	if ((*p & 0xC6) == 0x06) return 3; // special case for disp16
 	if (addrlen == 4 || *p & 0xC0) {
 		int sib = addrlen == 4 && *p < 0xC0 && (*p & 7) == 4;
 		switch (*p & 0xC0) {
@@ -41,7 +40,7 @@ static int mrmsib(const uchar *p, int addrlen) {
 			case 0x80: return 1 + addrlen + sib;
 		}
 	}
-	if (addrlen == 2 && *p == 0x26) return 3;
+	if (addrlen == 2 && (*p & 0xC7) == 0x06) return 3;
 	return 1; // note: include the mrm itself in the byte count
 }
 
@@ -66,6 +65,7 @@ P:		X86_SEG_PREFIXES(CASES)
 		X86_OPS_1BYTE_NO(CASES) return pfxlen + 1;
 		X86_OPS_1BYTE_I8(CASES) operandlen = 1;
 		X86_OPS_1BYTE_IW(CASES) return pfxlen + 1 + operandlen;
+		X86_OPS_1BYTE_IWI(CASES) return pfxlen + 1 + addrlen;
 		X86_OPS_1BYTE_I16(CASES) return pfxlen + 3;
 		X86_OPS_1BYTE_MRM(CASES) return pfxlen + 1 + mrmsib(insn + 1, addrlen);
 		X86_OPS_1BYTE_MRM_I8(CASES) operandlen = 1;

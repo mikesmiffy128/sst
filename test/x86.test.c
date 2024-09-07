@@ -37,9 +37,14 @@ TEST("mov AL, moff8 instructions should be decoded correctly") {
 	return true;
 }
 
-TEST("fiadd [off16] instructions should be decoded correctly") {
+TEST("16-bit MRM instructions should be decoded correctly") {
 	const uchar fiadd_off16[] = HEXBYTES(67, DA, 06, DF, 11);
-	return x86_len(fiadd_off16) == 5;
+	const uchar fld_tword[] = HEXBYTES(67, DB, 2E, 99, C4);
+	const uchar add_off16_bl[] = HEXBYTES(67, 00, 1E, F5, BB);
+	if (x86_len(fiadd_off16) != 5) return false;
+	if (x86_len(fld_tword) != 5) return false;
+	if (x86_len(add_off16_bl) != 5) return false;
+	return true;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
