@@ -33,6 +33,7 @@
 #include "gameinfo.h"
 #include "gametype.h"
 #include "hook.h"
+#include "intdefs.h"
 #include "langext.h"
 #include "os.h"
 #include "sst.h"
