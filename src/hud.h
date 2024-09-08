@@ -1,5 +1,6 @@
 /*
  * Copyright © 2022 Matthew Wozniak <sirtomato999@gmail.com>
+ * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,6 +21,13 @@
 #include "event.h"
 #include "engineapi.h"
 #include "intdefs.h"
+
+// ugh!
+#ifdef _WIN32
+typedef ushort hud_wchar;
+#else
+typedef int hud_wchar;
+#endif
 
 /*
  * Emitted when the game HUD is being drawn. Allows features to draw their own
@@ -57,16 +65,19 @@ void hud_drawline(int x0, int y0, int x1, int y1, struct rgba colour);
 void hud_drawpolyline(int *xs, int *ys, int npoints, struct rgba colour);
 
 /* Draws text using a given font handle. */
-void hud_drawtext(ulong font, int x, int y, struct rgba colour, ushort *str,
+void hud_drawtext(ulong font, int x, int y, struct rgba colour, hud_wchar *str,
 		int len);
 
-/* Returns the width and height of the game window in pixels. */
+/* Gets the width and height of the game window in pixels. */
 void hud_screensize(int *width, int *height);
 
 /* Returns the height of a font, in pixels. */
 int hud_fontheight(ulong font);
 
 /* Returns the width of a font character, in pixels. */
-int hud_charwidth(ulong font, int ch);
+int hud_charwidth(ulong font, hud_wchar ch);
+
+/* Gets the width and height of string s, in pixels, using the given font. */
+void hud_textsize(ulong font, const ushort *s, int *width, int *height);
 
 #endif

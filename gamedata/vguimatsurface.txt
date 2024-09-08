@@ -45,5 +45,8 @@ vtidx_GetFontTall
 vtidx_GetCharacterWidth
 	OrangeBoxbased 71
 	L4D 71
+vtidx_GetTextSize
+	OrangeBoxbased 72
+	L4D 72
 
 # vi: sw=4 ts=4 noet tw=80 cc=80

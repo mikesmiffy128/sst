@@ -81,10 +81,12 @@ DECL_VFUNC_DYN(void, DrawPolyLine, int *, int *, int)
 DECL_VFUNC_DYN(void, DrawSetTextFont, struct handlewrap)
 DECL_VFUNC_DYN(void, DrawSetTextColor, struct rgba)
 DECL_VFUNC_DYN(void, DrawSetTextPos, int, int)
-DECL_VFUNC_DYN(void, DrawPrintText, ushort *, int, int)
+DECL_VFUNC_DYN(void, DrawPrintText, hud_wchar *, int, int)
 DECL_VFUNC_DYN(void, GetScreenSize, int *, int *)
 DECL_VFUNC_DYN(int, GetFontTall, struct handlewrap)
 DECL_VFUNC_DYN(int, GetCharacterWidth, struct handlewrap, int)
+DECL_VFUNC_DYN(int, GetTextSize, struct handlewrap, const hud_wchar *,
+		int *, int *)
 
 // vgui::Panel
 DECL_VFUNC_DYN(void, SetPaintEnabled, bool)
@@ -122,7 +124,7 @@ void hud_drawpolyline(int *x, int *y, int npoints, struct rgba colour) {
 	DrawPolyLine(matsurf, x, y, npoints);
 }
 
-void hud_drawtext(ulong font, int x, int y, struct rgba colour, ushort *str,
+void hud_drawtext(ulong font, int x, int y, struct rgba colour, hud_wchar *str,
 		int len) {
 	DrawSetTextFont(matsurf, (struct handlewrap){font});
 	DrawSetTextPos(matsurf, x, y);
@@ -138,8 +140,12 @@ int hud_fontheight(ulong font) {
 	return GetFontTall(matsurf, (struct handlewrap){font});
 }
 
-int hud_charwidth(ulong font, int ch) {
+int hud_charwidth(ulong font, hud_wchar ch) {
 	return GetCharacterWidth(matsurf, (struct handlewrap){font}, ch);
+}
+
+void hud_textsize(ulong font, const ushort *s, int *width, int *height) {
+	GetTextSize(matsurf, (struct handlewrap){font}, s, width, height);
 }
 
 static bool find_toolspanel(void *enginevgui) {
