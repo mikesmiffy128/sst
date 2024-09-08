@@ -166,7 +166,6 @@ struct link_map {
 static struct link_map *lmbase = 0;
 
 void *os_dlhandle(const char *name) {
-	extern struct link_map *lmbase; // note: defined in sst.c for now
 	if_cold (!lmbase) { // IMPORTANT: not thread safe. don't forget later!
 		lmbase = (struct link_map *)dlopen("libc.so.6", RTLD_LAZY | RTLD_NOLOAD);
 		dlclose(lmbase); // assume success
