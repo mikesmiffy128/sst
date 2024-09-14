@@ -35,7 +35,6 @@ REQUIRE_GLOBAL(factory_client) // note: server will never be null
 DEF_CVAR(sst_autojump, "Jump upon hitting the ground while holding space", 0,
 		CON_REPLICATE | CON_DEMO | CON_HIDDEN)
 
-#define IN_JUMP 2
 #define NIDX 256 // *completely* arbitrary lol
 static bool justjumped[NIDX] = {0};
 static inline int handleidx(ulong h) { return h & (1 << 11) - 1; }

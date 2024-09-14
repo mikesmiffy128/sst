@@ -38,22 +38,23 @@ extern u64 _gametype_tag;
 
 /* games needing game-specific stuff, but not tied to a singular branch */
 #define _gametype_tag_Portal1	(1 << 8)
+#define _gametype_tag_HL2series	(1 << 9) /* HL2, episodes, and mods */
 
 /* VEngineClient versions */
-#define _gametype_tag_Client015 (1 << 9)
-#define _gametype_tag_Client014 (1 << 10)
-#define _gametype_tag_Client013 (1 << 11)
-#define _gametype_tag_Client012 (1 << 12)
-#define _gametype_tag_Server021 (1 << 13)
+#define _gametype_tag_Client015 (1 << 10)
+#define _gametype_tag_Client014 (1 << 11)
+#define _gametype_tag_Client013 (1 << 12)
+#define _gametype_tag_Client012 (1 << 13)
+#define _gametype_tag_Server021 (1 << 14)
 
 /* ServerGameDLL versions */
-#define _gametype_tag_SrvDLL009	(1 << 14) // 2013-ish
-#define _gametype_tag_SrvDLL005	(1 << 15) // mostly everything else, it seems
+#define _gametype_tag_SrvDLL009	(1 << 15) // 2013-ish
+#define _gametype_tag_SrvDLL005	(1 << 16) // mostly everything else, it seems
 
 /* games needing version-specific stuff */
-#define _gametype_tag_Portal1_3420	(1 << 16)
-#define _gametype_tag_L4D2_2147plus	(1 << 17)
-#define _gametype_tag_TheLastStand	(1 << 18) /* The JAiZ update */
+#define _gametype_tag_Portal1_3420	(1 << 17)
+#define _gametype_tag_L4D2_2147plus	(1 << 18)
+#define _gametype_tag_TheLastStand	(1 << 19) /* The JAiZ update */
 
 /* Matches for any multiple possible tags */
 #define _gametype_tag_L4D		(_gametype_tag_L4D1 | _gametype_tag_L4D2)

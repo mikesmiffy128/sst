@@ -90,10 +90,15 @@ bool engineapi_init(int pluginver) {
 	}
 
 	// detect p1 for the benefit of specific features
-	if (!GAMETYPE_MATCHES(Portal2) && con_findcmd("upgrade_portalgun")) {
-		_gametype_tag |= _gametype_tag_Portal1;
-		if (!con_findvar("tf_escort_score_rate")) {
-			_gametype_tag |= _gametype_tag_Portal1_3420;
+	if (!GAMETYPE_MATCHES(Portal2)) {
+		if (con_findcmd("upgrade_portalgun")) {
+			_gametype_tag |= _gametype_tag_Portal1;
+			if (!con_findvar("tf_escort_score_rate")) {
+				_gametype_tag |= _gametype_tag_Portal1_3420;
+			}
+		}
+		else if (con_findcmd("phys_swap")) {
+			_gametype_tag |= _gametype_tag_HL2series;
 		}
 	}
 
