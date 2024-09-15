@@ -64,7 +64,7 @@ DEF_CVAR_UNREG(m_rawinput, "Use Raw Input for mouse input (SST reimplementation)
 		0, CON_ARCHIVE | CON_HIDDEN)
 
 DEF_CVAR_MINMAX(sst_mouse_factor, "Number of hardware mouse counts per step",
-		1, 1, 20, /*CON_ARCHIVE |*/ CON_HIDDEN)
+		1, 1, 100, /*CON_ARCHIVE |*/ CON_HIDDEN)
 
 static ssize __stdcall inproc(void *wnd, uint msg, usize wp, ssize lp) {
 	switch (msg) {
