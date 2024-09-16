@@ -112,6 +112,10 @@ DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you "
 		return;
 	}
 	void *e = ed->ent_unknown;
+	if_cold (mem_loadu32(mem_offset(e, off_teamnum)) != 2) {
+		clientcon_msg(ed, "error: must be in the Survivor team");
+		return;
+	}
 	filter.pass_ent = e;
 	struct vec3f stuckpos = warptarget(e);
 	struct vec3f finalpos;
@@ -171,6 +175,10 @@ DEF_CCMD_HERE_UNREG(sst_l4d_previewwarp, "Visualise bot warp unstuck logic "
 		return;
 	}
 	void *e = ed->ent_unknown;
+	if_cold (mem_loadu32(mem_offset(e, off_teamnum)) != 2) {
+		clientcon_msg(ed, "error: must be in the Survivor team");
+		return;
+	}
 	filter.pass_ent = e;
 	struct vec3f stuckpos = warptarget(e);
 	struct vec3f finalpos;
@@ -182,13 +190,9 @@ DEF_CCMD_HERE_UNREG(sst_l4d_previewwarp, "Visualise bot warp unstuck logic "
 	struct vec3f maxs = *OBBMaxs(mem_offset(ed->ent_unknown, off_collision));
 	struct vec3f step = {maxs.x - mins.x, maxs.y - mins.y, maxs.z - mins.z};
 	struct failranges { struct { int neg, pos; } x, y, z; } ranges;
-	AddBoxOverlay2(dbgoverlay, &stuckpos, &mins, &maxs, &zerovec,
-			&red_face, &red_edge, 1000.0);
 	if (success) {
 		AddBoxOverlay2(dbgoverlay, &finalpos, &mins, &maxs, &zerovec,
 				&green_face, &green_edge, 1000.0);
-		AddLineOverlay(dbgoverlay, &stuckpos, &finalpos,
-				cyan_line.r, cyan_line.g, cyan_line.b, true, 1000.0);
 		if (finalpos.x != stuckpos.x) {
 			float iters = roundf((finalpos.x - stuckpos.x) / step.x);
 			int isneg = iters < 0;
@@ -223,12 +227,16 @@ DEF_CCMD_HERE_UNREG(sst_l4d_previewwarp, "Visualise bot warp unstuck logic "
 			// we were never actually stuck - no need to draw all the boxes
 			return;
 		}
+		AddLineOverlay(dbgoverlay, &stuckpos, &finalpos,
+				cyan_line.r, cyan_line.g, cyan_line.b, true, 1000.0);
 	}
 	else {
 		finalpos = stuckpos;
 		// searched the entire 15 iteration range, found nowhere to go
 		ranges = (struct failranges){{-15, 15}, {-15, 15}, {-15, 15}};
 	}
+	AddBoxOverlay2(dbgoverlay, &stuckpos, &mins, &maxs, &zerovec,
+			&red_face, &red_edge, 1000.0);
 	bool needline = true;
 	for (int i = ranges.x.neg; i <= ranges.x.pos; ++i) {
 		if (i == 0) { needline = true; continue; }
