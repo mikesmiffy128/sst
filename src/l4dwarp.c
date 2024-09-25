@@ -86,10 +86,10 @@ static struct vec3f warptarget(void *ent) {
 	const struct vec3f *ang = mem_offset(ent, off_eyeang);
 	// L4D idle warps go up to 10 units behind yaw, lessening based on pitch.
 	float pitch = ang->x * M_PI / 180, yaw = ang->y * M_PI / 180;
-	float shift = -10 * cos(pitch);
+	float shift = -10 * cosf(pitch);
 	return (struct vec3f){
-		org->x + shift * cos(yaw),
-		org->y + shift * sin(yaw),
+		org->x + shift * cosf(yaw),
+		org->y + shift * sinf(yaw),
 		org->z
 	};
 }
