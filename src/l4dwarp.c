@@ -18,6 +18,7 @@
 #define _USE_MATH_DEFINES // ... windows.
 #include <math.h>
 
+#include "accessor.h"
 #include "clientcon.h"
 #include "con_.h"
 #include "engineapi.h"
@@ -81,16 +82,20 @@ DECL_VFUNC_DYN(void, AddBoxOverlay2, const struct vec3f *,
 		const struct vec3f *, const struct vec3f *, const struct vec3f *,
 		const struct rgba *, const struct rgba *, float)
 
+DEF_ACCESSORS(struct vec3f, entpos)
+DEF_ACCESSORS(struct vec3f, eyeang)
+DEF_ACCESSORS(uint, teamnum)
+DEF_PTR_ACCESSOR(void, collision)
+
 static struct vec3f warptarget(void *ent) {
-	const struct vec3f *org = mem_offset(ent, off_entpos);
-	const struct vec3f *ang = mem_offset(ent, off_eyeang);
+	struct vec3f org = get_entpos(ent), ang = get_eyeang(ent);
 	// L4D idle warps go up to 10 units behind yaw, lessening based on pitch.
-	float pitch = ang->x * M_PI / 180, yaw = ang->y * M_PI / 180;
+	float pitch = ang.x * M_PI / 180, yaw = ang.y * M_PI / 180;
 	float shift = -10 * cosf(pitch);
 	return (struct vec3f){
-		org->x + shift * cosf(yaw),
-		org->y + shift * sinf(yaw),
-		org->z
+		org.x + shift * cosf(yaw),
+		org.y + shift * sinf(yaw),
+		org.z
 	};
 }
 
@@ -112,7 +117,7 @@ DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you "
 		return;
 	}
 	void *e = ed->ent_unknown;
-	if_cold (mem_loadu32(mem_offset(e, off_teamnum)) != 2) {
+	if_cold (get_teamnum(e) != 2) {
 		clientcon_msg(ed, "error: must be in the Survivor team");
 		return;
 	}
@@ -128,7 +133,7 @@ DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you "
 
 static const struct rgba
 	red_edge = {200, 0, 0, 100}, red_face = {220, 0, 0, 10},
-	yellow_edge = {240, 200, 20, 100},// yellow_face = {240, 240, 20, 10},
+	yellow_edge = {240, 200, 20, 100},
 	green_edge = {20, 210, 50, 100}, green_face = {49, 220, 30, 10},
 	clear_face = {0, 0, 0, 0},
 	orange_line = {255, 100, 0, 255}, cyan_line = {0, 255, 255, 255};
@@ -175,7 +180,7 @@ DEF_CCMD_HERE_UNREG(sst_l4d_previewwarp, "Visualise bot warp unstuck logic "
 		return;
 	}
 	void *e = ed->ent_unknown;
-	if_cold (mem_loadu32(mem_offset(e, off_teamnum)) != 2) {
+	if_cold (get_teamnum(e) != 2) {
 		clientcon_msg(ed, "error: must be in the Survivor team");
 		return;
 	}
@@ -187,7 +192,7 @@ DEF_CCMD_HERE_UNREG(sst_l4d_previewwarp, "Visualise bot warp unstuck logic "
 	bool success = EntityPlacementTest(e, &stuckpos, &finalpos, false,
 			PLAYERMASK, &filter, 0.0);
 	struct vec3f mins = {-16.0f, -16.0f, 0.0f};
-	struct vec3f maxs = *OBBMaxs(mem_offset(ed->ent_unknown, off_collision));
+	struct vec3f maxs = *OBBMaxs(getptr_collision(ed->ent_unknown));
 	struct vec3f step = {maxs.x - mins.x, maxs.y - mins.y, maxs.z - mins.z};
 	struct failranges { struct { int neg, pos; } x, y, z; } ranges;
 	if (success) {

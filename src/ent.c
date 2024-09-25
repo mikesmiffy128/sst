@@ -14,6 +14,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "accessor.h"
 #include "con_.h"
 #include "dictmaptree.h"
 #include "engineapi.h"
@@ -31,12 +32,16 @@
 FEATURE()
 
 DECL_VFUNC_DYN(void *, PEntityOfEntIndex, int)
+
+DEF_PTR_ACCESSOR(struct edict *, edicts)
+DEF_ARRAYIDX_ACCESSOR(edict)
+
 static struct edict **edicts = 0;
 
 struct edict *ent_getedict(int idx) {
 	if (edicts) {
 		// globalvars->edicts seems to be null when disconnected
-		if_hot (*edicts) return mem_offset(*edicts, sz_edict * idx);
+		if_hot (*edicts) return arrayidx_edict(*edicts, idx);
 		return 0;
 	}
 	else {
@@ -177,7 +182,7 @@ INIT {
 	// can just call the function later.
 	if (has_vtidx_PEntityOfEntIndex) return true;
 	if (globalvars && has_off_edicts) {
-		edicts = mem_offset(globalvars, off_edicts);
+		edicts = getptr_edicts(globalvars);
 		return true;
 	}
 	errmsg_warnx("not implemented for this engine");

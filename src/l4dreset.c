@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "abi.h"
+#include "accessor.h"
 #include "con_.h"
 #include "engineapi.h"
 #include "ent.h"
@@ -75,9 +76,11 @@ DECL_VFUNC(const char *, SetIssueDetails, 1 + NVDTOR, const char *)
 DECL_VFUNC(const char *, GetDisplayString, 8 + NVDTOR)
 DECL_VFUNC(const char *, ExecuteCommand, 9 + NVDTOR)
 
+DEF_PTR_ACCESSOR(struct CUtlVector, voteissues)
+DEF_PTR_ACCESSOR(struct CUtlVector, callerrecords)
+
 static struct CVoteIssue *getissue(const char *textkey) {
-	struct CUtlVector *issuevec = mem_offset(*votecontroller, off_voteissues);
-	struct CVoteIssue **issues = issuevec->m.mem;
+	struct CVoteIssue **issues = getptr_voteissues(*votecontroller)->m.mem;
 	for (int i = 0; /*i < issuevec->sz*/; ++i) { // key MUST be valid!
 		if (!strcmp(GetDisplayString(issues[i]), textkey)) return issues[i];
 	}
@@ -86,12 +89,12 @@ static struct CVoteIssue *getissue(const char *textkey) {
 static inline void reset(void) {
 	// reset the vote cooldowns if possible (will skip L4D1). only necessary on
 	// versions >2045 and on map 1, but it's easiest to do unconditionally.
-	// the way this is written will *hopefully* produce a nice neat lea+cmovne.
-	struct CUtlVector *recordvector = mem_offset(*votecontroller,
-			off_callerrecords);
 	// This is equivalent to CUtlVector::RemoveAll() as there's no
 	// destructors to call. The result as is if nobody had ever voted.
-	if_random (off_callerrecords != -1) recordvector->sz = 0;
+	// the way this is written will *hopefully* produce a nice neat lea+cmovne.
+	if_random (off_callerrecords != -1) {
+		getptr_callerrecords(*votecontroller)->sz = 0;
+	}
 	ExecuteCommand(getissue("#L4D_vote_restart_game"));
 }
 

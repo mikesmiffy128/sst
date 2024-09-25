@@ -14,6 +14,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "accessor.h"
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"
@@ -32,6 +33,8 @@ REQUIRE_GAMEDATA(off_mv)
 REQUIRE_GAMEDATA(vtidx_CheckJumpButton)
 REQUIRE_GLOBAL(factory_client) // note: server will never be null
 
+DEF_ACCESSORS(struct CMoveData *, mv)
+
 DEF_CVAR(sst_autojump, "Jump upon hitting the ground while holding space", 0,
 		CON_REPLICATE | CON_DEMO | CON_HIDDEN)
 
@@ -44,7 +47,7 @@ typedef bool (*VCALLCONV CheckJumpButton_func)(void *);
 static CheckJumpButton_func origsv, origcl;
 
 static bool VCALLCONV hooksv(void *this) {
-	struct CMoveData *mv = mem_loadptr(mem_offset(this, off_mv));
+	struct CMoveData *mv = get_mv(this);
 	int idx = handleidx(mv->playerhandle);
 	if (con_getvari(sst_autojump) && mv->firstrun && !justjumped[idx]) {
 		mv->oldbuttons &= ~IN_JUMP;
@@ -55,7 +58,7 @@ static bool VCALLCONV hooksv(void *this) {
 }
 
 static bool VCALLCONV hookcl(void *this) {
-	struct CMoveData *mv = mem_loadptr(mem_offset(this, off_mv));
+	struct CMoveData *mv = get_mv(this);
 	// FIXME: this will stutter in the rare case where justjumped is true.
 	// currently doing clientside justjumped handling makes multiplayer
 	// prediction in general wrong, so this'll need more work to do totally
@@ -66,7 +69,7 @@ static bool VCALLCONV hookcl(void *this) {
 }
 
 static bool unprot(void *gm) {
-	void **vtable = *(void ***)gm;
+	void **vtable = mem_loadptr(gm);
 	bool ret = os_mprot(vtable + vtidx_CheckJumpButton, sizeof(void *),
 			PAGE_READWRITE);
 	if (!ret) errmsg_errorsys("couldn't make virtual table writable");
