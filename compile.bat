@@ -137,9 +137,26 @@ if "%dbg%"=="1" (
 )
 %CC% -fuse-ld=lld -shared -flto %ldflags% -Wl,/IMPLIB:.build/sst.lib,/Brepro,/nodefaultlib ^
 -L.build %clibs% -lkernel32 -luser32 -lbcryptprimitives -lshlwapi -ld3d9 -ldsound ^
--ltier0 -lvstdlib -lntdll -o sst.dll%objs% .build/dll.res || goto :end
+-ltier0 -lvstdlib -lntdll -o .build/sst.dll%objs% .build/dll.res || goto :end
 :: get rid of another useless file (can we just not create this???)
 del .build\sst.lib
+
+:: awkward logic to replace sst.dll while it's potentially loaded, because
+:: windows likes to lock things and/or doesn't have atomic rename.
+:: very TOCTOU-ish code, not good at all, but sometimes bad is good enough
+move /y .build\sst.dll sst.dll >nul 2>nul || (
+	move /y sst.dll .build\sst.old.dll >nul 2>nul || (
+		echo:ERROR: couldn't remove sst.dll OR .build/sst.old.dll - are both loaded?>&2
+		goto :end
+	)
+	move .build\sst.dll sst.dll >nul 2>nul || (
+		echo:ERROR: couldn't replace sst.dll - did something just try to load it?>&2
+		goto :end
+	)
+)
+:: try to cleanup the .old again - it'll fail if we just moved it but may work
+:: in some eventual future invocation
+if exist .build\sst.old.dll del .build\sst.old.dll >nul 2>nul
 
 %HOSTCC% -fuse-ld=lld -O2 -g -include test/test.h -o .build/bitbuf.test.exe test/bitbuf.test.c || goto :end
 .build\bitbuf.test.exe || goto :end

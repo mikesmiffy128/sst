@@ -46,7 +46,8 @@ cc() {
 
 ld() {
 	$CC -shared -flto -fpic -fuse-ld=lld $ldflags -L.build -ldl \
-			-ltier0 -lvstdlib -o sst.so$objs
+			-ltier0 -lvstdlib -o .build/sst.so$objs
+	mv .build/sst.so sst.so
 }
 
 src="\
