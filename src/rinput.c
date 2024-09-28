@@ -219,7 +219,6 @@ e0:	UnregisterClassW(L"RInput", 0);
 }
 
 END {
-	if_hot (!sst_userunloaded) return;
 	if_hot (orig_SetCursorPos) { // we inited our own implementation
 		RAWINPUTDEVICE rd = {
 			.dwFlags = RIDEV_REMOVE,
@@ -229,11 +228,13 @@ END {
 		};
 		RegisterRawInputDevices(&rd, 1, sizeof(rd));
 		DestroyWindow(inwin);
+		if_hot (!sst_userunloaded) return;
 		UnregisterClassW(L"RInput", 0);
 		unhook_inline((void *)orig_GetCursorPos);
 		unhook_inline((void *)orig_SetCursorPos);
 	}
-	else { // we must have hooked the *existing* implementation
+	else if_cold (sst_userunloaded) {
+		// we must have hooked the *existing* implementation
 		unhook_vtable(vtable_insys, vtidx_GetRawMouseAccumulators,
 				(void *)orig_GetRawMouseAccumulators);
 	}
