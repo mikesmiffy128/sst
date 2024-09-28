@@ -115,11 +115,11 @@ if %host64%==1 (
 %CC% -fuse-ld=lld -shared -O0 -w -o .build/tier0.dll src/stubs/tier0.c
 %CC% -fuse-ld=lld -shared -O0 -w -o .build/vstdlib.dll src/stubs/vstdlib.c
 
-%HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
+%HOSTCC% -fuse-ld=lld -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
 -L.build %lbcryptprimitives_host% -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c src/os.c || goto :end
-%HOSTCC% -fuse-ld=lld -municode -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
+%HOSTCC% -fuse-ld=lld -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
 -L.build %lbcryptprimitives_host% -o .build/mkgamedata.exe src/build/mkgamedata.c src/os.c || goto :end
-%HOSTCC% -fuse-ld=lld -municode -O2 -g %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
+%HOSTCC% -fuse-ld=lld -O2 -g %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
 -L.build %lbcryptprimitives_host% -o .build/mkentprops.exe src/build/mkentprops.c src/os.c || goto :end
 .build\codegen.exe%src% || goto :end
 .build\mkgamedata.exe gamedata/engine.txt gamedata/gamelib.txt gamedata/inputsystem.txt ^
