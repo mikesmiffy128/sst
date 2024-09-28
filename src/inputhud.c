@@ -22,13 +22,14 @@
 #include "engineapi.h"
 #include "event.h"
 #include "errmsg.h"
+#include "feature.h"
 #include "gamedata.h"
 #include "gametype.h"
 #include "hexcolour.h"
 #include "hook.h"
 #include "hud.h"
 #include "intdefs.h"
-#include "feature.h"
+#include "langext.h"
 #include "mem.h"
 #include "vcall.h"
 #include "x86.h"
@@ -191,90 +192,107 @@ static const struct {
 struct layout {
 	int mask;
 	schar w, h;
-	struct { schar x, y; } pos[20]; // XXX: should make flexible???
+	// TODO(opt): should make this flexible, but that's harder than it sounds
+	struct { schar x, y; } pos[20];
 };
 
 // input layouts (since some games don't use all input bits) {{{
 
 static const struct layout layout_hl2 = {
-	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE | IN_LEFT |
-	IN_RIGHT | IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2 | IN_RELOAD | IN_SPEED |
+	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE |
+	IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2 | IN_RELOAD | IN_SPEED |
 	IN_WALK | IN_ZOOM,
-	15, 6,
+	15, 7,
 	{
-		//    F      1 2
-		//  L B R   U R Z
-		// W S D J   l r
-		/* IN_ATTACK */		{10, 0},	/* IN_JUMP */		{ 6, 4},
-		/* IN_DUCK */		{ 4, 4},	/* IN_FORWARD */	{ 3, 0},
-		/* IN_BACK */		{ 3, 2},	/* IN_USE */		{ 9, 2},
-		/* IN_CANCEL */		{0},		/* IN_LEFT */		{10, 4},
-		/* IN_RIGHT */		{12, 4},	/* IN_MOVELEFT */	{ 1, 2},
-		/* IN_MOVERIGHT */	{ 5, 2},	/* IN_ATTACK2 */	{12, 0},
-		/* IN_RUN */		{0},		/* IN_RELOAD */		{11, 2},
+		//    F
+		//           1 2
+		//  L B R
+		//
+		//
+		// W S D J  U R Z
+		//
+		/* IN_ATTACK */		{10, 1},	/* IN_JUMP */		{ 6, 5},
+		/* IN_DUCK */		{ 4, 5},	/* IN_FORWARD */	{ 3, 0},
+		/* IN_BACK */		{ 3, 2},	/* IN_USE */		{ 9, 5},
+		/* IN_CANCEL */		{0},		/* IN_LEFT */		{0},
+		/* IN_RIGHT */		{0},		/* IN_MOVELEFT */	{ 1, 2},
+		/* IN_MOVERIGHT */	{ 5, 2},	/* IN_ATTACK2 */	{12, 1},
+		/* IN_RUN */		{0},		/* IN_RELOAD */		{11, 5},
 		/* IN_ALT1 */		{0},		/* IN_ALT2 */		{0},
-		/* IN_SCORE */		{0},		/* IN_SPEED */		{ 2, 4},
-		/* IN_WALK */		{ 0, 4},	/* IN_ZOOM */		{13, 2}
+		/* IN_SCORE */		{0},		/* IN_SPEED */		{ 2, 5},
+		/* IN_WALK */		{ 0, 5},	/* IN_ZOOM */		{13, 5}
 	}
 };
 
 static const struct layout layout_portal1 = {
-	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE | IN_LEFT |
-	IN_RIGHT | IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2,
-	11, 6,
+	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE |
+	IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2,
+	11, 7,
 	{
-		//   F    1 2
-		// L B R   U
-		//  D J   l r
-		/* IN_ATTACK */		{7, 0},		/* IN_JUMP */		{3, 4},
-		/* IN_DUCK */		{1, 4},		/* IN_FORWARD */	{2, 0},
-		/* IN_BACK */		{2, 2},		/* IN_USE */		{8, 2},
-		/* IN_CANCEL */		{0},		/* IN_LEFT */		{7, 4},
-		/* IN_RIGHT */		{9, 4},		/* IN_MOVELEFT */	{0, 2},
-		/* IN_MOVERIGHT */	{4, 2},		/* IN_ATTACK2 */	{9, 0}
+		//   F
+		//        1 2
+		// L B R
+		//
+		//
+		//  D J    U
+		//
+		/* IN_ATTACK */		{7, 1},		/* IN_JUMP */		{3, 5},
+		/* IN_DUCK */		{1, 5},		/* IN_FORWARD */	{2, 0},
+		/* IN_BACK */		{2, 2},		/* IN_USE */		{8, 5},
+		/* IN_CANCEL */		{0},		/* IN_LEFT */		{0},
+		/* IN_RIGHT */		{0},		/* IN_MOVELEFT */	{0, 2},
+		/* IN_MOVERIGHT */	{4, 2},		/* IN_ATTACK2 */	{9, 1}
 	}
 };
 
 // TODO(compat): add portal2 layout once there's hud gamedata for portal 2
 //static const struct layout layout_portal2 = {
-//	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE | IN_LEFT |
-//	IN_RIGHT | IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2 | IN_ZOOM,
-//	11, 6,
+//	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE |
+//	IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2 | IN_ZOOM,
+//	11, 7,
 //	{
-//		//   F    1 2
-//		// L B R  U Z
-//		//  D J   l r
-//		/* IN_ATTACK */		{7, 0},		/* IN_JUMP */		{3, 4},
-//		/* IN_DUCK */		{1, 4},		/* IN_FORWARD */	{2, 0},
-//		/* IN_BACK */		{2, 2},		/* IN_USE */		{7, 2},
-//		/* IN_CANCEL */		{0},		/* IN_LEFT */		{7, 4},
-//		/* IN_RIGHT */		{9, 4},		/* IN_MOVELEFT */	{0, 2},
-//		/* IN_MOVERIGHT */	{4, 2},		/* IN_ATTACK2 */	{9, 0},
+//		//   F
+//		//        1 2
+//		// L B R
+//		//
+//		//
+//		//  D J   U Z
+//		//
+//		/* IN_ATTACK */		{7, 1},		/* IN_JUMP */		{3, 5},
+//		/* IN_DUCK */		{1, 5},		/* IN_FORWARD */	{2, 0},
+//		/* IN_BACK */		{2, 2},		/* IN_USE */		{7, 5},
+//		/* IN_CANCEL */		{0},		/* IN_LEFT */		{0},
+//		/* IN_RIGHT */		{0},		/* IN_MOVELEFT */	{0, 2},
+//		/* IN_MOVERIGHT */	{4, 2},		/* IN_ATTACK2 */	{9, 1},
 //		/* IN_RUN */		{0},		/* IN_RELOAD */		{0},
 //		/* IN_ALT1 */		{0},		/* IN_ALT2 */		{0},
 //		/* IN_SCORE */		{0},		/* IN_SPEED */		{0},
-//		/* IN_WALK */		{0},		/* IN_ZOOM */		{9, 2}
+//		/* IN_WALK */		{0},		/* IN_ZOOM */		{9, 5}
 //	}
 //};
 
 static const struct layout layout_l4d = {
-	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE | IN_LEFT |
-	IN_RIGHT | IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2 | IN_SPEED | IN_ZOOM,
-	11, 6,
+	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE |
+	IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2 | IN_RELOAD | IN_SPEED | IN_ZOOM,
+	13, 7,
 	{
-		//   F    1 2
-		// L B R  U Z
-		// W D J  l r
-		/* IN_ATTACK */		{7, 0},		/* IN_JUMP */		{4, 4},
-		/* IN_DUCK */		{2, 4},		/* IN_FORWARD */	{2, 0},
-		/* IN_BACK */		{2, 2},		/* IN_USE */		{7, 2},
-		/* IN_CANCEL */		{0},		/* IN_LEFT */		{7, 4},
-		/* IN_RIGHT */		{9, 4},		/* IN_MOVELEFT */	{0, 2},
-		/* IN_MOVERIGHT */	{4, 2},		/* IN_ATTACK2 */	{9, 0},
-		/* IN_RUN */		{0},		/* IN_RELOAD */		{0},
+		//   F
+		//         1 2
+		// L B R
+		//
+		//
+		// S D J  U R Z
+		//
+		/* IN_ATTACK */		{8, 1},		/* IN_JUMP */		{4, 5},
+		/* IN_DUCK */		{2, 5},		/* IN_FORWARD */	{2, 0},
+		/* IN_BACK */		{2, 2},		/* IN_USE */		{7, 5},
+		/* IN_CANCEL */		{0},		/* IN_LEFT */		{0},
+		/* IN_RIGHT */		{0},		/* IN_MOVELEFT */	{0, 2},
+		/* IN_MOVERIGHT */	{4, 2},		/* IN_ATTACK2 */	{10, 1},
+		/* IN_RUN */		{0},		/* IN_RELOAD */		{9, 5},
 		/* IN_ALT1 */		{0},		/* IN_ALT2 */		{0},
-		/* IN_SCORE */		{0},		/* IN_SPEED */		{0, 4},
-		/* IN_WALK */		{0},		/* IN_ZOOM */		{9, 2}
+		/* IN_SCORE */		{0},		/* IN_SPEED */		{0, 5},
+		/* IN_WALK */		{0},		/* IN_ZOOM */		{11, 5}
 	}
 };
 
@@ -368,11 +386,7 @@ INIT {
 		return false;
 	}
 	for (int i = 0; i < countof(fontnames); ++i) {
-		fonts[i].h = hud_getfont(fontnames[i], true);
-		if (!fonts[i].h) {
-			errmsg_warnx("couldn't get \"%s\" font", fontnames[i]);
-		}
-		else {
+		if (fonts[i].h = hud_getfont(fontnames[i], true)) {
 			int dummy;
 			// use (roughly) the widest string as a reference for what will fit
 			hud_textsize(fonts[i].h, L"Speed", &fonts[i].sz, &dummy);
@@ -380,7 +394,7 @@ INIT {
 	}
 	void **vtable = mem_loadptr(input);
 	// just unprotect the first few pointers (GetUserCmd is 8)
-	if (!os_mprot(vtable, sizeof(void *) * 8, PAGE_READWRITE)) {
+	if_cold (!os_mprot(vtable, sizeof(void *) * 8, PAGE_READWRITE)) {
 		errmsg_errorsys("couldn't make virtual table writable");
 		return false;
 	}
