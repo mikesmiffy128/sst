@@ -118,7 +118,7 @@ DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you "
 	}
 	void *e = ed->ent_unknown;
 	if_cold (get_teamnum(e) != 2) {
-		clientcon_msg(ed, "error: must be in the Survivor team");
+		clientcon_msg(ed, "error: must be in the Survivor team\n");
 		return;
 	}
 	filter.pass_ent = e;
@@ -176,12 +176,12 @@ DEF_CCMD_HERE_UNREG(sst_l4d_previewwarp, "Visualise bot warp unstuck logic "
 		return;
 	}
 	if (con_cmdclient != 0) {
-		clientcon_msg(ed, "error: only the server host can see visualisations");
+		clientcon_msg(ed, "error: only the server host can see visualisations\n");
 		return;
 	}
 	void *e = ed->ent_unknown;
 	if_cold (get_teamnum(e) != 2) {
-		clientcon_msg(ed, "error: must be in the Survivor team");
+		clientcon_msg(ed, "error: must be in the Survivor team\n");
 		return;
 	}
 	filter.pass_ent = e;
