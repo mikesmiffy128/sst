@@ -35,7 +35,7 @@
 #include "x86util.h"
 
 FEATURE("Left 4 Dead 2 addon bugfixes")
-GAMESPECIFIC(L4D2_2147plus)
+GAMESPECIFIC(L4D2_2125plus)
 REQUIRE_GAMEDATA(vtidx_ManageAddonsForActiveSession)
 REQUIRE_GLOBAL(engclient)
 

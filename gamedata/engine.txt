@@ -59,7 +59,7 @@ vtidx_GetEngineBuildNumber
 	#L4D1_1005 99
 	#L4D1_Steam 97
 vtidx_ManageAddonsForActiveSession
-	L4D2_2147plus 179
+	L4D2_2125plus 179
 
 # IGameUIFuncs
 vtidx_GetDesktopResolution 5
@@ -84,7 +84,7 @@ vtidx_SetPaintEnabled 67
 	Client013
 		L4D1 68
 		L4D2 71
-			L4D2_2147plus 72
+			L4D2_2125plus 72
 	Client014
 		L4D2 70
 vtidx_Paint 123
@@ -92,7 +92,7 @@ vtidx_Paint 123
 		L4D2 126 # 2000
 	Client013
 		L4D2 127 # 2045
-			L4D2_2147plus 128
+			L4D2_2125plus 128
 
 # SendProp
 sz_SendProp

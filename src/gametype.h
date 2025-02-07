@@ -1,6 +1,7 @@
 /*
  * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
+ * Copyright © 2025 Hayden K <imaciidz@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -53,7 +54,7 @@ extern u32 _gametype_tag;
 
 /* games needing version-specific stuff */
 #define _gametype_tag_Portal1_3420	(1 << 17)
-#define _gametype_tag_L4D2_2147plus	(1 << 18)
+#define _gametype_tag_L4D2_2125plus	(1 << 18)
 #define _gametype_tag_TheLastStand	(1 << 19) /* The JAiZ update */
 
 /* Matches for any multiple possible tags */
