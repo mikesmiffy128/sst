@@ -48,7 +48,8 @@ vtidx_GetGameDirectory
 	Client012 37 # dmomm, ep1, ...
 vtidx_GetEngineBuildNumber
 	Client013
-		L4D2 99
+		L4D 99
+			L4D1_1022plus 97
 		Portal2 100
 	Client014
 		L4D2 31

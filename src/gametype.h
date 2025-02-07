@@ -54,8 +54,10 @@ extern u32 _gametype_tag;
 
 /* games needing version-specific stuff */
 #define _gametype_tag_Portal1_3420	(1 << 17)
-#define _gametype_tag_L4D2_2125plus	(1 << 18)
-#define _gametype_tag_TheLastStand	(1 << 19) /* The JAiZ update */
+#define _gametype_tag_L4D1_1015plus	(1 << 18) // Crash Course update
+#define _gametype_tag_L4D1_1022plus	(1 << 19) // Mac update, with code shuffling
+#define _gametype_tag_L4D2_2125plus	(1 << 20)
+#define _gametype_tag_TheLastStand	(1 << 21) /* The JAiZ update */
 
 /* Matches for any multiple possible tags */
 #define _gametype_tag_L4D		(_gametype_tag_L4D1 | _gametype_tag_L4D2)

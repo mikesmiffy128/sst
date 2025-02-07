@@ -105,6 +105,18 @@ bool engineapi_init(int pluginver) {
 		}
 	}
 
+	if (GAMETYPE_MATCHES(L4D1)) {
+		// Crash Course update
+		if (con_findcmd("director_log_scavenge_items")) {
+			_gametype_tag |= _gametype_tag_L4D1_1015plus;
+		}
+		// seems there was some code shuffling in the Mac update (1022)
+		// this update came like 2-3 weeks after The Sacrifice itself released
+		if (con_findvar("tank_stasis_time_suicide")) {
+			_gametype_tag |= _gametype_tag_L4D1_1022plus;
+		}
+	}
+
 	if (GAMETYPE_MATCHES(L4D2)) {
 		if (con_findvar("sv_zombie_touch_trigger_delay")) {
 			_gametype_tag |= _gametype_tag_L4D2_2125plus;
