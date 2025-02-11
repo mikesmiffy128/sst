@@ -69,6 +69,7 @@ setlocal DisableDelayedExpansion
 :+ bind.c
 :+ clientcon.c
 :+ con_.c
+:+ chatrate.c
 :+ chunklets/fastspin.c
 :+ chunklets/msg.c
 :+ crypto.c

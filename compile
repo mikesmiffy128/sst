@@ -55,6 +55,7 @@ src="\
 	alias.c
 	autojump.c
 	bind.c
+	chatrate.c
 	chunklets/fastspin.c
 	chunklets/msg.c
 	clientcon.c
