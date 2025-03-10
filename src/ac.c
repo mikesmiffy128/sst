@@ -78,7 +78,7 @@ const uchar lbpubkeys[1][32] = {
 	0x40, 0x05, 0xE9, 0x60, 0x43, 0xE8, 0xE2, 0x03
 };
 
-static void newsessionkeys(void) {
+static void newsessionkeys() {
 	crypto_rng_read(&keybox->rng, keybox->prv, sizeof(keybox->prv));
 	crypto_x25519_public_key(keybox->pub, keybox->prv);
 	crypto_x25519(keybox->tmp, keybox->prv, keybox->lbpub);
@@ -90,11 +90,11 @@ static void newsessionkeys(void) {
 	keybox->nonce = 0;
 }
 
-static void wipesessionkeys(void) {
+static void wipesessionkeys() {
 	crypto_wipe(keybox->prv, offsetof(struct keybox, rng));
 }
 
-HANDLE_EVENT(DemoRecordStarting, void) { if (enabled) newsessionkeys(); }
+HANDLE_EVENT(DemoRecordStarting) { if (enabled) newsessionkeys(); }
 HANDLE_EVENT(DemoRecordStopped, int ndemos) { if (enabled) wipesessionkeys(); }
 
 #ifdef _WIN32
@@ -162,7 +162,7 @@ static ssize __stdcall hook_wndproc(void *wnd, uint msg, usize wp, ssize lp) {
 	return CallWindowProcA((WNDPROC)orig_wndproc, wnd, msg, wp, lp);
 }
 
-static inline bool win32_init(void) {
+static inline bool win32_init() {
 	// note: using A instead of W to avoid some weirdness with handles...
 	gamewin = FindWindowA("Valve001", 0);
 	// note: error messages here are a bit cryptic on purpose, but easy to find
@@ -180,7 +180,7 @@ static inline bool win32_init(void) {
 	return true;
 }
 
-static inline void win32_end(void) {
+static inline void win32_end() {
 	// no error handling here because we'd crash either way. good luck!
 	SetWindowLongPtrA(gamewin, GWLP_WNDPROC, orig_wndproc);
 }
@@ -191,7 +191,7 @@ static void inhook_start(volatile int *sig) {
 	inhookthr = CreateThread(0, 0, &inhookthrmain, (u32 *)sig, 0, &inhooktid);
 }
 
-static void inhook_check(void) {
+static void inhook_check() {
 	if (WaitForSingleObject(inhookthr, 0) == WAIT_OBJECT_0) {
 		ulong status;
 		GetExitCodeThread(inhookthr, &status);
@@ -206,7 +206,7 @@ static void inhook_check(void) {
 	}
 }
 
-static void inhook_stop(void) {
+static void inhook_stop() {
 	PostThreadMessageW(inhooktid, WM_QUIT, 0, 0);
 	if (WaitForSingleObject(inhookthr, INFINITE) == WAIT_FAILED) {
 		errmsg_warnsys("couldn't wait for thread, status unknown");
@@ -230,7 +230,7 @@ static void inhook_stop(void) {
 
 #endif
 
-bool ac_enable(void) {
+bool ac_enable() {
 	if (!enabled) {
 #ifdef _WIN32
 		volatile int sig = 0;
@@ -255,7 +255,7 @@ HANDLE_EVENT(Tick, bool simulating) {
 #endif
 }
 
-void ac_disable(void) {
+void ac_disable() {
 	if (enabled) {
 #ifdef _WIN32
 		inhook_stop();
@@ -308,7 +308,7 @@ static void hook_Key_Event(struct inputevent *ev) {
 	orig_Key_Event(ev);
 }
 
-static bool find_Key_Event(void) {
+static bool find_Key_Event() {
 #ifdef _WIN32
 	// Crazy pointer-chasing path to get to DispatchInputEvent:
 	// IGameUIFuncs interface
@@ -372,10 +372,10 @@ HANDLE_EVENT(AllowPluginLoading, bool loading) {
 	return true;
 }
 
-HANDLE_EVENT(PluginLoaded, void) {
+HANDLE_EVENT(PluginLoaded) {
 	// TODO(rta): do something with plugin list here
 }
-HANDLE_EVENT(PluginUnloaded, void) {
+HANDLE_EVENT(PluginUnloaded) {
 	// TODO(rta): do something with plugin list here
 }
 

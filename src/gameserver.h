@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -21,7 +21,7 @@
  * Returns the spawn count / server number which the engine increments every new
  * map. Can be used to help keep track of map changes, disconnects and such.
  */
-int gameserver_spawncount(void);
+int gameserver_spawncount();
 
 #endif
 

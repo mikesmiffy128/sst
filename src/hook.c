@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2022 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -45,7 +45,7 @@ __declspec(align(4096))
 static uchar trampolines[4096];
 static uchar *nexttrampoline = trampolines;
 
-bool hook_init(void) {
+bool hook_init() {
 	// PE doesn't support rwx sections, not sure about ELF. Meh, just set it
 	// here instead.
 	return os_mprot(trampolines, sizeof(trampolines), PAGE_EXECUTE_READWRITE);

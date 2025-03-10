@@ -30,7 +30,7 @@ FEATURE("alias management")
 
 struct alias **_alias_head;
 
-void alias_nuke(void) {
+void alias_nuke() {
 	for (struct alias *p = alias_head; p;) {
 		struct alias *next = p->next;
 		extfree(p->value); extfree(p);

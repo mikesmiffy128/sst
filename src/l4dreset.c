@@ -87,7 +87,7 @@ static struct CVoteIssue *getissue(const char *textkey) {
 	}
 }
 
-static inline void reset(void) {
+static inline void reset() {
 	// reset the vote cooldowns if possible (will skip L4D1). only necessary on
 	// versions >2045 and on map 1, but it's easiest to do unconditionally.
 	// This is equivalent to CUtlVector::RemoveAll() as there's no

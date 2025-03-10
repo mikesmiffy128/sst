@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2024 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -32,7 +32,7 @@
 
 FEATURE()
 
-void *KeyValuesSystem(void); // vstlib symbol
+void *KeyValuesSystem(); // vstlib symbol
 static void *kvs;
 static int vtidx_GetSymbolForString = 3, vtidx_GetStringForSymbol = 4;
 static bool iskvv2 = false;

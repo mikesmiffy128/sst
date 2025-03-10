@@ -1,6 +1,6 @@
 /*
  * Copyright © 2021 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -55,14 +55,14 @@ bool demorec_start(const char *name);
  * have the _N.dem suffixes). Value will be zero if the recording is stopped
  * before the game has even gotten a chance to create the first demo file.
  */
-int demorec_stop(void);
+int demorec_stop();
 
 /*
  * Returns the current number in the recording sequence, or -1 if not recording.
  * Value may be 0 if recording was requested but has yet to start (say, because
  * we have yet to join a map).
  */
-int demorec_demonum(void);
+int demorec_demonum();
 
 /*
  * Used to determine whether to allow usage of the normal record and stop

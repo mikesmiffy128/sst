@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -32,7 +32,7 @@ DECL_VFUNC_DYN(int, GetSpawnCount)
 
 static void *sv;
 
-int gameserver_spawncount(void) { return GetSpawnCount(sv); }
+int gameserver_spawncount() { return GetSpawnCount(sv); }
 
 static bool find_sv(con_cmdcb pause_cb) {
 #ifdef _WIN32

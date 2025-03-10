@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -26,7 +26,7 @@ extern struct alias **_alias_head;
 #define alias_head (*_alias_head) // act as a global
 
 /* Clears all aliases from the engine's internal list. */
-void alias_nuke(void);
+void alias_nuke();
 
 /* Removes a specific named alias from the engine's internal list. */
 void alias_rm(const char *name);

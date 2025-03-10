@@ -131,7 +131,7 @@ static inline void os_spancopy(os_char *restrict dest,
  * For standard libc functions (implemented by UCRT on Windows), the value of
  * errno should be used directly instead.
  */
-int os_lasterror(void);
+int os_lasterror();
 
 /*
  * Opens a file for reading. Returns an OS-specific file handle, or -1 on error.

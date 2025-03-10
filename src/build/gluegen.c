@@ -50,7 +50,7 @@ static _Alignas(64) char _arena[ARENASZ] = {0}, *const arena = _arena - 64;
 static int arena_last = 0;
 static int arena_used = 64; // using 0 indices as null; reserve and stay aligned
 
-static inline void _arena_align(void) {
+static inline void _arena_align() {
 	enum { ALIGN = ssizeof(void *) };
 	if (arena_used & ALIGN - 1) arena_used = (arena_used + ALIGN) & ~(ALIGN - 1);
 }
@@ -124,7 +124,7 @@ static inline void *list_grow_p(struct list_chunkhdr **tailp, int amt) {
 			/* ... */
 
 #define DEF_NEW(type, func, nvar, maxvar, desc) \
-	static inline type func(void) { \
+	static inline type func() { \
 		if_cold (nvar == maxvar) { \
 			die(2, "out of " desc " - increase " #maxvar " in gluegen.c!"); \
 		} \
@@ -195,7 +195,7 @@ static SHUNT(struct radix, radices)[MAX_MODULES * 2 + MAX_EVENTS];
 static int nradices = 1; // also reserve a null value
 
 // NOTE: this will never fail, as node count is bounded by modules * 2 + events
-static inline s16 radix_new(void) { return nradices++; }
+static inline s16 radix_new() { return nradices++; }
 
 static int matchlen(const char *s1, const char *s2, int len, bool ignorecase) {
 	uchar c1, c2;
@@ -591,13 +591,13 @@ static int dfs(s16 mod, bool first) {
 	return 0;
 }
 
-static inline void sortfeatures(void) {
+static inline void sortfeatures() {
 	for (int i = 1; i < nmods; ++i) {
 		if ((mod_flags[i] & HAS_INIT) && dfs(i, true)) exit(2);
 	}
 }
 
-static inline noreturn diewrite(void) { die(100, "couldn't write to file"); }
+static inline noreturn diewrite() { die(100, "couldn't write to file"); }
 #define _(x) \
 	if (fprintf(out, "%s\n", x) < 0) diewrite();
 #define F(f, ...) \
@@ -667,13 +667,13 @@ static int evargs_notype(FILE *out, s16 i, const char *suffix) {
 static inline void gencode(FILE *out, s16 featdescs) {
 	for (int i = 1; i < nmods; ++i) {
 		if (mod_flags[i] & HAS_INIT) {
-F( "extern int _feat_init_%.*s(void);", mod_names[i].len, mod_names[i].s)
+F( "extern int _feat_init_%.*s();", mod_names[i].len, mod_names[i].s)
 		}
 		if (mod_flags[i] & HAS_PREINIT) {
-F( "extern int _feat_preinit_%.*s(void);", mod_names[i].len, mod_names[i].s)
+F( "extern int _feat_preinit_%.*s();", mod_names[i].len, mod_names[i].s)
 		}
 		if (mod_flags[i] & HAS_END) {
-F( "extern void _feat_end_%.*s(void);", mod_names[i].len, mod_names[i].s)
+F( "extern void _feat_end_%.*s();", mod_names[i].len, mod_names[i].s)
 		}
 	}
 _( "")
@@ -717,7 +717,7 @@ F( "extern struct con_var *%.*s;", cvar_names[i].len, cvar_names[i].s);
 F( "extern struct con_cmd *%.*s;", ccmd_names[i].len, ccmd_names[i].s);
 	}
 _( "")
-_( "static inline void preinitfeatures(void) {")
+_( "static inline void preinitfeatures() {")
 	for (int i = 1; i < nmods; ++i) {
 		if (mod_flags[i] & HAS_PREINIT) {
 F( "	feats.preinit_%.*s = _feat_preinit_%.*s();",
@@ -726,7 +726,7 @@ F( "	feats.preinit_%.*s = _feat_preinit_%.*s();",
 	}
 _( "}")
 _( "")
-_( "static inline void initfeatures(void) {")
+_( "static inline void initfeatures() {")
 	for (int i = 0; i < nfeatures; ++i) { // N.B.: this *should* be 0-indexed!
 		const char *else_ = "";
 		s16 mod = feat_initorder[i];
@@ -825,7 +825,7 @@ _( "	con_colourmsg(&white, \"---- List of plugin features ---\\n\");");
 	recursefeatdescs(out, featdescs);
 _( "}")
 _( "")
-_( "static inline void endfeatures(void) {")
+_( "static inline void endfeatures() {")
 	for (int i = nfeatures - 1; i >= 0; --i) {
 		s16 mod = feat_initorder[i];
 		if (mod_flags[mod] & HAS_END) {
@@ -836,7 +836,7 @@ F( "	if (has_%.*s) _feat_end_%.*s();",
 	}
 _( "}")
 _( "")
-_( "static inline void freevars(void) {")
+_( "static inline void freevars() {")
 	for (int i = 1; i < ncvars; ++i) {
 F( "	extfree(%.*s->strval);", cvar_names[i].len, cvar_names[i].s)
 	}

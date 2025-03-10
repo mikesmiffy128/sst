@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -35,7 +35,7 @@
 
 #ifdef _WIN32
 
-int os_lasterror(void) { return GetLastError(); }
+int os_lasterror() { return GetLastError(); }
 
 // N.B. file handle values are 32-bit, even in 64-bit builds. I'm not crazy!
 
@@ -108,7 +108,7 @@ bool os_mprot(void *addr, int len, int mode) {
 
 #else
 
-int os_lasterror(void) { return errno; }
+int os_lasterror() { return errno; }
 
 int os_open_read(const char *path) {
 	return open(path, O_RDONLY | O_CLOEXEC);

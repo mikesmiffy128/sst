@@ -59,7 +59,7 @@ static union { // space saving
 static int sym_chapter;
 static char campaignbuf[32];
 
-const char *l4dmm_curcampaign(void) {
+const char *l4dmm_curcampaign() {
 #ifdef _WIN32
 	if (!matchfwk) { // we must have oldmmiface, then
 		struct contextval *ctxt = unknown_contextlookup(oldmmiface,
@@ -96,7 +96,7 @@ const char *l4dmm_curcampaign(void) {
 	return ret;
 }
 
-bool l4dmm_firstmap(void) {
+bool l4dmm_firstmap() {
 #ifdef _WIN32
 	if (!matchfwk) { // we must have oldmmiface, then
 		struct contextval *ctxt = unknown_contextlookup(oldmmiface,

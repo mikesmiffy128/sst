@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2023 Hayden K <imaciidz@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -44,7 +44,7 @@ static void chcmdflags(const char *name, int unset, int set) {
 	if (v) v->base.flags = v->base.flags & ~unset | set;
 }
 
-static void generalfixes(void) {
+static void generalfixes() {
 	// Expose all the demo stuff, for games like L4D that hide it for some
 	// reason.
 	unhide("demo_debug");
@@ -104,7 +104,7 @@ static void generalfixes(void) {
 	}
 }
 
-static void l4d2specific(void) {
+static void l4d2specific() {
 	// L4D2 doesn't let you set sv_cheats in lobbies, but turns out it skips all
 	// the lobby checks if this random command is developer-only, presumably
 	// because that flag is compiled out in debug builds and devs want to be
@@ -163,7 +163,7 @@ e:
 	chcmdflags("cl_fullupdate", CON_CHEAT, 0);
 }
 
-static void l4d1specific(void) {
+static void l4d1specific() {
 	// For some reason, L4D1 hides mat_monitorgamma and doesn't archive it.
 	// This means on every startup it's necessary to manually set non-default
 	// values via the menu. This change here brings it in line with pretty much
@@ -186,7 +186,7 @@ static void l4d1specific(void) {
 	chcmdflags("update_addon_paths", 0, CON_CCMDEXEC);
 }
 
-static void portal1specific(void) {
+static void portal1specific() {
 #ifdef _WIN32
 	// TODO(compat): this is an absolutely atrocious way to implement this. it
 	// should only be temporary in the interests of getting 4104 working right
@@ -210,7 +210,7 @@ static void portal1specific(void) {
 #endif
 }
 
-void fixes_apply(void) {
+void fixes_apply() {
 	generalfixes();
 	if (GAMETYPE_MATCHES(L4D1)) l4d1specific();
 	else if (GAMETYPE_MATCHES(L4D2x)) l4d2specific();

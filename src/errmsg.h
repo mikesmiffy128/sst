@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -66,8 +66,8 @@ extern const char msg_note[], msg_warn[], msg_error[];
 #define _errmsg_dl _errmsg_sys
 #else
 #define _errmsg_sys _errmsg_std
-static inline const char *_errmsg_dlerror(void) {
-	char *dlerror(void);
+static inline const char *_errmsg_dlerror() {
+	char *dlerror();
 	const char *e = dlerror();
 	if (!e) return "Unknown error"; // just in case, better avoid weirdness!
 	return e;

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,6 +18,6 @@
  * Makes a best-effort attempt to fix up random bugs and annoyances in some
  * games. If anything fails, it's just ignored.
  */
-void fixes_apply(void);
+void fixes_apply();
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

@@ -310,7 +310,7 @@ static const char *const fontnames[] = {
 };
 static struct { ulong h; int sz; } fonts[countof(fontnames)];
 
-HANDLE_EVENT(HudPaint, void) {
+HANDLE_EVENT(HudPaint) {
 	if (!con_getvari(sst_inputhud)) return;
 	int screenw, screenh;
 	hud_screensize(&screenw, &screenh);

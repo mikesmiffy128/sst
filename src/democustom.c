@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -87,7 +87,7 @@ void democustom_write(const void *buf, int len) {
 	bitbuf_reset(&bb);
 }
 
-static bool find_WriteMessages(void) {
+static bool find_WriteMessages() {
 	const uchar *insns = (*(uchar ***)demorecorder)[vtidx_RecordPacket];
 	// RecordPacket calls WriteMessages right away, so just look for a call
 	for (const uchar *p = insns; p - insns < 32;) {

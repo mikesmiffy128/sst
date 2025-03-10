@@ -147,7 +147,7 @@ static void parse(int file, char *s, int len) {
 	}
 }
 
-static inline noreturn diewrite(void) { die(100, "couldn't write to file"); }
+static inline noreturn diewrite() { die(100, "couldn't write to file"); }
 #define _(x) if (fprintf(out, "%s\n", x) < 0) diewrite();
 #define _i(x) for (int i = 0; i < indent; ++i) fputc('\t', out); _(x)
 #define F(f, ...) if (fprintf(out, f "\n", __VA_ARGS__) < 0) diewrite();
@@ -227,7 +227,7 @@ F( "int %s = -2147483648;", sbase + tags[i])
 }
 
 static inline void init(FILE *out) {
-_( "static void initgamedata(void) {")
+_( "static void initgamedata() {")
 	int varidx;
 	int indent = 0;
 	for (int i = 0; i < nents; ++i) {

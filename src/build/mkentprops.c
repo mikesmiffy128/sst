@@ -56,7 +56,7 @@ static int art_nnodes = 0;
 
 #define ART_NULL ((u16)-1)
 
-static inline int art_newnode(void) {
+static inline int art_newnode() {
 	if (art_nnodes == ART_MAXNODES) die(2, "out of tree nodes");
 	return art_nnodes++;
 }
@@ -78,7 +78,7 @@ static u16 nclasses = 0; // similar short circuit for ServerClasses
 static int decls[MAXDECLS];
 static int ndecls = 0;
 
-static inline int art_newleaf(void) {
+static inline int art_newleaf() {
 	if (art_nleaves == ART_MAXLEAVES) die(2, "out of leaf nodes");
 	return art_nleaves++;
 }
@@ -239,7 +239,7 @@ static inline void parse(const os_char *file, int len) {
 	}
 }
 
-static inline noreturn diewrite(void) { die(100, "couldn't write to file"); }
+static inline noreturn diewrite() { die(100, "couldn't write to file"); }
 #define _(x) if (fprintf(out, "%s\n", x) < 0) diewrite();
 #define _i(x) for (int i = 0; i < indent; ++i) fputc('\t', out); _(x)
 #define F(f, ...) if (fprintf(out, f "\n", __VA_ARGS__) < 0) diewrite();

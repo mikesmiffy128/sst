@@ -54,7 +54,7 @@ static inline void drawrect(int x0, int y0, int x1, int y1, struct rgba colour,
 	if (outline) hud_drawrect(x0, y0, x1, y1, (struct rgba){.a = 255}, false);
 }
 
-HANDLE_EVENT(HudPaint, void) {
+HANDLE_EVENT(HudPaint) {
 	if (!con_getvari(sst_xhair)) return;
 	if (has_vtidx_IsInGame && engclient && !IsInGame(engclient)) return;
 	int w, h;

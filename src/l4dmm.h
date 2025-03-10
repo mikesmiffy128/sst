@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,13 +25,13 @@
  * Returns null if no map is loaded (or the relevant metadata is somehow
  * missing).
  */
-const char *l4dmm_curcampaign(void);
+const char *l4dmm_curcampaign();
 
 /*
  * Returns true if the current map is known to be the first map of a campaign,
  * false otherwise.
  */
-bool l4dmm_firstmap(void);
+bool l4dmm_firstmap();
 
 #endif
 

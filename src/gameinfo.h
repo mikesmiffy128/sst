@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -27,7 +27,7 @@ extern const os_char *gameinfo_gamedir;   /* Absolute path to game directory */
 extern const char    *gameinfo_title;     /* Name of the game (window title) */
 
 /* Called early in plugin initialisation to set up the variables above. */
-bool gameinfo_init(void);
+bool gameinfo_init();
 
 #endif
 

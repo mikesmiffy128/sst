@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -41,7 +41,7 @@ const char *gameinfo_title = title;
 
 DECL_VFUNC_DYN(const char *, GetGameDirectory)
 
-bool gameinfo_init(void) {
+bool gameinfo_init() {
 	if_cold (!has_vtidx_GetGameDirectory) {
 		errmsg_errorx("unsupported VEngineClient interface");
 		return false;

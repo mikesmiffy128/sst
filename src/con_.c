@@ -320,7 +320,7 @@ static int vtidx_SetValue_str = 2, vtidx_SetValue_f = 1, vtidx_SetValue_i = 0;
 enum { vtidx_SetValue_str = 0, vtidx_SetValue_f = 1, vtidx_SetValue_i = 2 };
 #endif
 
-void con_init(void) {
+void con_init() {
 	_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf);
 	dllid = AllocateDLLIdentifier(_con_iface);
 
@@ -400,7 +400,7 @@ static void helpuserhelpus(int pluginver, char ifaceverchar) {
 // note: for now at least, not using errmsg_*() macros here because it doesn't
 // really make sense for these messages to be coming from "con"
 
-static void warnoe(void) {
+static void warnoe() {
 	con_warn("sst: error: this engine version is not yet supported\n");
 }
 
@@ -459,7 +459,7 @@ bool con_detect(int pluginver) {
 	return false;
 }
 
-void con_disconnect(void) {
+void con_disconnect() {
 	UnregisterConCommands(_con_iface, dllid);
 }
 

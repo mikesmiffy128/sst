@@ -293,7 +293,7 @@ static bool find_EntityPlacementTest(con_cmdcb z_add_cb) {
 	return false;
 }
 
-static bool init_filter(void) {
+static bool init_filter() {
 	const uchar *insns = (const uchar *)EntityPlacementTest;
 	for (const uchar *p = insns; p - insns < 0x60;) {
 		if (p[0] == X86_CALL) {

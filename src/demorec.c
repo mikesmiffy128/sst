@@ -52,8 +52,8 @@ bool demorec_forceauto = false;
 #define SIGNONSTATE_SPAWN 5
 #define SIGNONSTATE_FULL 6
 
-DEF_PREDICATE(DemoControlAllowed, void)
-DEF_EVENT(DemoRecordStarting, void)
+DEF_PREDICATE(DemoControlAllowed)
+DEF_EVENT(DemoRecordStarting)
 DEF_EVENT(DemoRecordStopped, int)
 
 typedef void (*VCALLCONV SetSignonState_func)(void *, int);
@@ -169,7 +169,7 @@ static void hook_stop_cb(const struct con_cmdargs *args) {
 	wantstop = false;
 }
 
-static inline bool find_demorecorder(void) {
+static inline bool find_demorecorder() {
 #ifdef _WIN32
 	const uchar *insns = (const uchar *)orig_stop_cb;
 	// The stop command loads `demorecorder` into ECX to call IsRecording()
@@ -241,7 +241,7 @@ bool demorec_start(const char *name) {
 	return *recording;
 }
 
-int demorec_stop(void) {
+int demorec_stop() {
 	// note: our set-to-0-and-back hack actually has the nice side effect of
 	// making this correct when recording and stopping in the menu lol
 	int ret = *demonum;
@@ -250,7 +250,7 @@ int demorec_stop(void) {
 	return ret;
 }
 
-int demorec_demonum(void) {
+int demorec_demonum() {
 	return *recording ? *demonum : -1;
 }
 

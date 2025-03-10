@@ -118,7 +118,7 @@ bool engineapi_init(int pluginver) {
 	return true;
 }
 
-void engineapi_lateinit(void) {
+void engineapi_lateinit() {
 	// from AM L4D2 SDK headers:
 	// > SENDPROP_VECTORELEM makes [the offset] negative to start with so we
 	// > can detect that and set the SPROP_IS_VECTOR_ELEM flag.

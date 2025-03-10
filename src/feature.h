@@ -124,14 +124,14 @@ enum {
  * Features which either fail to initialise or elect to skip loading will cause
  * dependent features not to be enabled.
  */
-#define INIT int _FEATURE_CAT(_feat_init_, MODULE_NAME)(void) // { code... }
+#define INIT int _FEATURE_CAT(_feat_init_, MODULE_NAME)() // { code... }
 
 /*
  * Defines the special, optional feature shutdown function which is unique to
  * this translation unit. This does not return a value, and may be either
  * specified once, or left out if no cleanup is required for this feature.
  */
-#define END void _FEATURE_CAT(_feat_end_, MODULE_NAME)(void) // { code... }
+#define END void _FEATURE_CAT(_feat_end_, MODULE_NAME)() // { code... }
 
 /*
  * Defines a special feature pre-init function which performs early feature
@@ -154,7 +154,7 @@ enum {
  * REQUIRE_GAMEDATA and REQUIRE_GLOBAL, however these only apply to the INIT
  * block, *NOT* the PREINIT.
  */
-#define PREINIT int _FEATURE_CAT(_feat_preinit_, MODULE_NAME)(void) // {...}
+#define PREINIT int _FEATURE_CAT(_feat_preinit_, MODULE_NAME)() // {...}
 
 #endif
 

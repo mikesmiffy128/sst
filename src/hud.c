@@ -58,7 +58,7 @@ REQUIRE_GAMEDATA(vtidx_GetIScheme)
 // IScheme
 REQUIRE_GAMEDATA(vtidx_GetFont)
 
-DEF_EVENT(HudPaint, void)
+DEF_EVENT(HudPaint)
 
 // we just use ulongs for API, but keep a struct for vcalls to ensure we get the
 // right calling convention (x86 Windows/MSVC is funny about passing structs...)

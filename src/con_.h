@@ -70,7 +70,7 @@ enum {
 typedef void (*con_cmdcb)(const struct con_cmdargs *cmd);
 
 /* Obsolete callback; not used by SST, but might still exist in the engine. */
-typedef void (*con_cmdcbv1)(void);
+typedef void (*con_cmdcbv1)();
 
 /*
  * This is an autocompletion callback for suggesting arguments to a command.
@@ -81,8 +81,8 @@ typedef int (*con_complcb)(const char *part,
 
 /* These are called on plugin load/unload. They should not be used elsewhere. */
 bool con_detect(int pluginver);
-void con_init(void);
-void con_disconnect(void);
+void con_init();
+void con_disconnect();
 
 /*
  * These types *pretty much* match those in the engine. Their fields can be
