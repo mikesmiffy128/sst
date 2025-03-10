@@ -117,9 +117,6 @@ static inline char *format(const char *fmt, ...) {
   return ret;
 }
 
-#define unreachable() \
-  error("internal error at %s:%d", __FILE__, __LINE__)
-
 //
 // type.c
 //

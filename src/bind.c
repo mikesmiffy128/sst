@@ -60,9 +60,9 @@ INIT {
 	con_cmdcb cb = con_getcmdcb(cmd_key_listboundkeys);
 	if_cold (!find_keyinfo(cb)) {
 		errmsg_warnx("couldn't find key binding list");
-		return false;
+		return FEAT_INCOMPAT;
 	}
-	return true;
+	return FEAT_OK;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

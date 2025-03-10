@@ -1,6 +1,6 @@
 /* THIS FILE SHOULD BE CALLED `con.h` BUT WINDOWS IS STUPID */
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -74,7 +74,7 @@ typedef void (*con_cmdcbv1)(void);
 
 /*
  * This is an autocompletion callback for suggesting arguments to a command.
- * XXX: Autocompletion isn't really totally figured out or implemented yet.
+ * TODO(autocomplete): Autocompletion isn't really implemented yet.
  */
 typedef int (*con_complcb)(const char *part,
 		char cmds[CON_CMD_MAXCOMPLETE][CON_CMD_MAXCOMPLLEN]);
@@ -286,7 +286,8 @@ extern struct _con_vtab_iconvar_wrap {
 
 /*
  * Defines a console command with the handler function body immediately
- * following the macro (like in Source itself).
+ * following the macro (like in Source itself). The function takes the argument
+ * `struct con_cmdargs *cmd` for command arguments.
  */
 #define DEF_CCMD_HERE(name, desc, flags) \
 	static void _cmdf_##name(const struct con_cmdargs *cmd); \
@@ -295,8 +296,35 @@ extern struct _con_vtab_iconvar_wrap {
 	/* { body here } */
 
 /*
+ * These are exactly the same as the above macros, but instead of
+ * unconditionally registering things, they have the following conditions:
+ *
+ * - Variables are always registered, but get hidden if a feature fails to
+ *   initialise.
+ * - If a feature specifies GAMESPECIFIC(), its cvars will remain unregistered
+ *   unless the game matches.
+ * - Commands are only registered if the feature successfully initialises.
+ *
+ * In situations where exact control over initialisation is not required, these
+ * macros ought to make life a lot easier and are generally recommended.
+ *
+ * Obviously, these should only be used inside of a feature (see feature.h). The
+ * code generator will produce an error otherwise.
+ */
+#define DEF_FEAT_CVAR DEF_CVAR
+#define DEF_FEAT_CVAR_MIN DEF_CVAR_MIN
+#define DEF_FEAT_CVAR_MAX DEF_CVAR_MAX
+#define DEF_FEAT_CVAR_MINMAX DEF_CVAR_MINMAX
+#define DEF_FEAT_CCMD DEF_CCMD
+#define DEF_FEAT_CCMD_HERE DEF_CCMD_HERE
+#define DEF_FEAT_CCMD_PLUSMINUS DEF_CCMD_PLUSMINUS
+
+/*
  * These are exactly the same as the above macros, but they don't cause the
- * commands or variables to be registered on plugin load.
+ * commands or variables to be registered on plugin load or feature
+ * initialisation. Registration must be done manually. These are generally not
+ * recommended but may be needed in specific cases such as conditionally
+ * reimplementing a built-in engine feature.
  */
 #define DEF_CVAR_UNREG DEF_CVAR
 #define DEF_CVAR_MIN_UNREG DEF_CVAR_MIN
@@ -307,10 +335,14 @@ extern struct _con_vtab_iconvar_wrap {
 #define DEF_CCMD_PLUSMINUS_UNREG DEF_CCMD_PLUSMINUS
 
 /*
- * Registers a command or variable defined with the _UNREG variants of the above
- * macros. Can be used to conditionally register things.
+ * These functions register a command or variable, respectively, defined with
+ * the _UNREG variants of the above macros. These can be used to conditionally
+ * register things. Wherever possible, it is advised to use the DEF_FEAT_*
+ * macros instead for conditional registration, as they handle the common cases
+ * automatically.
  */
-void con_reg(void *cmd_or_var);
+void con_regvar(struct con_var *v);
+void con_regcmd(struct con_cmd *c);
 
 #endif
 

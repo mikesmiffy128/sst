@@ -1,6 +1,6 @@
 /*
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -23,12 +23,14 @@
 #include "trace.h"
 
 FEATURE()
+// TODO(compat): limiting to tested branches for now; support others as needed
+GAMESPECIFIC(L4D)
 
 struct ray {
 	// these have type VectorAligned in the engine, which occupies 16 bytes
 	struct vec3f _Alignas(16) start, delta, startoff, extents;
 	// align to 16 since "extents" is supposed to occupy 16 bytes.
-    // TODO(compat): this member isn't in every engine branch
+	// TODO(compat): this member isn't in every engine branch
 	const float _Alignas(16) (*worldaxistransform)[3][4];
 	bool isray, isswept;
 };
@@ -85,17 +87,12 @@ struct CGameTrace trace_hull(struct vec3f start, struct vec3f end,
 	return t;
 }
 
-PREINIT {
-    // TODO(compat): restricting this to tested branches for now
-    return GAMETYPE_MATCHES(L4D);
-}
-
 INIT {
-    if (!(srvtrace = factory_engine("EngineTraceServer003", 0))) {
+	if (!(srvtrace = factory_engine("EngineTraceServer003", 0))) {
 		errmsg_errorx("couldn't get server-side tracing interface");
-		return false;
+		return FEAT_INCOMPAT;
 	}
-    return true;
+	return FEAT_OK;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

@@ -47,15 +47,16 @@ set objs=%objs% .build/%basename%.o
 :: year to get anything done. typeof=__typeof prevents pedantic warnings caused
 :: by typeof still technically being an extension, and stdbool gives us
 :: predefined bool/true/false before compilers start doing that by default
-%CC% -c -flto -mno-stack-arg-probe %cflags% %warnings% -I.build/include ^
--D_CRT_SECURE_NO_WARNINGS -D_DLL -DWIN32_LEAN_AND_MEAN -DNOMINMAX%dmodname% ^
--Dtypeof=__typeof -include stdbool.h -o .build/%basename%.o %1 || goto :end
+%CC% -c -flto -mno-stack-arg-probe %cflags% %warnings% %stdflags% -I.build/include ^
+-D_DLL%dmodname% -o .build/%basename%.o %1 || goto :end
 goto :eof
 
 :src
 goto :eof
 
 :main
+
+set stdflags=-std=c2x -D_CRT_SECURE_NO_WARNINGS -DWIN32_LEAN_AND_MEAN -DNOMINMAX
 
 set src=
 :: funny hack to build a list conveniently, lol.
@@ -80,7 +81,6 @@ setlocal DisableDelayedExpansion
 :+ fastfwd.c
 :+ fixes.c
 :+ fov.c
-:+ gamedata.c
 :+ gameinfo.c
 :+ gameserver.c
 :+ hexcolour.c
@@ -98,8 +98,8 @@ setlocal DisableDelayedExpansion
 :+ rinput.c
 :+ sst.c
 :+ trace.c
-:+ xhair.c
 :+ x86.c
+:+ xhair.c
 :: just tack these on, whatever (repeated condition because of expansion memes)
 if "%dbg%"=="1" set src=%src% src/dbg.c
 if "%dbg%"=="1" set src=%src% src/udis86.c
@@ -115,13 +115,13 @@ if %host64%==1 (
 %CC% -fuse-ld=lld -shared -O0 -w -o .build/tier0.dll src/stubs/tier0.c
 %CC% -fuse-ld=lld -shared -O0 -w -o .build/vstdlib.dll src/stubs/vstdlib.c
 
-%HOSTCC% -fuse-ld=lld -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
--L.build %lbcryptprimitives_host% -o .build/codegen.exe src/build/codegen.c src/build/cmeta.c src/os.c || goto :end
-%HOSTCC% -fuse-ld=lld -O2 %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
+%HOSTCC% -fuse-ld=lld -O2 %warnings% %stdflags% -include stdbool.h ^
+-L.build %lbcryptprimitives_host% -o .build/gluegen.exe src/build/gluegen.c src/build/cmeta.c src/os.c || goto :end
+%HOSTCC% -fuse-ld=lld -O2 %warnings% %stdflags% -include stdbool.h ^
 -L.build %lbcryptprimitives_host% -o .build/mkgamedata.exe src/build/mkgamedata.c src/os.c || goto :end
-%HOSTCC% -fuse-ld=lld -O2 -g %warnings% -D_CRT_SECURE_NO_WARNINGS -include stdbool.h ^
+%HOSTCC% -fuse-ld=lld -O2 %warnings% %stdflags% -include stdbool.h ^
 -L.build %lbcryptprimitives_host% -o .build/mkentprops.exe src/build/mkentprops.c src/os.c || goto :end
-.build\codegen.exe%src% || goto :end
+.build\gluegen.exe%src% || goto :end
 .build\mkgamedata.exe gamedata/engine.txt gamedata/gamelib.txt gamedata/inputsystem.txt ^
 gamedata/matchmaking.txt gamedata/vgui2.txt gamedata/vguimatsurface.txt || goto :end
 .build\mkentprops.exe gamedata/entprops.txt || goto :end
@@ -158,12 +158,12 @@ move /y .build\sst.dll sst.dll >nul 2>nul || (
 :: in some eventual future invocation
 if exist .build\sst.old.dll del .build\sst.old.dll >nul 2>nul
 
-%HOSTCC% -fuse-ld=lld -O2 -g -include test/test.h -o .build/bitbuf.test.exe test/bitbuf.test.c || goto :end
+%HOSTCC% -fuse-ld=lld -O2 -g %warnings% %stdflags% -include test/test.h -o .build/bitbuf.test.exe test/bitbuf.test.c || goto :end
 .build\bitbuf.test.exe || goto :end
 :: special case: test must be 32-bit
-%HOSTCC% -fuse-ld=lld -m32 -O2 -g -L.build -lbcryptprimitives -include test/test.h -o .build/hook.test.exe test/hook.test.c || goto :end
+%HOSTCC% -fuse-ld=lld -m32 -O2 -g %warnings% %stdflags% -L.build -lbcryptprimitives -include test/test.h -o .build/hook.test.exe test/hook.test.c || goto :end
 .build\hook.test.exe || goto :end
-%HOSTCC% -fuse-ld=lld -O2 -g -include test/test.h -o .build/x86.test.exe test/x86.test.c || goto :end
+%HOSTCC% -fuse-ld=lld -O2 -g %warnings% %stdflags% -include test/test.h -o .build/x86.test.exe test/x86.test.c || goto :end
 .build\x86.test.exe || goto :end
 
 :end

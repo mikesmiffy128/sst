@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -35,8 +35,8 @@ REQUIRE_GLOBAL(factory_client) // note: server will never be null
 
 DEF_ACCESSORS(struct CMoveData *, mv)
 
-DEF_CVAR(sst_autojump, "Jump upon hitting the ground while holding space", 0,
-		CON_REPLICATE | CON_DEMO | CON_HIDDEN)
+DEF_FEAT_CVAR(sst_autojump, "Jump upon hitting the ground while holding space", 0,
+		CON_REPLICATE | CON_DEMO)
 
 #define NIDX 256 // *completely* arbitrary lol
 static bool justjumped[NIDX] = {0};
@@ -90,21 +90,20 @@ INIT {
 	gmsv = factory_server("GameMovement001", 0);
 	if_cold (!gmsv) {
 		errmsg_errorx("couldn't get server-side game movement interface");
-		return false;
+		return FEAT_FAIL;
 	}
 	if_cold (!unprot(gmsv)) return false;
 	gmcl = factory_client("GameMovement001", 0);
 	if_cold (!gmcl) {
 		errmsg_errorx("couldn't get client-side game movement interface");
-		return false;
+		return FEAT_FAIL;
 	}
-	if_cold (!unprot(gmcl)) return false;
+	if_cold (!unprot(gmcl)) return FEAT_FAIL;
 	origsv = (CheckJumpButton_func)hook_vtable(*(void ***)gmsv,
 			vtidx_CheckJumpButton, (void *)&hooksv);
 	origcl = (CheckJumpButton_func)hook_vtable(*(void ***)gmcl,
 			vtidx_CheckJumpButton, (void *)&hookcl);
 
-	sst_autojump->base.flags &= ~CON_HIDDEN;
 	if (GAMETYPE_MATCHES(Portal1)) {
 		// this is a stupid, stupid policy that doesn't make any sense, but I've
 		// tried arguing about it already and with how long it takes to convince
@@ -116,7 +115,7 @@ INIT {
 		sv_cheats = con_findvar("sv_cheats");
 		sst_autojump->cb = cheatcb;
 	}
-	return true;
+	return FEAT_OK;
 }
 
 END {

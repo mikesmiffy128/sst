@@ -68,10 +68,10 @@ static bool find_sv(con_cmdcb pause_cb) {
 INIT {
 	struct con_cmd *pause = con_findcmd("pause");
 	if_cold (!find_sv(pause->cb)) {
-		errmsg_errorx("couldn't find game server object\n");
-		return false;
+		errmsg_errorx("couldn't find game server object");
+		return FEAT_INCOMPAT;
 	}
-	return true;
+	return FEAT_OK;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

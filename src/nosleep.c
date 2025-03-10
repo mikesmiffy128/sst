@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -43,7 +43,7 @@ static void VCALLCONV hook_SleepUntilInput(void *this, int timeout) {
 
 PREINIT {
 	if (con_findvar("engine_no_focus_sleep")) return false;
-	con_reg(engine_no_focus_sleep);
+	con_regvar(engine_no_focus_sleep);
 	return true;
 }
 
@@ -52,12 +52,12 @@ INIT {
 	if_cold (!os_mprot(vtable + vtidx_SleepUntilInput, sizeof(void *),
 			PAGE_READWRITE)) {
 		errmsg_errorx("couldn't make virtual table writable");
-		return false;
+		return FEAT_FAIL;
 	}
 	orig_SleepUntilInput = (SleepUntilInput_func)hook_vtable(vtable,
 			vtidx_SleepUntilInput, (void *)&hook_SleepUntilInput);
 	engine_no_focus_sleep->base.flags &= ~CON_HIDDEN;
-	return true;
+	return FEAT_OK;
 }
 
 END {

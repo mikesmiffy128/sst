@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -29,7 +29,7 @@
 #define DECL_EVENT(evname, ...) typedef void _must_declare_event_##evname;
 
 /*
- * Declares a predicate - a special type of even returning bool. Predicates are
+ * Declares a predicate - a special type of event returning bool. Predicates are
  * used to determine whether some other action should be performed, and
  * generally should not have side effects, since they get short-circuited and
  * thus won't always fire when a check is being performed.

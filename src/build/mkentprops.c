@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -30,7 +30,7 @@
 #endif
 
 static noreturn die(int status, const char *s) {
-	fprintf(stderr, "mkentprops: %s\n", s);
+	fprintf(stderr, "mkentprops: fatal: %s\n", s);
 	exit(status);
 }
 static noreturn dieparse(const os_char *file, int line, const char *s) {
@@ -194,7 +194,7 @@ static inline void handleentry(char *k, char *v, int vlen,
 	}
 }
 
-static void parse(const os_char *file, int len) {
+static inline void parse(const os_char *file, int len) {
 	char *s = sbase; // for convenience
 	if (s[len - 1] != '\n') dieparse(file, 0, "invalid text file (missing EOL)");
 	enum { BOL = 0, KEY = 4, KWS = 8, VAL = 12, COM = 16, ERR = -1 };
@@ -279,14 +279,12 @@ Fi("		%s = off;", sbase + art_leaves[idx].varstr);
 _i("		if (mem_loads32(mem_offset(sp, off_SP_type)) == DPT_DataTable) {")
 _i("			int baseoff = off;")
 _i("			const struct SendTable *st = mem_loadptr(mem_offset(sp, off_SP_subtable));")
-_i("			// BEGIN SUBTABLE")
 Fi("			for (int i = 0, need = %d; i < st->nprops && need; ++i) {",
 art_leaves[idx].nsubs + (art_leaves[idx].varstr != -1))
 _i("				const struct SendProp *sp = mem_offset(st->props, sz_SendProp * i);")
 _i("				const char *p = mem_loadptr(mem_offset(sp, off_SP_varname));")
 				dosendtables(out, art_leaves[idx].subtree, indent + 4);
 _i("			}")
-_i("			// END SUBTABLE")
 _i("		}")
 			}
 Fi("		--need;")
@@ -338,7 +336,7 @@ _i("	} break;")
 _i("}")
 }
 
-static void dodecls(FILE *out) {
+static inline void dodecls(FILE *out) {
 	for (int i = 0; i < ndecls; ++i) {
 		const char *s = sbase + decls[i];
 F( "extern int %s;", s);
@@ -346,7 +344,7 @@ F( "#define has_%s (!!%s)", s, s); // offsets will NEVER be 0, due to vtable!
 	}
 }
 
-static void doinit(FILE *out) {
+static inline void doinit(FILE *out) {
 	for (int i = 0; i < ndecls; ++i) {
 		const char *s = sbase + decls[i];
 F( "int %s = 0;", s);

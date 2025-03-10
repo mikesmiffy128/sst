@@ -148,7 +148,7 @@ static void l4d2specific(void) {
 		if (ident.VendorId == 0x8086) con_setvari(v, 1); // neat vendor id, btw!
 	}
 	IDirect3D9_Release(d3d9);
-e:;
+e:
 #endif
 
 	// There's a rare, inexplicable issue where the game will drop to an

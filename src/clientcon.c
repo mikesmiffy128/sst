@@ -20,7 +20,7 @@
 #include "feature.h"
 #include "gamedata.h"
 
-FEATURE("")
+FEATURE()
 REQUIRE(ent)
 REQUIRE_GAMEDATA(vtidx_ClientPrintf)
 REQUIRE_GLOBAL(engserver)
@@ -36,6 +36,6 @@ void clientcon_reply(const char *s) {
 	if (e) { clientcon_msg(e, s); return; }
 }
 
-INIT { return true; }
+INIT { return FEAT_OK; }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

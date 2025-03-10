@@ -1,6 +1,6 @@
 /*
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2024 Hayden K <imaciidz@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -45,6 +45,7 @@
 #endif
 
 FEATURE("Left 4 Dead quick resetting")
+GAMESPECIFIC(L4D)
 REQUIRE(ent)
 REQUIRE(fastfwd)
 REQUIRE(gameserver)
@@ -196,11 +197,11 @@ static short ffdelay = 0;
 static float ffadj = 0;
 static int nextmapnum = 0;
 
-DEF_CVAR_MINMAX_UNREG(sst_l4d_quickreset_peektime,
+DEF_FEAT_CVAR_MINMAX(sst_l4d_quickreset_peektime,
 		"Number of seconds to show each relevant item spot during fast-forward",
-		1.5, 0, 3, CON_ARCHIVE | CON_HIDDEN)
+		1.5, 0, 3, CON_ARCHIVE)
 
-DEF_CCMD_HERE_UNREG(sst_l4d_quickreset_continue,
+DEF_FEAT_CCMD_HERE(sst_l4d_quickreset_continue,
 		"Get to the end of the current cutscene without further slowdowns", 0) {
 	if (!ffdelay) {
 		con_warn("not currently fast-forwarding a cutscene\n");
@@ -340,11 +341,10 @@ static int getffidx(const char *campaign) {
 	return -1; // if unknown, just don't fast-forward, I guess.
 }
 
-DEF_CVAR_UNREG(sst_l4d_quickreset_fastfwd,
-		"Fast-forward through cutscenes when quick-resetting", 1,
-		CON_ARCHIVE | CON_HIDDEN)
+DEF_FEAT_CVAR(sst_l4d_quickreset_fastfwd,
+		"Fast-forward through cutscenes when quick-resetting", 1, CON_ARCHIVE)
 
-DEF_CCMD_HERE_UNREG(sst_l4d_quickreset,
+DEF_FEAT_CCMD_HERE(sst_l4d_quickreset,
 		"Reset (or switch) campaign and clear all vote cooldowns", 0) {
 	if (cmd->argc > 2) {
 		con_warn("usage: sst_l4d_quickreset [campaignid]\n");
@@ -374,13 +374,6 @@ DEF_CCMD_HERE_UNREG(sst_l4d_quickreset,
 			(ffidx = getffidx(campaign)) != -1) {
 		ffdelay = 45; // 1.5s
 	}
-}
-
-PREINIT {
-	if (!GAMETYPE_MATCHES(L4D)) return false;
-	con_reg(sst_l4d_quickreset_fastfwd);
-	con_reg(sst_l4d_quickreset_peektime);
-	return true;
 }
 
 // Note: this returns a pointer to subsequent bytes for find_voteissues() below
@@ -490,7 +483,7 @@ static inline bool find_UnfreezeTeam(void *GameFrame) { // note: L4D1 only
 		NEXT_INSN(p, "Director::Update call");
 	}
 	return false;
-ok: // Director::Update calls UnfreezeTeam after the first jmp instruction
+ok:	// Director::Update calls UnfreezeTeam after the first jmp instruction
 	while (p - insns < 96) {
 		// jz XXX; mov ecx, <reg>; call Director::UnfreezeTeam
 		if (p[0] == X86_JZ && p[2] == X86_MOVRMW && (p[3] & 0xF8) == 0xC8 &&
@@ -508,28 +501,28 @@ INIT {
 	struct con_cmd *cmd_listissues = con_findcmd("listissues");
 	if_cold (!cmd_listissues) {
 		errmsg_errorx("couldn't find \"listissues\" command");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	con_cmdcbv1 listissues_cb = con_getcmdcbv1(cmd_listissues);
 	const uchar *nextinsns = find_votecontroller(listissues_cb);
 	if_cold (!nextinsns) {
 		errmsg_errorx("couldn't find vote controller variable");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	if_cold (!find_voteissues(nextinsns)) {
 		errmsg_errorx("couldn't find vote issues list offset\n");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	void **vtable;
 #ifdef _WIN32
 	void *GameShutdown = (*(void ***)srvdll)[vtidx_GameShutdown];
 	if_cold (!find_TheDirector(GameShutdown)) {
 		errmsg_errorx("couldn't find TheDirector variable");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 #else
 #warning TODO(linux): should be able to just dlsym(server, "TheDirector")
-	return false;
+	return FEAT_INCOMPAT;
 #endif
 #ifdef _WIN32 // L4D1 has no Linux build, no need to check whether L4D2
 	if (GAMETYPE_MATCHES(L4D2)) {
@@ -538,7 +531,7 @@ INIT {
 		if_cold (!os_mprot(vtable + vtidx_OnGameplayStart, sizeof(*vtable),
 				PAGE_READWRITE)) {
 			errmsg_errorsys("couldn't make virtual table writable");
-			return false;
+			return FEAT_FAIL;
 		}
 		orig_OnGameplayStart = (OnGameplayStart_func)hook_vtable(vtable,
 				vtidx_OnGameplayStart, (void *)&hook_OnGameplayStart);
@@ -548,7 +541,7 @@ INIT {
 		void *GameFrame = (*(void ***)srvdll)[vtidx_GameFrame];
 		if_cold (!find_UnfreezeTeam(GameFrame)) {
 			errmsg_errorx("couldn't find UnfreezeTeam function");
-			return false;
+			return FEAT_INCOMPAT;
 		}
 		orig_UnfreezeTeam = (UnfreezeTeam_func)hook_inline(
 				(void *)orig_UnfreezeTeam, (void *)&hook_UnfreezeTeam);
@@ -573,11 +566,7 @@ INIT {
 nocd:		errmsg_note("resetting a first map will not clear vote cooldowns");
 		}
 	}
-	con_reg(sst_l4d_quickreset);
-	con_reg(sst_l4d_quickreset_continue);
-	sst_l4d_quickreset_fastfwd->base.flags &= ~CON_HIDDEN;
-	sst_l4d_quickreset_peektime->base.flags &= ~CON_HIDDEN;
-	return true;
+	return FEAT_OK;
 }
 
 END {

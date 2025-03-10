@@ -120,7 +120,8 @@ INIT {
 		if (buildnum >= 2042) nbits_datalen = 11; else nbits_datalen = 12;
 	//}
 
-	return find_WriteMessages();
+	if (!find_WriteMessages()) return FEAT_INCOMPAT;
+	return FEAT_OK;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

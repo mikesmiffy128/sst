@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -31,9 +31,6 @@
 #ifndef INC_ABI_H // YUCK YUCK YUCK
 #undef NVDTOR
 #endif
-
-/* Called as part of plugin init to set up various metadata about the game. */
-void gamedata_init(void);
 
 #endif
 

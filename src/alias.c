@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -50,7 +50,7 @@ void alias_rm(const char *name) {
 	}
 }
 
-DEF_CCMD_HERE_UNREG(sst_alias_clear, "Remove all command aliases", 0) {
+DEF_FEAT_CCMD_HERE(sst_alias_clear, "Remove all command aliases", 0) {
 	if (cmd->argc != 1) {
 		con_warn("usage: sst_alias_clear\n");
 		return;
@@ -58,7 +58,7 @@ DEF_CCMD_HERE_UNREG(sst_alias_clear, "Remove all command aliases", 0) {
 	alias_nuke();
 }
 
-DEF_CCMD_HERE_UNREG(sst_alias_remove, "Remove a command alias", 0) {
+DEF_FEAT_CCMD_HERE(sst_alias_remove, "Remove a command alias", 0) {
 	if (cmd->argc != 2) {
 		con_warn("usage: sst_alias_remove name\n");
 		return;
@@ -91,16 +91,14 @@ static bool find_alias_head(con_cmdcb alias_cb) {
 
 INIT {
 	// TODO(compat): no idea why sst_alias_clear crashes in p2, figure out later
-	if (GAMETYPE_MATCHES(Portal2)) return false;
+	if (GAMETYPE_MATCHES(Portal2)) return FEAT_INCOMPAT;
 
 	struct con_cmd *cmd_alias = con_findcmd("alias");
 	if_cold (!find_alias_head(con_getcmdcb(cmd_alias))) {
 		errmsg_warnx("couldn't find alias list");
-		return false;
+		return FEAT_INCOMPAT;
 	}
-	con_reg(sst_alias_clear);
-	con_reg(sst_alias_remove);
-	return true;
+	return FEAT_OK;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

@@ -1,6 +1,6 @@
 /*
  * Copyright © 2023 Matthew Wozniak <sirtomato999@gmail.com>
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -35,6 +35,10 @@
 #include "x86util.h"
 
 FEATURE()
+// currently only used for l4d quick reset stuff, and conflicts with SPT's
+// tas_pause hook. so, disable for non-L4D games for now, to be polite.
+// TODO(compat): come up with a real solution for this if/when required
+GAMESPECIFIC(L4Dbased)
 REQUIRE_GAMEDATA(vtidx_RunFrame)
 REQUIRE_GAMEDATA(vtidx_Frame)
 REQUIRE_GAMEDATA(vtidx_GetRealTime)
@@ -174,79 +178,73 @@ static void *find_floatcall(void *func, int fldcnt, const char *name) {
 				}
 				NEXT_INSN(p, name);
 			}
-			return false;
+			return 0;
 		}
 next:	NEXT_INSN(p, name);
 	}
 	return 0;
 }
 
-PREINIT {
-	// currently only used for l4d quick reset stuff, and conflicts with SPT's
-	// tas_pause hook. so, disable for non-L4D games for now, to be polite.
-	// TODO(compat): come up with a real solution for this if/when required
-	return GAMETYPE_MATCHES(L4Dbased);
-}
-
 INIT {
 	void *hldsapi = factory_engine("VENGINE_HLDS_API_VERSION002", 0);
 	if_cold (!hldsapi) {
 		errmsg_errorx("couldn't find HLDS API interface");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	void *enginetool = factory_engine("VENGINETOOL003", 0);
 	if_cold (!enginetool) {
 		errmsg_errorx("missing engine tool interface");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	// behold: the greatest pointer chase of all time
 	realtime = find_float((*(void ***)enginetool)[vtidx_GetRealTime]);
 	if_cold (!realtime) {
 		errmsg_errorx("couldn't find realtime variable");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	host_frametime = find_float((*(void ***)enginetool)[vtidx_HostFrameTime]);
 	if_cold (!host_frametime) {
 		errmsg_errorx("couldn't find host_frametime variable");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	void *eng = find_eng((*(void ***)hldsapi)[vtidx_RunFrame]);
 	if_cold (!eng) {
 		errmsg_errorx("couldn't find eng global object");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	void *func;
 	if_cold (!(func = find_HostState_Frame((*(void ***)eng)[vtidx_Frame]))) {
 		errmsg_errorx("couldn't find HostState_Frame function");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	if_cold (!(func = find_FrameUpdate(func))) {
 		errmsg_errorx("couldn't find FrameUpdate function");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	if_cold (!(func = find_floatcall(func, GAMETYPE_MATCHES(L4D2_2147plus) ?
 			2 : 1, "CHostState::State_Run"))) {
 		errmsg_errorx("couldn't find State_Run function");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	if_cold (!(func = find_floatcall(func, 1, "Host_RunFrame"))) {
 		errmsg_errorx("couldn't find Host_RunFrame function");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	if_cold (!(func = find_floatcall(func, 1, "_Host_RunFrame"))) {
 		errmsg_errorx("couldn't find _Host_RunFrame");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	if_cold (!find_Host_AccumulateTime(func)) {
 		errmsg_errorx("couldn't find Host_AccumulateTime");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	orig_Host_AccumulateTime = (Host_AccumulateTime_func)hook_inline(
 			(void *)orig_Host_AccumulateTime, (void *)hook_Host_AccumulateTime);
 	if_cold (!orig_Host_AccumulateTime) {
 		errmsg_errorsys("couldn't hook Host_AccumulateTime function");
+		return FEAT_FAIL;
 	}
-	return true;
+	return FEAT_OK;
 }
 
 END {

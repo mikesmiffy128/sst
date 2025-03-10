@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -68,7 +68,7 @@ DEF_CVAR_MINMAX(sst_mouse_factor, "Number of hardware mouse counts per step",
 
 static ssize __stdcall inproc(void *wnd, uint msg, usize wp, ssize lp) {
 	switch (msg) {
-		case WM_INPUT:;
+		case WM_INPUT:
 			char buf[ssizeof(RAWINPUTHEADER) + ssizeof(RAWMOUSE) /* = 40 */];
 			uint sz = sizeof(buf);
 			if_hot (GetRawInputData((void *)lp, RID_INPUT, buf, &sz,
@@ -133,7 +133,7 @@ INIT {
 		if_cold (!os_mprot(vtable_insys + vtidx_GetRawMouseAccumulators,
 				ssizeof(void *), PAGE_READWRITE)) {
 			errmsg_errorx("couldn't make virtual table writable");
-			return false;
+			return FEAT_FAIL;
 		}
 		orig_GetRawMouseAccumulators = (GetRawMouseAccumulators_func)hook_vtable(
 				vtable_insys, vtidx_GetRawMouseAccumulators,
@@ -141,7 +141,7 @@ INIT {
 	}
 	else {
 		// create cvar hidden so config is still preserved if we fail to init
-		con_reg(m_rawinput);
+		con_regvar(m_rawinput);
 	}
 	WNDCLASSEXW wc = {
 		.cbSize = sizeof(wc),
@@ -172,7 +172,7 @@ INIT {
 		con_colourmsg(&blue, ", you can scale down the sensor input with ");
 		con_colourmsg(&gold, "sst_mouse_factor");
 		con_colourmsg(&blue, "!\n");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	if (has_rawinput) {
 		// no real reason to keep this around receiving useless window messages
@@ -209,13 +209,13 @@ INIT {
 
 ok:	m_rawinput->base.flags &= ~CON_HIDDEN;
 	sst_mouse_factor->base.flags &= ~CON_HIDDEN;
-	return true;
+	return FEAT_OK;
 
 e3:	DestroyWindow(inwin);
 e2:	unhook_inline((void *)orig_SetCursorPos);
 e1:	unhook_inline((void *)orig_GetCursorPos);
 e0:	UnregisterClassW(L"RInput", 0);
-	return false;
+	return FEAT_FAIL;
 }
 
 END {

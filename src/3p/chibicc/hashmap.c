@@ -2,6 +2,9 @@
 
 #include "chibicc.h"
 
+// mike: moved from chibicc.h and also renamed, to avoid conflicts with langext.h
+#define chibi_unreachable() error("internal error at %s:%d", __FILE__, __LINE__)
+
 // Initial hash bucket size
 #define INIT_SIZE 16
 
@@ -70,7 +73,7 @@ static HashEntry *get_entry(HashMap *map, char *key, int keylen) {
     if (ent->key == NULL)
       return NULL;
   }
-  unreachable();
+  chibi_unreachable();
 }
 
 static HashEntry *get_or_insert_entry(HashMap *map, char *key, int keylen) {
@@ -102,7 +105,7 @@ static HashEntry *get_or_insert_entry(HashMap *map, char *key, int keylen) {
       return ent;
     }
   }
-  unreachable();
+  chibi_unreachable();
 }
 
 void *hashmap_get(HashMap *map, char *key) {

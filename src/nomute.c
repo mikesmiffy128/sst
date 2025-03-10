@@ -1,6 +1,6 @@
 /*
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -58,9 +58,9 @@ static long __stdcall hook_CreateSoundBuffer(IDirectSound *this,
 }
 
 PREINIT {
-	if (con_findvar("snd_mute_losefocus")) return false;
-	con_reg(snd_mute_losefocus);
-	return true;
+	if (con_findvar("snd_mute_losefocus")) return FEAT_SKIP;
+	con_regvar(snd_mute_losefocus);
+	return FEAT_OK;
 }
 
 INIT {
@@ -69,14 +69,14 @@ INIT {
 	if_cold (DirectSoundCreate(0, &ds_obj, 0) != DS_OK) {
 		// XXX: can this error be usefully stringified?
 		errmsg_errorx("couldn't create IDirectSound instance");
-		return false;
+		return FEAT_OK;
 	}
 	ds_vt = ds_obj->lpVtbl;
 	ds_obj->lpVtbl->Release(ds_obj);
 	if_cold (!os_mprot(&ds_vt->CreateSoundBuffer, sizeof(void *),
 			PAGE_READWRITE)) {
 		errmsg_errorsys("couldn't make virtual table writable");
-		return false;
+		return FEAT_OK;
 	}
 	orig_CreateSoundBuffer = ds_vt->CreateSoundBuffer;
 	ds_vt->CreateSoundBuffer = &hook_CreateSoundBuffer;
@@ -93,7 +93,7 @@ INIT {
 				"audio settings or restarting the game with SST autoloaded in "
 				"order to have an effect");
 	}
-	return true;
+	return FEAT_OK;
 }
 
 END {

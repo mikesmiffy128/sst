@@ -113,7 +113,7 @@ INIT {
 					(void *)hook_GetStringForSymbol);
 		}
 	}
-	return true;
+	return FEAT_OK;
 }
 
 END {

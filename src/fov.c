@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2022 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -35,6 +35,9 @@
 #include "x86util.h"
 
 FEATURE("extended FOV range")
+// could work for other games, but generally only portal 1 people want this (the
+// rest of us consider this cheating and a problem for runs...)
+GAMESPECIFIC(Portal1)
 REQUEST(ent)
 
 DEF_CVAR_MINMAX_UNREG(fov_desired,
@@ -80,34 +83,28 @@ HANDLE_EVENT(ClientActive, struct edict *e) {
 
 static struct con_cmd *cmd_fov;
 
-PREINIT {
-	// could work for other games, but generally only portal 1 people want this
-	// (the rest of us consider this cheating and a problem for runs...)
-	return GAMETYPE_MATCHES(Portal1);
-}
-
 INIT {
 	cmd_fov = con_findcmd("fov");
-	if_cold (!cmd_fov) return false; // shouldn't happen but just in case!
+	if_cold (!cmd_fov) return FEAT_INCOMPAT; // shouldn't happen, but who knows!
 	if (real_fov_desired = con_findvar("fov_desired")) {
 		// latest steampipe already goes up to 120 fov
-		if (real_fov_desired->parent->maxval == 120) return false;
+		if (real_fov_desired->parent->maxval == 120) return FEAT_SKIP;
 		real_fov_desired->parent->maxval = 120;
 	}
 	else {
-		if (!has_ent) return false;
-		con_reg(fov_desired);
+		if (!has_ent) return FEAT_INCOMPAT;
+		con_regvar(fov_desired);
 		real_fov_desired = fov_desired;
 	}
 	if_cold (!find_SetDefaultFOV(cmd_fov)) {
 		errmsg_errorx("couldn't find SetDefaultFOV function");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	orig_SetDefaultFOV = (SetDefaultFOV_func)hook_inline(
 			(void *)orig_SetDefaultFOV, (void *)&hook_SetDefaultFOV);
 	if_cold (!orig_SetDefaultFOV) {
 		errmsg_errorsys("couldn't hook SetDefaultFOV function");
-		return false;
+		return FEAT_FAIL;
 	}
 
 	// we might not be using our cvar but simpler to do this unconditionally
@@ -115,7 +112,7 @@ INIT {
 	fov_desired->parent->base.flags &= ~CON_HIDDEN;
 	// hide the original fov command since we've effectively broken it anyway :)
 	cmd_fov->base.flags |= CON_DEVONLY;
-	return true;
+	return FEAT_OK;
 }
 
 END {

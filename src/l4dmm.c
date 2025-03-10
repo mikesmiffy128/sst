@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -28,6 +28,7 @@
 #include "vcall.h"
 
 FEATURE()
+GAMESPECIFIC(L4D)
 REQUIRE(kvsys)
 REQUIRE_GAMEDATA(vtidx_GetMatchNetworkMsgController)
 REQUIRE_GAMEDATA(vtidx_GetActiveGameServerDetails)
@@ -125,12 +126,12 @@ INIT {
 		ifacefactory factory = (ifacefactory)os_dlsym(mmlib, "CreateInterface");
 		if_cold (!factory) {
 			errmsg_errordl("couldn't get matchmaking interface factory");
-			return false;
+			return FEAT_INCOMPAT;
 		}
 		matchfwk = factory("MATCHFRAMEWORK_001", 0);
 		if_cold (!matchfwk) {
 			errmsg_errorx("couldn't get IMatchFramework interface");
-			return false;
+			return FEAT_INCOMPAT;
 		}
 		sym_game = kvsys_strtosym("game");
 		sym_campaign = kvsys_strtosym("campaign");
@@ -141,11 +142,11 @@ INIT {
 		oldmmiface = factory_engine("VENGINE_MATCHMAKING_VERSION001", 0);
 		if_cold (!oldmmiface) {
 			errmsg_errorx("couldn't get IMatchmaking interface");
-			return false;
+			return FEAT_INCOMPAT;
 		}
 #endif
 	}
-	return true;
+	return FEAT_OK;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,8 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <string.h>
-
 #include "con_.h"
 #include "engineapi.h"
 #include "feature.h"
@@ -25,24 +23,24 @@
 #include "intdefs.h"
 #include "vcall.h"
 
-FEATURE("crosshair drawing")
+FEATURE("custom crosshair drawing")
 REQUIRE(hud)
 
 DECL_VFUNC_DYN(bool, IsInGame)
 
-DEF_CVAR(sst_xhair, "Enable custom crosshair", 0, CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR(sst_xhair_colour, "Colour for alternative crosshair (RGBA hex)",
-		"FFFFFF", CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR_MIN(sst_xhair_thickness, "Thickness of custom crosshair in pixels", 2,
-		1, CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR_MIN(sst_xhair_size, "Length of lines in custom crosshair in pixels", 8,
-		0, CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR_MIN(sst_xhair_gap, "Gap between lines in custom crosshair in pixels",
-		16, 0, CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR(sst_xhair_dot, "Whether to draw dot in middle of custom crosshair",
-		1, CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR(sst_xhair_outline, "Whether to draw outline around custom crosshair",
-		0, CON_ARCHIVE | CON_HIDDEN)
+DEF_FEAT_CVAR(sst_xhair, "Enable custom crosshair", 0, CON_ARCHIVE)
+DEF_FEAT_CVAR(sst_xhair_colour,
+		"Colour for custom crosshair (RGBA hex)", "FFFFFF", CON_ARCHIVE)
+DEF_FEAT_CVAR_MIN(sst_xhair_thickness,
+		"Thickness of custom crosshair in pixels", 2, 1, CON_ARCHIVE)
+DEF_FEAT_CVAR_MIN(sst_xhair_size,
+		"Length of lines in custom crosshair in pixels", 8, 0, CON_ARCHIVE)
+DEF_FEAT_CVAR_MIN(sst_xhair_gap,
+		"Gap between lines in custom crosshair in pixels", 16, 0, CON_ARCHIVE)
+DEF_FEAT_CVAR(sst_xhair_dot,
+		"Whether to draw dot in middle of custom crosshair", 1, CON_ARCHIVE)
+DEF_FEAT_CVAR(sst_xhair_outline,
+		"Whether to draw outline around custom crosshair", 0, CON_ARCHIVE)
 
 static struct rgba colour = {255, 255, 255, 255};
 
@@ -80,15 +78,8 @@ HANDLE_EVENT(HudPaint, void) {
 }
 
 INIT {
-	sst_xhair->base.flags &= ~CON_HIDDEN;
-	sst_xhair_colour->base.flags &= ~CON_HIDDEN;
 	sst_xhair_colour->cb = &colourcb;
-	sst_xhair_thickness->base.flags &= ~CON_HIDDEN;
-	sst_xhair_size->base.flags &= ~CON_HIDDEN;
-	sst_xhair_gap->base.flags &= ~CON_HIDDEN;
-	sst_xhair_dot->base.flags &= ~CON_HIDDEN;
-	sst_xhair_outline->base.flags &= ~CON_HIDDEN;
-	return true;
+	return FEAT_OK;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

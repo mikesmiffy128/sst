@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -32,13 +32,13 @@
 #include "crypto.h"
 #include "democustom.h"
 #include "demorec.h"
-#include "hook.h"
 #include "engineapi.h"
 #include "errmsg.h"
 #include "event.h"
 #include "feature.h"
 #include "gamedata.h"
 #include "gametype.h"
+#include "hook.h"
 #include "intdefs.h"
 #include "langext.h"
 #include "mem.h"
@@ -50,6 +50,7 @@
 #include "x86util.h"
 
 FEATURE()
+GAMESPECIFIC(L4D) // TODO(compat): wanna add support for more stuff, obviously!
 REQUIRE(bind)
 REQUIRE(democustom)
 REQUIRE_GAMEDATA(vtidx_GetDesktopResolution)
@@ -291,7 +292,7 @@ static void hook_Key_Event(struct inputevent *ev) {
 	//const char *desc[] = {"DOWN", "UP", "DBL"};
 	//const char desclen[] = {4, 2, 3};
 	switch (ev->type) {
-		CASES(BTNDOWN, BTNUP, BTNDOUBLECLICK):;
+		CASES(BTNDOWN, BTNUP, BTNDOUBLECLICK):
 			// TODO(rta): do something interesting with button data
 			//uchar buf[28], *p = buf;
 			//msg_putasz4(p, 2); p += 1;
@@ -378,24 +379,20 @@ HANDLE_EVENT(PluginUnloaded, void) {
 	// TODO(rta): do something with plugin list here
 }
 
-PREINIT {
-	return GAMETYPE_MATCHES(L4D); // TODO(compat): add more here obviously
-}
-
 INIT {
-	if_cold (!find_Key_Event()) return false;
+	if_cold (!find_Key_Event()) return FEAT_INCOMPAT;
 	orig_Key_Event = (Key_Event_func)hook_inline((void *)orig_Key_Event,
 			(void *)&hook_Key_Event);
 	if_cold (!orig_Key_Event) {
 		errmsg_errorsys("couldn't hook Key_Event function");
-		return false;
+		return FEAT_FAIL;
 	}
 
 #ifdef _WIN32
 	keybox = VirtualAlloc(0, 4096, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	if_cold (!keybox) {
 		errmsg_errorsys("couldn't allocate memory for session state");
-		return false;
+		return FEAT_FAIL;
 	}
 	if_cold (!VirtualLock(keybox, 4096)) {
 		errmsg_errorsys("couldn't secure session state");
@@ -411,7 +408,7 @@ INIT {
 	keybox = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
 	if_cold (keybox == MAP_FAILED) {
 		errmsg_errorstd("couldn't allocate memory for session state");
-		return false;
+		return FEAT_FAIL;
 	}
 	// linux-specific madvise stuff (there are some equivalents in OpenBSD and
 	// FreeBSD, if anyone's wondering, but we don't need to worry about those)
@@ -432,7 +429,7 @@ INIT {
 		// run of bytes
 		memcpy(keybox->lbpub, lbpubkeys[LBPK_L4D], 32);
 	}
-	return true;
+	return FEAT_OK;
 
 #ifdef _WIN32
 e:	WerUnregisterExcludedMemoryBlock(keybox); // this'd better not fail!
@@ -441,7 +438,7 @@ e2:	VirtualFree(keybox, 4096, MEM_RELEASE);
 e:	munmap(keybox, 4096);
 #endif
 	unhook_inline((void *)orig_Key_Event);
-	return false;
+	return FEAT_FAIL;
 }
 
 END {

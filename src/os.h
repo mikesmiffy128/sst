@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,6 +16,10 @@
 
 #ifndef INC_OS_H
 #define INC_OS_H
+
+#ifdef INC_LANGEXT_H // we can't rely on include order!
+#undef noreturn // ugh, this breaks Windows headers. how annoying. temp-undef it
+#endif
 
 #include <string.h>
 #include <sys/stat.h> // XXX: try abstracting stat() and avoiding ucrt dep here
@@ -238,6 +242,10 @@ bool os_mprot(void *addr, int len, int mode);
  * upper limit - a safe value across all major operating systems is 256.
  */
 void os_randombytes(void *buf, int sz);
+
+#ifdef INC_LANGEXT_H
+#define noreturn _Noreturn void // HACK: put this back if undef'd above
+#endif
 
 #endif
 

@@ -1,6 +1,6 @@
 /*
  * Copyright © 2021 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -38,8 +38,8 @@
 FEATURE("improved demo recording")
 REQUIRE_GAMEDATA(vtidx_StopRecording)
 
-DEF_CVAR(sst_autorecord, "Continuously record demos even after reconnecting", 1,
-		CON_ARCHIVE | CON_HIDDEN)
+DEF_FEAT_CVAR(sst_autorecord,
+		"Continuously record demos even after reconnecting", 1, CON_ARCHIVE)
 
 void *demorecorder;
 static int *demonum;
@@ -261,21 +261,21 @@ INIT {
 	orig_stop_cb = con_getcmdcb(cmd_stop);
 	if_cold (!find_demorecorder()) {
 		errmsg_errorx("couldn't find demo recorder instance");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	void **vtable = mem_loadptr(demorecorder);
 	// XXX: 16 is totally arbitrary here! figure out proper bounds later
 	if_cold (!os_mprot(vtable, 16 * sizeof(void *), PAGE_READWRITE)) {
 		errmsg_errorsys("couldn't make virtual table writable");
-		return false;
+		return FEAT_FAIL;
 	}
 	if_cold (!find_recmembers(vtable[vtidx_StopRecording])) {
 		errmsg_errorx("couldn't find recording state variables");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	if_cold (!find_demoname(vtable[vtidx_StartRecording])) {
 		errmsg_errorx("couldn't find demo basename variable");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 
 	orig_SetSignonState = (SetSignonState_func)hook_vtable(vtable,
@@ -286,8 +286,7 @@ INIT {
 	cmd_record->cb = &hook_record_cb;
 	cmd_stop->cb = &hook_stop_cb;
 
-	sst_autorecord->base.flags &= ~CON_HIDDEN;
-	return true;
+	return FEAT_OK;
 }
 
 END {

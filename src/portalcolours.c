@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -32,16 +32,17 @@
 #include "vcall.h"
 
 FEATURE("portal gun colour customisation")
+GAMESPECIFIC(Portal1)
 REQUIRE_GLOBAL(clientlib)
 
 // It's like the thing Portal Tools does, but at runtime!
 
-DEF_CVAR_UNREG(sst_portal_colour0, "Crosshair colour for gravity beam (RGB hex)",
-		"F2CAA7", CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR_UNREG(sst_portal_colour1, "Crosshair colour for left portal (RGB hex)",
-		"40A0FF", CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR_UNREG(sst_portal_colour2, "Crosshair colour for right portal (RGB hex)",
-		"FFA020", CON_ARCHIVE | CON_HIDDEN)
+DEF_FEAT_CVAR(sst_portal_colour0, "Crosshair colour for gravity beam (RGB hex)",
+		"F2CAA7", CON_ARCHIVE)
+DEF_FEAT_CVAR(sst_portal_colour1, "Crosshair colour for left portal (RGB hex)",
+		"40A0FF", CON_ARCHIVE)
+DEF_FEAT_CVAR(sst_portal_colour2, "Crosshair colour for right portal (RGB hex)",
+		"FFA020", CON_ARCHIVE)
 static struct rgba colours[3] = {
 		{242, 202, 167, 255}, {64, 160, 255, 255}, {255, 160, 32, 255}};
 
@@ -93,36 +94,25 @@ static bool find_UTIL_Portal_Color(void *base) {
 	return false;
 }
 
-PREINIT {
-	if (!GAMETYPE_MATCHES(Portal1)) return false;
-	con_reg(sst_portal_colour0);
-	con_reg(sst_portal_colour1);
-	con_reg(sst_portal_colour2);
-	return true;
-}
-
 INIT {
 #ifdef _WIN32
 	if_cold (!find_UTIL_Portal_Color(clientlib)) {
 		errmsg_errorx("couldn't find UTIL_Portal_Color");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)hook_inline(
 			(void *)orig_UTIL_Portal_Color, (void *)&hook_UTIL_Portal_Color);
 	if_cold (!orig_UTIL_Portal_Color) {
 		errmsg_errorsys("couldn't hook UTIL_Portal_Color");
-		return false;
+		return FEAT_INCOMPAT;
 	}
-	sst_portal_colour0->base.flags &= ~CON_HIDDEN;
 	sst_portal_colour0->cb = &colourcb;
-	sst_portal_colour1->base.flags &= ~CON_HIDDEN;
 	sst_portal_colour1->cb = &colourcb;
-	sst_portal_colour2->base.flags &= ~CON_HIDDEN;
 	sst_portal_colour2->cb = &colourcb;
-	return true;
+	return FEAT_OK;
 #else
 #warning TODO(linux): yet more stuff!
-	return false;
+	return FEAT_INCOMPAT;
 #endif
 }
 

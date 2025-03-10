@@ -169,29 +169,29 @@ INIT {
 	matsurf = factory_engine("MatSystemSurface006", 0);
 	if_cold (!matsurf) {
 		errmsg_errorx("couldn't get MatSystemSurface006 interface");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	void *schememgr = factory_engine("VGUI_Scheme010", 0);
 	if_cold (!schememgr) {
 		errmsg_errorx("couldn't get VGUI_Scheme010 interface");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	if_cold (!find_toolspanel(vgui)) {
 		errmsg_errorx("couldn't find engine tools panel");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	void **vtable = *(void ***)toolspanel;
 	if_cold (!os_mprot(vtable + vtidx_Paint, sizeof(void *),
 			PAGE_READWRITE)) {
 		errmsg_errorsys("couldn't make virtual table writable");
-		return false;
+		return FEAT_FAIL;
 	}
 	orig_Paint = (Paint_func)hook_vtable(vtable, vtidx_Paint,
 			(void *)&hook_Paint);
 	SetPaintEnabled(toolspanel, true);
 	// 1 is the default, first loaded scheme. should always be sourcescheme.res
 	scheme = GetIScheme(schememgr, (struct handlewrap){1});
-	return true;
+	return FEAT_OK;
 }
 
 END {

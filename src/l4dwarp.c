@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -36,12 +36,15 @@
 #include "x86util.h"
 
 FEATURE("Left 4 Dead warp testing")
+GAMESPECIFIC(L4D)
 REQUIRE(clientcon)
 REQUIRE(ent)
 REQUIRE(trace)
 REQUIRE_GAMEDATA(off_entpos)
 REQUIRE_GAMEDATA(off_eyeang)
 REQUIRE_GAMEDATA(off_teamnum)
+REQUIRE_GAMEDATA(vtidx_AddBoxOverlay2)
+REQUIRE_GAMEDATA(vtidx_AddLineOverlay)
 REQUIRE_GAMEDATA(vtidx_Teleport)
 
 DECL_VFUNC_DYN(void, Teleport, const struct vec3f */*pos*/,
@@ -99,7 +102,7 @@ static struct vec3f warptarget(void *ent) {
 	};
 }
 
-DEF_CCMD_HERE_UNREG(sst_l4d_testwarp, "Simulate a bot warping to you "
+DEF_FEAT_CCMD_HERE(sst_l4d_testwarp, "Simulate a bot warping to you "
 		"(specify \"staystuck\" to skip take-control simulation)",
 		CON_SERVERSIDE | CON_CHEAT) {
 	bool staystuck = false;
@@ -167,9 +170,9 @@ static bool draw_testpos(struct vec3f start, struct vec3f testpos,
 	return false;
 }
 
+// note: UNREG because testwarp can still work without this
 DEF_CCMD_HERE_UNREG(sst_l4d_previewwarp, "Visualise bot warp unstuck logic "
-		"(use clear_debug_overlays to remove)",
-		CON_SERVERSIDE | CON_CHEAT) {
+		"(use clear_debug_overlays to remove)", CON_SERVERSIDE | CON_CHEAT) {
 	struct edict *ed = ent_getedict(con_cmdclient + 1);
 	if_cold (!ed || !ed->ent_unknown) {
 		errmsg_errorx("couldn't access player entity");
@@ -306,26 +309,16 @@ static bool init_filter(void) {
 	return false;
 }
 
-PREINIT {
-	return GAMETYPE_MATCHES(L4D);
-}
-
 INIT {
 	struct con_cmd *z_add = con_findcmd("z_add");
 	if (!z_add || !find_EntityPlacementTest(z_add->cb)) {
 		errmsg_errorx("couldn't find EntityPlacementTest function");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	if (!init_filter()) {
-		errmsg_errorx("couldn't init trace filter for EntityPlacementTest");
-		return false;
+		errmsg_errorx("couldn't find trace filter ctor for EntityPlacementTest");
+		return FEAT_INCOMPAT;
 	}
-	con_reg(sst_l4d_testwarp);
-	// NOTE: assuming has_vtidx_AddLineOverlay && has_vtidx_AddBoxOverlay2
-	// since those are specified for L4D.
-	// TODO(opt): add some zero-cost/compile-time way to make sure gamedata
-	// exists in a game-specific scenario? (probably requires declarative
-	// game-specific features in codegen, which hasn't been high-priority)
 	if_cold (!has_off_collision) {
 		errmsg_warnx("missing m_Collision gamedata - warp preview unavailable");
 	}
@@ -334,9 +327,9 @@ INIT {
 				"warp preview unavailable");
 	}
 	else {
-		con_reg(sst_l4d_previewwarp);
+		con_regcmd(sst_l4d_previewwarp);
 	}
-	return true;
+	return FEAT_OK;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

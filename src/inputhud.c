@@ -1,7 +1,7 @@
 /*
  * Copyright © 2022 Matthew Wozniak <sirtomato999@gmail.com>
  * Copyright © 2022 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -43,23 +43,23 @@ REQUIRE_GAMEDATA(vtidx_VClient_DecodeUserCmdFromBuffer)
 REQUIRE_GLOBAL(factory_client)
 REQUIRE(hud)
 
-DEF_CVAR(sst_inputhud, "Enable button input HUD", 0, CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR(sst_inputhud_bgcolour_normal,
+DEF_FEAT_CVAR(sst_inputhud, "Enable button input HUD", 0, CON_ARCHIVE)
+DEF_FEAT_CVAR(sst_inputhud_bgcolour_normal,
 		"Input HUD default key background colour (RGBA hex)", "4040408C",
-		CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR(sst_inputhud_bgcolour_pressed,
+		CON_ARCHIVE)
+DEF_FEAT_CVAR(sst_inputhud_bgcolour_pressed,
 		"Input HUD pressed key background colour (RGBA hex)", "202020C8",
-		CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR(sst_inputhud_fgcolour, "Input HUD text colour (RGBA hex)", "F0F0F0FF",
-		CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR_MINMAX(sst_inputhud_scale, "Input HUD size (multiple of minimum)",
-		1.5, 1, 4, CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR_MINMAX(sst_inputhud_x,
+		CON_ARCHIVE)
+DEF_FEAT_CVAR(sst_inputhud_fgcolour, "Input HUD text colour (RGBA hex)",
+		"F0F0F0FF", CON_ARCHIVE)
+DEF_FEAT_CVAR_MINMAX(sst_inputhud_scale, "Input HUD size (multiple of minimum)",
+		1.5, 1, 4, CON_ARCHIVE)
+DEF_FEAT_CVAR_MINMAX(sst_inputhud_x,
 		"Input HUD x position (fraction between screen left and right)",
-		0.02, 0, 1, CON_ARCHIVE | CON_HIDDEN)
-DEF_CVAR_MINMAX(sst_inputhud_y,
+		0.02, 0, 1, CON_ARCHIVE)
+DEF_FEAT_CVAR_MINMAX(sst_inputhud_y,
 		"Input HUD y position (fraction between screen top and bottom)",
-		0.95, 0, 1, CON_ARCHIVE | CON_HIDDEN)
+		0.95, 0, 1, CON_ARCHIVE)
 
 static void *input;
 static int heldbuttons = 0, tappedbuttons = 0;
@@ -379,11 +379,11 @@ INIT {
 			!(vclient = factory_client("VClient016", 0)) &&
 			!(vclient = factory_client("VClient017", 0))) {
 		errmsg_errorx("couldn't get client interface");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	if (!find_input(vclient)) {
 		errmsg_errorx("couldn't find input global");
-		return false;
+		return FEAT_INCOMPAT;
 	}
 	for (int i = 0; i < countof(fontnames); ++i) {
 		if (fonts[i].h = hud_getfont(fontnames[i], true)) {
@@ -396,7 +396,7 @@ INIT {
 	// just unprotect the first few pointers (GetUserCmd is 8)
 	if_cold (!os_mprot(vtable, sizeof(void *) * 8, PAGE_READWRITE)) {
 		errmsg_errorsys("couldn't make virtual table writable");
-		return false;
+		return FEAT_FAIL;
 	}
 	if (GAMETYPE_MATCHES(L4Dbased)) {
 		orig_CreateMove = (CreateMove_func)hook_vtable(vtable, vtidx_CreateMove,
@@ -418,31 +418,25 @@ INIT {
 	else if (GAMETYPE_MATCHES(L4D)) layout = &layout_l4d;
 	// TODO(compat): more game-specific layouts!
 
-	sst_inputhud->base.flags &= ~CON_HIDDEN;
-	sst_inputhud_scale->base.flags &= ~CON_HIDDEN;
-	sst_inputhud_bgcolour_normal->base.flags &= ~CON_HIDDEN;
 	sst_inputhud_bgcolour_normal->cb = &colourcb;
-	sst_inputhud_bgcolour_pressed->base.flags &= ~CON_HIDDEN;
 	sst_inputhud_bgcolour_pressed->cb = &colourcb;
-	sst_inputhud_fgcolour->base.flags &= ~CON_HIDDEN;
 	sst_inputhud_fgcolour->cb = &colourcb;
-	sst_inputhud_x->base.flags &= ~CON_HIDDEN;
-	sst_inputhud_y->base.flags &= ~CON_HIDDEN;
 
-	// HACK: default HUD position would clash with L4D player health HUDs and
-	// HL2 sprint HUD, so move it up. this currently has to be done in a super
-	// crappy, nasty way to get the defaults to display right in the console...
-	// TODO(opt): move PREINIT stuff to before cvar init and avoid this nonsense
+	// Default HUD position would clash with L4D player health HUDs and
+	// HL2 sprint HUD, so move it up. This is a bit yucky, but at least we don't
+	// have to go through all the virtual setter crap twice...
 	if (GAMETYPE_MATCHES(L4D)) {
 		sst_inputhud_y->defaultval = "0.82";
-		con_setvarstr(sst_inputhud_y, "0.82");
+		sst_inputhud_y->fval = 0.82f;
+		sst_inputhud_y->ival = 0;
 	}
 	else if (GAMETYPE_MATCHES(HL2series)) {
 		sst_inputhud_y->defaultval = "0.75";
-		con_setvarstr(sst_inputhud_y, "0.75");
+		sst_inputhud_y->fval = 0.75f;
+		sst_inputhud_y->ival = 0;
 	}
 
-	return true;
+	return FEAT_OK;
 }
 
 END {

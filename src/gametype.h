@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -20,7 +20,7 @@
 
 #include "intdefs.h"
 
-extern u64 _gametype_tag;
+extern u32 _gametype_tag;
 
 /* general engine branches used in a bunch of stuff */
 #define _gametype_tag_OE		1
@@ -58,7 +58,7 @@ extern u64 _gametype_tag;
 
 /* Matches for any multiple possible tags */
 #define _gametype_tag_L4D		(_gametype_tag_L4D1 | _gametype_tag_L4D2)
-// XXX: *stupid* naming, refactor later (damn Survivors ruining everything)
+// XXX: *stupid* naming, refactor one day (damn Survivors ruining everything)
 #define _gametype_tag_L4D2x		(_gametype_tag_L4D2 | _gametype_tag_L4DS)
 #define _gametype_tag_L4Dx		(_gametype_tag_L4D1 | _gametype_tag_L4D2x)
 #define _gametype_tag_L4Dbased	(_gametype_tag_L4Dx | _gametype_tag_Portal2)

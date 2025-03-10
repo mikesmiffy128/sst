@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -127,7 +127,7 @@ static inline ctor_func findctor(const struct CEntityFactory *factory,
 					seencall = 0;
 					continue;
 				}
-				return false;
+				return 0;
 			}
 		}
 		// duping NEXT_INSN macro here in the name of a nicer message
@@ -180,13 +180,12 @@ INIT {
 
 	// for PEntityOfEntIndex we don't really have to do any more init, we
 	// can just call the function later.
-	if (has_vtidx_PEntityOfEntIndex) return true;
+	if (has_vtidx_PEntityOfEntIndex) return FEAT_OK;
 	if (globalvars && has_off_edicts) {
 		edicts = getptr_edicts(globalvars);
-		return true;
+		return FEAT_OK;
 	}
-	errmsg_warnx("not implemented for this engine");
-	return false;
+	return FEAT_INCOMPAT;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

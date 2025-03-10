@@ -8,6 +8,8 @@
 #define ssizeof(x) ((ssize)sizeof(x))
 #define countof(x) (ssizeof(x) / ssizeof(*x))
 
+#undef unreachable // C23 stddef.h; prefer the non-function-like look of ours.
+
 #if defined(__GNUC__) || defined(__clang__)
 #define if_hot(x) if (__builtin_expect(!!(x), 1))
 #define if_cold(x)  if (__builtin_expect(!!(x), 0))
@@ -44,6 +46,7 @@
 #define switch_exhaust_enum(E, x) switch_exhaust ((enum E)(x))
 #endif
 
+// could do [[noreturn]] in future, _Noreturn probably supports more compilers.
 #define noreturn _Noreturn void
 
 #ifdef _WIN32

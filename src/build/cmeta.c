@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,22 +15,12 @@
  */
 
 #include <stdio.h>
-#include <string.h>
+#include <stdlib.h>
 
 #include "../intdefs.h"
+#include "../langext.h"
 #include "../os.h"
 #include "cmeta.h"
-#include "vec.h"
-
-/*
- * This file does C metadata parsing/scraping for the build system. This
- * facilitates tasks ranging from determining header dependencies to searching
- * for certain magic macros (for example cvar/command declarations) to generate
- * other code.
- *
- * It's a bit of a mess since it's kind of just hacked together for use at build
- * time. Don't worry about it too much.
- */
 
 // lazy inlined 3rd party stuff {{{
 // too lazy to write a C tokenizer at the moment, or indeed probably ever, so
@@ -56,350 +46,218 @@ Type *ty_double = &(Type){TY_DOUBLE, 8, 8};
 Type *ty_ldouble = &(Type){TY_LDOUBLE, 16, 16};
 // inline just a couple more things, super lazy, but whatever
 static Type *new_type(TypeKind kind, int size, int align) {
-  Type *ty = calloc(1, sizeof(Type));
-  ty->kind = kind;
-  ty->size = size;
-  ty->align = align;
-  return ty;
+	Type *ty = calloc(1, sizeof(Type));
+	ty->kind = kind;
+	ty->size = size;
+	ty->align = align;
+	return ty;
 }
 Type *array_of(Type *base, int len) {
-  Type *ty = new_type(TY_ARRAY, base->size * len, base->align);
-  ty->base = base;
-  ty->array_len = len;
-  return ty;
+	Type *ty = new_type(TY_ARRAY, base->size * len, base->align);
+	ty->base = base;
+	ty->array_len = len;
+	return ty;
 }
 #include "../3p/chibicc/hashmap.c"
 #include "../3p/chibicc/strings.c"
 #include "../3p/chibicc/tokenize.c"
-// one more copypaste from preprocess.c for #include <filename> and then I'm
-// done I promise
-static char *join_tokens(const Token *tok, const Token *end) {
-  int len = 1;
-  for (const Token *t = tok; t != end && t->kind != TK_EOF; t = t->next) {
-    if (t != tok && t->has_space)
-      len++;
-    len += t->len;
-  }
-  char *buf = calloc(1, len);
-  int pos = 0;
-  for (const Token *t = tok; t != end && t->kind != TK_EOF; t = t->next) {
-    if (t != tok && t->has_space)
-      buf[pos++] = ' ';
-    strncpy(buf + pos, t->loc, t->len);
-    pos += t->len;
-  }
-  buf[pos] = '\0';
-  return buf;
-}
 // }}}
 
 #ifdef _WIN32
 #include "../3p/openbsd/asprintf.c" // missing from libc; plonked here for now
 #endif
 
-static void die(const char *s) {
+static noreturn die(int status, const char *s) {
 	fprintf(stderr, "cmeta: fatal: %s\n", s);
-	exit(100);
+	exit(status);
 }
 
-static char *readsource(const os_char *path) {
+struct cmeta cmeta_loadfile(const os_char *path) {
 	int f = os_open_read(path);
-	if (f == -1) return 0;
-	uint bufsz = 8192;
-	char *buf = malloc(bufsz);
-	if (!buf) die("couldn't allocate memory");
-	int nread;
-	int off = 0;
-	while ((nread = os_read(f, buf + off, bufsz - off)) > 0) {
-		off += nread;
-		if (off == bufsz) {
-			bufsz *= 2;
-			// somewhat arbitrary cutoff
-			if (bufsz == 1 << 30) die("input file is too large");
-			buf = realloc(buf, bufsz);
-			if (!buf) die("couldn't reallocate memory");
-		}
-	}
-	if (nread == -1) die("couldn't read file");
-	buf[off] = 0;
+	if (f == -1) die(100, "couldn't open file");
+	vlong len = os_fsize(f);
+	if (len > 1u << 30 - 1) die(2, "input file is far too large");
+	struct cmeta ret;
+	ret.sbase = malloc(len + 1);
+	ret.sbase[len] = '\0'; // chibicc needs a null terminator
+	if (!ret.sbase) die(100, "couldn't allocate memory");
+	if (os_read(f, ret.sbase, len) != len) die(100, "couldn't read file");
+	int maxitems = len / 4; // shortest word is "END"
+	ret.nitems = 0;
+	// eventual overall memory requirement: file size * 6. seems fine to me.
+	// current memory requirement: file size * 10, + all the chibicc linked list
+	// crap. not as good but we'll continue tolerating it... probably for years!
+	//ret.itemoffs = malloc(maxitems * sizeof(*ret.itemoffs));
+	//if (!ret.itemoffs) die(100, "couldn't allocate memory");
+	ret.itemtoks = malloc(maxitems * sizeof(*ret.itemtoks));
+	if (!ret.itemtoks) die(100, "couldn't allocate memory");
+	ret.itemtypes = malloc(maxitems * sizeof(*ret.itemtypes));
+	if (!ret.itemtypes) die(100, "couldn't allocate memory");
 	os_close(f);
-	return buf;
-}
-
-// as per cmeta.h this is totally opaque; it's actually just a Token in disguise
-struct cmeta;
-
-const struct cmeta *cmeta_loadfile(const os_char *path) {
-	char *buf = readsource(path);
-	if (!buf) return 0;
 #ifdef _WIN32
 	char *realname = malloc(wcslen(path) + 1);
-	if (!realname) die("couldn't allocate memory");
+	if (!realname) die(100, "couldn't allocate memory");
 	// XXX: being lazy about Unicode right now; a general purpose tool should
 	// implement WTF8 or something. SST itself doesn't have any unicode paths
-	// though, so don't really care as much.
+	// though, so we don't really care as much. this code still sucks though.
 	*realname = *path;
 	for (const ushort *p = path + 1; p[-1]; ++p) realname[p - path] = *p;
 #else
 	const char *realname = f;
 #endif
-	return (const struct cmeta *)tokenize_buf(realname, buf);
-}
-
-// NOTE: we don't care about conditional includes, nor do we expand macros. We
-// just parse the minimum info to get what we need for SST. Also, there's not
-// too much in the way of syntax checking; if an error gets ignored the compiler
-// picks it up anyway, and gives far better diagnostics.
-void cmeta_includes(const struct cmeta *cm,
-		void (*cb)(const char *f, bool issys, void *ctxt), void *ctxt) {
-	const Token *tp = (const Token *)cm;
-	if (!tp || !tp->next || !tp->next->next) return; // #, include, "string"
-	while (tp) {
-		if (!tp->at_bol || !equal(tp, "#")) { tp = tp->next; continue; }
-		if (!equal(tp->next, "include")) { tp = tp->next->next; continue; }
-		tp = tp->next->next;
-		if (!tp) break;
-		if (tp->at_bol) tp = tp->next;
-		if (!tp) break;
-		if (tp->kind == TK_STR) {
-			// include strings are a special case; they don't have \escapes.
-			char *copy = malloc(tp->len - 1);
-			if (!copy) die("couldn't allocate memory");
-			memcpy(copy, tp->loc + 1, tp->len - 2);
-			copy[tp->len - 2] = '\0';
-			cb(copy, false, ctxt);
-			//free(copy); // ??????
+	struct Token *t = tokenize_buf(realname, ret.sbase);
+	// everything is THING() or THING {} so we need at least 3 tokens ahead - if
+	// we have fewer tokens left in the file we can bail
+	if (t && t->next) while (t->next->next) {
+		if (!t->at_bol) {
+			t = t->next;
+			continue;
 		}
-		else if (equal(tp, "<")) {
-			tp = tp->next;
-			if (!tp) break;
-			const Token *end = tp;
-			while (!equal(end, ">")) {
-				end = end->next;
-				if (!end) return; // shouldn't happen in valid source obviously
-				if (end->at_bol) break; // ??????
-			}
-			char *joined = join_tokens(tp, end); // just use func from chibicc
-			cb(joined, true, ctxt);
-			//free(joined); // ??????
+		int type;
+		if ((equal(t, "DEF_CVAR") || equal(t, "DEF_CVAR_MIN") ||
+				equal(t, "DEF_CVAR_MAX") || equal(t, "DEF_CVAR_MINMAX") ||
+				equal(t, "DEF_CVAR_UNREG") || equal(t, "DEF_CVAR_MIN_UNREG") ||
+				equal(t, "DEF_CVAR_MAX_UNREG") ||
+				equal(t, "DEF_CVAR_MINMAX_UNREG") ||
+				equal(t, "DEF_FEAT_CVAR") || equal(t, "DEF_FEAT_CVAR_MIN") ||
+				equal(t, "DEF_FEAT_CVAR_MAX") ||
+				equal(t, "DEF_FEAT_CVAR_MINMAX")) && equal(t->next, "(")) {
+			type = CMETA_ITEM_DEF_CVAR;
 		}
-		// get to the next line (standard allows extra tokens because)
-		while (!tp->at_bol) {
-			tp = tp->next;
-			if (!tp) return;
+		else if ((equal(t, "DEF_CCMD") || equal(t, "DEF_CCMD_HERE") ||
+				equal(t, "DEF_CCMD_UNREG") || equal(t, "DEF_CCMD_HERE_UNREG") ||
+				equal(t, "DEF_CCMD_PLUSMINUS") ||
+				equal(t, "DEF_CCMD_PLUSMINUS_UNREG") ||
+				equal(t, "DEF_FEAT_CCMD") || equal(t, "DEF_FEAT_CCMD_HERE") ||
+				equal(t, "DEF_FEAT_CCMD_PLUSMINUS")) && equal(t->next, "(")) {
+			type = CMETA_ITEM_DEF_CCMD;
 		}
-	}
-}
-
-// AGAIN, NOTE: this doesn't *perfectly* match top level decls only in the event
-// that someone writes something weird, but we just don't really care because
-// we're not writing something weird. Don't write something weird!
-void cmeta_conmacros(const struct cmeta *cm,
-		void (*cb)(const char *, bool, bool)) {
-	const Token *tp = (const Token *)cm;
-	if (!tp || !tp->next || !tp->next->next) return; // DEF_xyz, (, name
-	while (tp) {
-		bool isplusminus = false, isvar = false;
-		bool unreg = false;
-		// this is like the worst thing ever, but oh well it's just build time
-		// XXX: tidy this up some day, though, probably
-		if (equal(tp, "DEF_CCMD_PLUSMINUS")) {
-			isplusminus = true;
+		else if ((equal(t, "DEF_EVENT") || equal(t, "DEF_PREDICATE")) &&
+				equal(t->next, "(")) {
+			type = CMETA_ITEM_DEF_EVENT;
 		}
-		else if (equal(tp, "DEF_CCMD_PLUSMINUS_UNREG")) {
-			isplusminus = true;
-			unreg = true;
+		else if (equal(t, "HANDLE_EVENT") && equal(t->next, "(")) {
+			type = CMETA_ITEM_HANDLE_EVENT;
 		}
-		else if (equal(tp, "DEF_CVAR") || equal(tp, "DEF_CVAR_MIN") ||
-				equal(tp, "DEF_CVAR_MAX") || equal(tp, "DEF_CVAR_MINMAX")) {
-			isvar = true;
+		else if (equal(t, "FEATURE") && equal(t->next, "(")) {
+			type = CMETA_ITEM_FEATURE;
 		}
-		else if (equal(tp, "DEF_CVAR_UNREG") ||
-				equal(tp, "DEF_CVAR_MIN_UNREG") ||
-				equal(tp, "DEF_CVAR_MAX_UNREG") ||
-				equal(tp, "DEF_CVAR_MINMAX_UNREG")) {
-			isvar = true;
-			unreg = true;
+		else if ((equal(t, "REQUIRE") || equal(t, "REQUIRE_GAMEDATA") ||
+				equal(t, "REQUIRE_GLOBAL") || equal(t, "REQUEST")) &&
+				equal(t->next, "(")) {
+			type = CMETA_ITEM_REQUIRE;
 		}
-		else if (equal(tp, "DEF_CCMD_UNREG") ||
-				equal(tp, "DEF_CCMD_HERE_UNREG")) {
-			unreg = true;
+		else if (equal(t, "GAMESPECIFIC") && equal(t->next, "(")) {
+			type = CMETA_ITEM_GAMESPECIFIC;
 		}
-		else if (!equal(tp, "DEF_CCMD") && !equal(tp, "DEF_CCMD_HERE")) {
-			tp = tp->next; continue;
+		else if (equal(t, "PREINIT") && equal(t->next, "{")) {
+			type = CMETA_ITEM_PREINIT;
 		}
-		if (!equal(tp->next, "(")) { tp = tp->next->next; continue; }
-		tp = tp->next->next;
-		if (isplusminus) {
-			// XXX: this is stupid but whatever
-			char *plusname = malloc(sizeof("PLUS_") + tp->len);
-			if (!plusname) die("couldn't allocate memory");
-			memcpy(plusname, "PLUS_", 5);
-			memcpy(plusname + sizeof("PLUS_") - 1, tp->loc, tp->len);
-			plusname[sizeof("PLUS_") - 1 + tp->len] = '\0';
-			cb(plusname, false, unreg);
-			char *minusname = malloc(sizeof("MINUS_") + tp->len);
-			if (!minusname) die("couldn't allocate memory");
-			memcpy(minusname, "MINUS_", 5);
-			memcpy(minusname + sizeof("MINUS_") - 1, tp->loc, tp->len);
-			minusname[sizeof("MINUS_") - 1 + tp->len] = '\0';
-			cb(minusname, false, unreg);
+		else if (equal(t, "INIT") && equal(t->next, "{")) {
+			type = CMETA_ITEM_INIT;
+		}
+		else if (equal(t, "END") && equal(t->next, "{")) {
+			type = CMETA_ITEM_END;
 		}
 		else {
-			char *name = malloc(tp->len + 1);
-			if (!name) die("couldn't allocate memory");
-			memcpy(name, tp->loc, tp->len);
-			name[tp->len] = '\0';
-			cb(name, isvar, unreg);
-		}
-		tp = tp->next;
-	}
-}
-
-const char *cmeta_findfeatmacro(const struct cmeta *cm) {
-	const Token *tp = (const Token *)cm;
-	if (!tp || !tp->next) return 0; // FEATURE, (
-	while (tp) {
-		if (equal(tp, "FEATURE") && equal(tp->next, "(")) {
-			if (equal(tp->next->next, ")")) return ""; // no arg = no desc
-			if (!tp->next->next || tp->next->next->kind != TK_STR) {
-				return 0; // it's invalid, whatever, just return...
-			}
-			return tp->next->next->str;
-		}
-		tp = tp->next;
-	}
-	return 0;
-}
-
-void cmeta_featinfomacros(const struct cmeta *cm, void (*cb)(
-		enum cmeta_featmacro type, const char *param, void *ctxt), void *ctxt) {
-	const Token *tp = (const Token *)cm;
-	if (!tp || !tp->next) return;
-	while (tp) {
-		int type = -1;
-		if (equal(tp, "PREINIT")) {
-			type = CMETA_FEAT_PREINIT;
-		}
-		else if (equal(tp, "INIT")) {
-			type = CMETA_FEAT_INIT;
-		}
-		else if (equal(tp, "END")) {
-			type = CMETA_FEAT_END;
-		}
-		if (type != - 1) {
-			if (equal(tp->next, "{")) {
-				cb(type, 0, ctxt);
-				tp = tp->next;
-			}
-			tp = tp->next;
-			continue;
-		}
-		if (equal(tp, "REQUIRE")) {
-			type = CMETA_FEAT_REQUIRE;
-		}
-		else if (equal(tp, "REQUIRE_GAMEDATA")) {
-			type = CMETA_FEAT_REQUIREGD;
-		}
-		else if (equal(tp, "REQUIRE_GLOBAL")) {
-			type = CMETA_FEAT_REQUIREGLOBAL;
-		}
-		else if (equal(tp, "REQUEST")) {
-			type = CMETA_FEAT_REQUEST;
-		}
-		if (type != -1) {
-			if (equal(tp->next, "(") && tp->next->next) {
-				tp = tp->next->next;
-				char *param = malloc(tp->len + 1);
-				if (!param) die("couldn't allocate memory");
-				memcpy(param, tp->loc, tp->len);
-				param[tp->len] = '\0';
-				cb(type, param, ctxt);
-				tp = tp->next;
-			}
-		}
-		tp = tp->next;
-	}
-}
-
-struct vec_str VEC(const char *);
-
-static void pushmacroarg(const Token *last, const char *start,
-		struct vec_str *list) {
-	int len = last->loc - start + last->len;
-	char *dup = malloc(len + 1);
-	if (!dup) die("couldn't allocate memory");
-	memcpy(dup, start, len);
-	dup[len] = '\0';
-	if (!vec_push(list, dup)) die("couldn't append to array");
-}
-
-// XXX: maybe this should be used for the other functions too. it'd be less ugly
-// and handle closing parentheses better, but alloc for tokens we don't care
-// about. probably a worthy tradeoff?
-static const Token *macroargs(const Token *t, struct vec_str *list) {
-	int paren = 1;
-	const Token *last; // avoids copying extra ws/comments in
-	for (const char *start = t->loc; t; last = t, t = t->next) {
-		if (equal(t, "(")) {
-			++paren;
-		}
-		else if (equal(t, ")")) {
-			if (!--paren) {
-				pushmacroarg(last, start, list);
-				return t->next;
-			}
-		}
-		else if (paren == 1 && equal(t, ",")) {
-			pushmacroarg(last, start, list);
 			t = t->next;
-			if (t) start = t->loc; // slightly annoying...
-		}
-	}
-	// I guess we handle this here.
-	fprintf(stderr, "cmeta: fatal: unexpected EOF in %s\n", t->filename);
-	exit(2);
-}
-
-void cmeta_evdefmacros(const struct cmeta *cm, void (*cb)(const char *name,
-		const char *const *params, int nparams, bool predicate)) {
-	const Token *tp = (const Token *)cm;
-	if (!tp || !tp->next || !tp->next->next) return; // DEF_EVENT, (, name
-	while (tp) {
-		bool predicate = true;
-		if (equal(tp, "DEF_EVENT") && equal(tp->next, "(")) {
-			predicate = false;
-		}
-		else if (!equal(tp, "DEF_PREDICATE") || !equal(tp->next, "(")) {
-			tp = tp->next;
 			continue;
 		}
-		tp = tp->next->next;
-		struct vec_str args = {0};
-		tp = macroargs(tp, &args);
-		if (args.sz == 0) {
-			fprintf(stderr, "cmeta: fatal: missing event parameters in %s\n",
-					tp->filename);
-			exit(2);
-		}
-		cb(args.data[0], args.data + 1, args.sz - 1, predicate);
+		ret.itemtoks[ret.nitems] = t;
+		ret.itemtypes[ret.nitems] = type;
+		++ret.nitems;
+		// this is kind of inefficient; in most cases we can skip more stuff,
+		// but then also, we're always scanning for something specific, so who
+		// cares actually, this will do for now.
+		t = t->next->next;
+	}
+	return ret;
+}
+
+int cmeta_flags_cvar(const struct cmeta *cm, u32 i) {
+	struct Token *t = cm->itemtoks[i];
+	switch_exhaust (t->len) {
+		// It JUST so happens all of the possible tokens here have a unique
+		// length. I swear this wasn't planned. But it IS convenient!
+		case 8: case 12: case 15: return 0;
+		case 14: case 18: case 21: return CMETA_CVAR_UNREG;
+		case 13: case 17: case 20: return CMETA_CVAR_FEAT;
 	}
 }
 
-void cmeta_evhandlermacros(const struct cmeta *cm, const char *modname,
-		void (*cb_handler)(const char *evname, const char *modname)) {
-	const Token *tp = (const Token *)cm;
-	while (tp) {
-		if (equal(tp, "HANDLE_EVENT") && equal(tp->next, "(")) {
-			tp = tp->next->next;
-			char *name = malloc(tp->len + 1);
-			if (!name) die("couldn't allocate memory");
-			memcpy(name, tp->loc, tp->len);
-			name[tp->len] = '\0';
-			cb_handler(name, modname);
-		}
-		tp = tp->next;
+int cmeta_flags_ccmd(const struct cmeta *cm, u32 i) {
+	struct Token *t = cm->itemtoks[i];
+	switch_exhaust (t->len) {
+		case 13: if (t->loc[4] == 'F') return CMETA_CCMD_FEAT;
+		case 8: return 0;
+		case 18: if (t->loc[4] == 'F') return CMETA_CCMD_FEAT;
+			return CMETA_CCMD_PLUSMINUS;
+		case 14: case 19: return CMETA_CCMD_UNREG;
+		case 23: return CMETA_CCMD_FEAT | CMETA_CCMD_PLUSMINUS;
+		case 24: return CMETA_CCMD_UNREG | CMETA_CCMD_PLUSMINUS;
 	}
+}
+
+int cmeta_flags_event(const struct cmeta *cm, u32 i) {
+	// assuming CMETA_EVENT_ISPREDICATE remains 1, the ternary should
+	// optimise out
+	return cm->itemtoks[i]->len == 13 ? CMETA_EVENT_ISPREDICATE : 0;
+}
+
+int cmeta_flags_require(const struct cmeta *cm, u32 i) {
+	struct Token *t = cm->itemtoks[i];
+	// NOTE: this is somewhat more flexible to enable REQUEST_GAMEDATA or
+	// something in future, although that's kind of useless currently
+	int optflag = t->loc[4] == 'E'; // REQU[E]ST
+	switch_exhaust (t->len) {
+		case 7: return optflag;
+		case 16: return optflag | CMETA_REQUIRE_GAMEDATA;
+		case 14: return optflag | CMETA_REQUIRE_GLOBAL;
+	};
+}
+
+int cmeta_nparams(const struct cmeta *cm, u32 i) {
+	int argc = 1, nest = 0;
+	struct Token *t = cm->itemtoks[i]->next->next;
+	if (equal(t, ")")) return 0; // XXX: stupid special case, surely improvable?
+	for (; t; t = t->next) {
+		if (equal(t, "(")) { ++nest; continue; }
+		if (!nest && equal(t, ",")) ++argc;
+		else if (equal(t, ")") && !nest--) break;
+	}
+	if (nest != -1) return 0; // XXX: any need to do anything better here?
+	return argc;
+}
+
+struct cmeta_param_iter cmeta_param_iter_init(const struct cmeta *cm, u32 i) {
+	return (struct cmeta_param_iter){cm->itemtoks[i]->next->next};
+}
+
+struct cmeta_slice cmeta_param_iter(struct cmeta_param_iter *it) {
+	int nest = 0;
+	const char *start = it->cur->loc;
+	for (struct Token *last = 0; it->cur;
+			last = it->cur, it->cur = it->cur->next) {
+		if (equal(it->cur, "(")) { ++nest; continue; }
+		if (!nest && equal(it->cur, ",")) {
+			if (!last) { // , immediately after (, for some reason. treat as ""
+				return (struct cmeta_slice){start, 0};
+			}
+			it->cur = it->cur->next;
+		}
+		else if (equal(it->cur, ")") && !nest--) {
+			if (!last) break;
+		}
+		else {
+			continue;
+		}
+		return (struct cmeta_slice){start, last->loc - start + last->len};
+	}
+	return (struct cmeta_slice){0, 0};
+}
+
+u32 cmeta_line(const struct cmeta *cm, u32 i) {
+	return cm->itemtoks[i]->line_no;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80 fdm=marker
