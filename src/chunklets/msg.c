@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -31,6 +31,8 @@ _Static_assert(
 	"this code is only designed for relatively sane environments, plus Windows"
 );
 #endif
+
+#include "msg.h"
 
 // -- A note on performance hackery --
 //
@@ -69,7 +71,9 @@ static inline unsigned long long swap64(unsigned long long x) {
 #endif
 #endif
 
-static inline void doput16(unsigned char *out, unsigned short val) {
+static inline void doput16(unsigned char *out, unsigned char tag,
+		unsigned short val) {
+	out[0] = tag;
 #ifdef USE_BSWAP_NONSENSE
 	// Use swap32() here because x86 and ARM don't have instructions for 16-bit
 	// swaps, and Clang doesn't realise it could just use the 32-bit one anyway.
@@ -79,7 +83,9 @@ static inline void doput16(unsigned char *out, unsigned short val) {
 #endif
 }
 
-static inline void doput32(unsigned char *out, unsigned int val) {
+static inline void doput32(unsigned char *out, unsigned char tag,
+		unsigned int val) {
+	out[0] = tag;
 #ifdef USE_BSWAP_NONSENSE
 	*(unsigned int *)(out + 1) = swap32(val);
 #else
@@ -87,7 +93,9 @@ static inline void doput32(unsigned char *out, unsigned int val) {
 #endif
 }
 
-static inline void doput64(unsigned char *out, unsigned int val) {
+static inline void doput64(unsigned char *out, unsigned char tag,
+		unsigned int val) {
+	out[0] = tag;
 #ifdef USE_BSWAP_NONSENSE
 	// Clang is smart enough to make this into two bswaps and a word swap in
 	// 32-bit builds. MSVC seems to be fine too when using the above intrinsics.
@@ -100,71 +108,103 @@ static inline void doput64(unsigned char *out, unsigned int val) {
 #endif
 }
 
-void msg_putnil(unsigned char *out) {
-	*out = 0xC0;
-}
-
-void msg_putbool(unsigned char *out, _Bool val) {
-	*out = 0xC2 | val;
-}
-
-void msg_puti7(unsigned char *out, signed char val) {
-	*out = val; // oh, so a fixnum is just the literal byte! genius!
-}
-
 int msg_puts8(unsigned char *out, signed char val) {
-	int off = val < -32; // out of -ve fixnum range?
 	out[0] = 0xD0;
+	int off = val < -32; // out of -ve fixnum range?
 	out[off] = val;
 	return off + 1;
 }
 
+int msg_rputs8(unsigned char *end, signed char val) {
+	int off = val < -32;
+	end[-1 - off] = 0xD0;
+	end[-1] = val;
+	return off + 1;
+}
+
 int msg_putu8(unsigned char *out, unsigned char val) {
-	int off = val > 127; // out of +ve fixnum range?
 	out[0] = 0xCC;
+	int off = val > 127; // out of +ve fixnum range?
 	out[off] = val;
+	return off + 1;
+}
+
+int msg_rputu8(unsigned char *end, unsigned char val) {
+	int off = val > 127;
+	end[-1 - off] = 0xCC;
+	end[-1] = val;
 	return off + 1;
 }
 
 int msg_puts16(unsigned char *out, short val) {
 	if (val >= -128 && val <= 127) return msg_puts8(out, val);
-	out[0] = 0xD1;
-	doput16(out, val);
+	doput16(out, 0xD1, val);
+	return 3;
+}
+
+int msg_rputs16(unsigned char *end, short val) {
+	if (val >= -128 && val <= 127) return msg_rputs8(end, val);
+	doput16(end - 3, 0xD1, val);
 	return 3;
 }
 
 int msg_putu16(unsigned char *out, unsigned short val) {
 	if (val <= 255) return msg_putu8(out, val);
-	out[0] = 0xCD;
-	doput16(out, val);
+	doput16(out, 0xCD, val);
+	return 3;
+}
+
+int msg_rputu16(unsigned char *end, unsigned short val) {
+	if (val <= 255) return msg_rputu8(end, val);
+	doput16(end - 3, 0xCD, val);
 	return 3;
 }
 
 int msg_puts32(unsigned char *out, int val) {
 	if (val >= -32768 && val <= 32767) return msg_puts16(out, val);
-	out[0] = 0xD2;
-	doput32(out, val);
+	doput32(out, 0xD2, val);
+	return 5;
+}
+
+int msg_rputs32(unsigned char *end, int val) {
+	if (val >= -32768 && val <= 32767) return msg_rputs16(end, val);
+	doput32(end - 5, 0xD2, val);
 	return 5;
 }
 
 int msg_putu32(unsigned char *out, unsigned int val) {
-	if (val <= 65535) return msg_putu16(out, val);
-	out[0] = 0xCE;
-	doput32(out, val);
+	if (val <= 65536) return msg_putu16(out, val);
+	doput32(out, 0xCE, val);
+	return 5;
+}
+
+int msg_rputu32(unsigned char *end, unsigned int val) {
+	if (val <= 65536) return msg_rputu16(end, val);
+	doput32(end - 5, 0xCE, val);
 	return 5;
 }
 
 int msg_puts(unsigned char *out, long long val) {
 	if (val >= -2147483648 && val <= 2147483647) return msg_puts32(out, val);
-	out[0] = 0xD3;
-	doput64(out, val);
+	doput64(out, 0xD3, val);
+	return 9;
+}
+
+int msg_rputs(unsigned char *end, long long val) {
+	if (val >= -2147483648 && val <= 2147483647) return msg_rputs32(end, val);
+	doput64(end - 9, 0xD3, val);
 	return 9;
 }
 
 int msg_putu(unsigned char *out, unsigned long long val) {
 	if (val <= 4294967295) return msg_putu32(out, val);
-	out[0] = 0xCF;
-	doput64(out, val);
+	doput64(out, 0xCF, val);
+	return 9;
+}
+
+int msg_rputu(unsigned char *end, unsigned long long val) {
+	if (val <= 4294967295) return msg_rputu32(end, val);
+	doput64(end - 9, 0xCF, val);
 	return 9;
 }
 
@@ -177,96 +217,124 @@ static inline unsigned long long doublebits(double d) {
 }
 
 void msg_putf(unsigned char *out, float val) {
-	out[0] = 0xCA;
-	doput32(out, floatbits(val));
+	doput32(out, 0xCA, floatbits(val));
 }
 
 int msg_putd(unsigned char *out, double val) {
 	// XXX: is this really the most efficient way to check this?
 	float f = val;
 	if ((double)f == val) { msg_putf(out, f); return 5; }
-	out[0] = 0xCA;
-	doput64(out, doublebits(val));
-	return 9;
+	doput64(out, 0xCA, doublebits(val)); return 9;
 }
 
-void msg_putssz5(unsigned char *out, int sz) {
-	*out = 0xA0 | sz;
+int msg_rputd(unsigned char *end, double val) {
+	float f = val;
+	if ((double)f == val) { msg_rputf(end, f); return 5; }
+	doput64(end - 9, 0xCA, doublebits(val)); return 9;
 }
 
 int msg_putssz8(unsigned char *out, int sz) {
 	if (sz < 32) { msg_putssz5(out, sz); return 1; }
-	out[0] = 0xD9;
-	out[1] = sz;
-	return 2;
+	out[0] = 0xD9; out[1] = sz; return 2;
 }
 
-int msg_putssz16(unsigned char *out, int sz) {
-	if (sz < 256) return msg_putssz8(out, sz);
-	out[0] = 0xDA;
-	doput16(out, sz);
+int msg_rputssz8(unsigned char *end, int sz) {
+	if (sz < 32) { msg_putssz5(end - 1, sz); return 1; }
+	end[-2] = 0xD9; end[-1] = sz; return 2;
+}
+
+int msg_putssz16(unsigned char *out, int val) {
+	if (val <= 255) return msg_putssz8(out, val);
+	doput16(out, 0xDA, val);
 	return 3;
 }
 
-int msg_putssz(unsigned char *out, unsigned int sz) {
-	if (sz < 65536) return msg_putssz16(out, sz);
-	out[0] = 0xDB;
-	doput32(out, sz);
-	return 5;
-}
-
-void msg_putbsz8(unsigned char *out, int sz) {
-	out[0] = 0xC4;
-	out[1] = sz;
-}
-
-int msg_putbsz16(unsigned char *out, int sz) {
-	if (sz < 256) { msg_putbsz8(out, sz); return 2; }
-	out[0] = 0xC5;
-	doput16(out, sz);
-	return 2 + sz;
-}
-
-int msg_putbsz(unsigned char *out, unsigned int sz) {
-	if (sz < 65536) return msg_putbsz16(out, sz);
-	out[0] = 0xC6;
-	doput32(out, sz);
-	return 5;
-}
-
-void msg_putasz4(unsigned char *out, int sz) {
-	*out = 0x90 | sz;
-}
-
-int msg_putasz16(unsigned char *out, int sz) {
-	if (sz < 16) { msg_putasz4(out, sz); return 1; }
-	out[0] = 0xDC;
-	doput16(out, sz);
+int msg_rputssz16(unsigned char *end, int val) {
+	if (val <= 255) return msg_rputssz8(end, val);
+	doput16(end - 3, 0xDA, val);
 	return 3;
 }
 
-int msg_putasz(unsigned char *out, unsigned int sz) {
-	if (sz < 65536) return msg_putasz16(out, sz);
-	out[0] = 0xDD;
-	doput32(out, sz);
-	return 5;
+int msg_putssz(unsigned char *out, unsigned int val) {
+	if (val <= 65535) return msg_putssz16(out, val);
+	doput32(out, 0xDB, val);
+	return (32) / 8 + 1;
+}
+int msg_rputssz(unsigned char *end, unsigned int val) {
+	if (val <= 65535) return msg_rputssz16(end, val);
+	doput32(end - (32) / 8 - 1, 0xDB, val);
+	return (32) / 8 + 1;
 }
 
-void msg_putmsz4(unsigned char *out, int sz) {
-	*out = 0x80 | sz;
-}
-
-int msg_putmsz16(unsigned char *out, int sz) {
-	if (sz < 16) { msg_putmsz4(out, sz); return 1; }
-	out[0] = 0xDE;
-	doput16(out, sz);
+int msg_putbsz16(unsigned char *out, int val) {
+	if (val <= 255) { msg_putbsz8(out, val); return 2; }
+	doput16(out, 0xC5, val);
 	return 3;
 }
 
-int msg_putmsz(unsigned char *out, unsigned int sz) {
-	if (sz < 65536) return msg_putmsz16(out, sz);
-	out[0] = 0xDF;
-	doput32(out, sz);
+int msg_rputbsz16(unsigned char *end, int val) {
+	if (val <= 255) { msg_rputbsz8(end, val); return 2; }
+	doput16(end - 3, 0xC5, val);
+	return 3;
+}
+
+int msg_putbsz(unsigned char *out, unsigned int val) {
+	if (val <= 65535) return msg_putbsz16(out, val);
+	doput32(out, 0xC6, val);
+	return 5;
+}
+
+int msg_rputbsz(unsigned char *end, unsigned int val) {
+	if (val <= 65535) return msg_rputbsz16(end, val);
+	doput32(end - 5, 0xC6, val);
+	return 5;
+}
+
+int msg_putasz16(unsigned char *out, int val) {
+	if (val <= 15) { msg_putasz4(out, val); return 1; }
+	doput16(out, 0xDC, val);
+	return 3;
+}
+
+int msg_rputasz16(unsigned char *end, int val) {
+	if (val <= 15) { msg_rputasz4(end, val); return 1; }
+	doput16(end - 3, 0xDC, val);
+	return 3;
+}
+
+int msg_putasz(unsigned char *out, unsigned int val) {
+	if (val <= 65535) return msg_putasz16(out, val);
+	doput32(out, 0xDD, val);
+	return 5;
+}
+
+int msg_rputasz(unsigned char *end, unsigned int val) {
+	if (val <= 65535) return msg_rputasz16(end, val);
+	doput32(end - 5, 0xDD, val);
+	return 5;
+}
+
+int msg_putmsz16(unsigned char *out, int val) {
+	if (val <= 15) { msg_putmsz4(out, val); return 1; }
+	doput16(out, 0xDE, val);
+	return 3;
+}
+
+int msg_rputmsz16(unsigned char *end, int val) {
+	if (val <= 15) { msg_rputmsz4(end, val); return 1; }
+	doput16(end - 3, 0xDE, val);
+	return 3;
+}
+
+int msg_putmsz(unsigned char *out, unsigned int val) {
+	if (val <= 65535) return msg_putmsz16(out, val);
+	doput32(out, 0xDF, val);
+	return 5;
+}
+
+int msg_rputmsz(unsigned char *end, unsigned int val) {
+	if (val <= 65535) return msg_rputmsz16(end, val);
+	doput32(end - 5, 0xDF, val);
 	return 5;
 }
 
