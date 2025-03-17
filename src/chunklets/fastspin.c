@@ -1,5 +1,5 @@
 /*
- * Copyright © 2023 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -21,8 +21,6 @@ keywords and APIs which have syntactically different equivalents for C++.
 
 #include <stdatomic.h>
 
-#include "fastspin.h"
-
 _Static_assert(sizeof(int) == sizeof(_Atomic int),
 	"This library assumes that ints in memory can be treated as atomic");
 _Static_assert(_Alignof(int) == _Alignof(_Atomic int),
@@ -39,7 +37,7 @@ _Static_assert(_Alignof(int) == _Alignof(_Atomic int),
 #define RELAX() __asm__ volatile ("or 27, 27, 27" ::: "memory")
 #endif
 #elif defined(_MSC_VER)
-#if defined(_M_ARM || _M_ARM64)
+#if defined(_M_ARM) || defined(_M_ARM64)
 #define RELAX() __yield()
 #else
 void _mm_pause(); // don't pull in emmintrin.h for this
@@ -184,7 +182,7 @@ static inline void futex_wake1(int *p) {
 
 #define futex_wait serenity_futex_wait // static inline helper in their header
 #include <serenity.h>
-#undef
+#undef futex_wait
 
 static inline void futex_wait(int *p, int val) {
 	futex(p, FUTEX_WAIT, val, 0, 0, 0);
