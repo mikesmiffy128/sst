@@ -35,13 +35,17 @@ static void chflags(const char *name, int unset, int set) {
 	if (v) v->parent->base.flags = v->parent->base.flags & ~unset | set;
 }
 
-static void unhide(const char *name) {
+static inline void unhide(const char *name) {
 	chflags(name, CON_HIDDEN | CON_DEVONLY, 0);
 }
 
 static void chcmdflags(const char *name, int unset, int set) {
 	struct con_cmd *v = con_findcmd(name);
 	if (v) v->base.flags = v->base.flags & ~unset | set;
+}
+
+static inline void unhidecmd(const char *name) {
+	chcmdflags(name, CON_HIDDEN | CON_DEVONLY, 0);
 }
 
 static void generalfixes() {
@@ -51,7 +55,7 @@ static void generalfixes() {
 	unhide("demo_fastforwardfinalspeed");
 	unhide("demo_fastforwardramptime");
 	unhide("demo_fastforwardstartspeed");
-	unhide("demo_gototick");
+	unhidecmd("demo_gototick");
 	unhide("demo_interplimit");
 	unhide("demo_legacy_rollback");
 	unhide("demo_pauseatservertick");
