@@ -58,6 +58,8 @@ vtidx_GetEngineBuildNumber
 	#Portal1_5135 102
 	#L4D1_1005 99
 	#L4D1_Steam 97
+vtidx_ManageAddonsForActiveSession
+	L4D2_2147plus 179
 
 # IGameUIFuncs
 vtidx_GetDesktopResolution 5

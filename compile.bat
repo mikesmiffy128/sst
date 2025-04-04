@@ -88,6 +88,7 @@ setlocal DisableDelayedExpansion
 :+ hud.c
 :+ inputhud.c
 :+ kvsys.c
+:+ l4daddon.c
 :+ l4dmm.c
 :+ l4dreset.c
 :+ l4dwarp.c
