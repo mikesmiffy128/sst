@@ -19,7 +19,6 @@
 
 #ifdef _WIN32
 #include <Windows.h>
-#include <werapi.h>
 #else
 #include <sys/mman.h>
 #endif
@@ -237,7 +236,8 @@ bool ac_enable() {
 		inhook_start(&sig);
 		fastspin_wait(&sig);
 		if_cold (sig == 2) { // else 1 for success
-			con_warn("** sst: ERROR starting message loop, can't continue! **");
+			con_warn("** sst: ERROR starting message loop, "
+					"can't continue! **");
 			CloseHandle(inhookthr);
 			return false;
 		}
@@ -256,11 +256,9 @@ HANDLE_EVENT(Tick, bool simulating) {
 }
 
 void ac_disable() {
-	if (enabled) {
 #ifdef _WIN32
-		inhook_stop();
+	if (enabled) inhook_stop();
 #endif
-	}
 	enabled = false;
 }
 
@@ -333,6 +331,7 @@ static bool find_Key_Event() {
 	}
 	errmsg_errorx("couldn't find pointer to CGame instance");
 	return false;
+
 ok:	insns = (const uchar *)VFUNC(cgame, DispatchAllStoredGameMessages);
 	for (const uchar *p = insns; p - insns < 128;) {
 		if (p[0] == X86_CALL) {
@@ -343,8 +342,8 @@ ok:	insns = (const uchar *)VFUNC(cgame, DispatchAllStoredGameMessages);
 	}
 	errmsg_errorx("couldn't find DispatchInputEvent/Key_Event function");
 	return false;
-ok2:
-	insns = (const uchar *)orig_Key_Event;
+
+ok2:insns = (const uchar *)orig_Key_Event;
 	// Depending on compiler inlining decisions, the function we just found can
 	// be either DispatchInputEvent or Key_Event. If another CALL is found at
 	// the start of this function, that means that we actually found
@@ -364,7 +363,7 @@ ok2:
 }
 
 HANDLE_EVENT(AllowPluginLoading, bool loading) {
-	if_cold(enabled) if_hot(demorec_demonum() != -1) {
+	if_cold (enabled) if_hot (demorec_demonum() != -1) {
 		con_warn("sst: plugins cannot be %s while recording a run\n",
 				loading ? "loaded" : "unloaded");
 		return false;
@@ -396,12 +395,7 @@ INIT {
 	}
 	if_cold (!VirtualLock(keybox, 4096)) {
 		errmsg_errorsys("couldn't secure session state");
-		goto e2;
-	}
-	if_cold (WerRegisterExcludedMemoryBlock(keybox, 4096) != S_OK) {
-		// FIXME: stringify errors properly here
-		errmsg_errorx("couldn't secure session state");
-		goto e2;
+		goto e;
 	}
 	if_cold (!win32_init()) goto e;
 #else
@@ -432,8 +426,7 @@ INIT {
 	return FEAT_OK;
 
 #ifdef _WIN32
-e:	WerUnregisterExcludedMemoryBlock(keybox); // this'd better not fail!
-e2:	VirtualFree(keybox, 4096, MEM_RELEASE);
+e:	VirtualFree(keybox, 4096, MEM_RELEASE);
 #else
 e:	munmap(keybox, 4096);
 #endif
@@ -442,10 +435,9 @@ e:	munmap(keybox, 4096);
 }
 
 END {
+	// TODO(opt): *maybe* do the skip-on-quit stuff here. feels a bit scary...
 	ac_disable();
 #if defined(_WIN32)
-	// TODO(opt): *maybe* do the skip-on-quit stuff here. feels a bit scary...
-	WerUnregisterExcludedMemoryBlock(keybox); // this'd better not fail!
 	VirtualFree(keybox, 4096, MEM_RELEASE);
 	win32_end();
 #else
