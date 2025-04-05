@@ -310,8 +310,22 @@ static const char *const fontnames[] = {
 };
 static struct { ulong h; int sz; } fonts[countof(fontnames)];
 
+
+static int lastw = 0, lasth = 0;
+
+static void reloadfonts() {
+	for (int i = 0; i < countof(fontnames); ++i) {
+		if (fonts[i].h = hud_getfont(fontnames[i], true)) {
+			int dummy;
+			// use (roughly) the widest string as a reference for what will fit
+			hud_textsize(fonts[i].h, L"Speed", &fonts[i].sz, &dummy);
+		}
+	}
+}
+
 HANDLE_EVENT(HudPaint, int screenw, int screenh) {
 	if (!con_getvari(sst_inputhud)) return;
+	if_cold (screenw != lastw || screenh != lasth) reloadfonts();
 	int basesz = screenw > screenh ? screenw : screenh;
 	int boxsz = ceilf(basesz * 0.025f);
 	if (boxsz < 24) boxsz = 24;
@@ -382,13 +396,6 @@ INIT {
 	if (!find_input(vclient)) {
 		errmsg_errorx("couldn't find input global");
 		return FEAT_INCOMPAT;
-	}
-	for (int i = 0; i < countof(fontnames); ++i) {
-		if (fonts[i].h = hud_getfont(fontnames[i], true)) {
-			int dummy;
-			// use (roughly) the widest string as a reference for what will fit
-			hud_textsize(fonts[i].h, L"Speed", &fonts[i].sz, &dummy);
-		}
 	}
 	void **vtable = mem_loadptr(input);
 	// just unprotect the first few pointers (GetUserCmd is 8)
