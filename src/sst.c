@@ -414,7 +414,26 @@ static void hook_plugin_load_cb(const struct con_cmdargs *args) {
 static void hook_plugin_unload_cb(const struct con_cmdargs *args) {
 	if (args->argc == 1) return;
 	if (!CHECK_AllowPluginLoading(false)) return;
-	int idx = atoi(args->argv[1]);
+	if (!*args->argv[1]) {
+		errmsg_errorx("plugin_unload expects a numeric index");
+		return;
+	}
+	// catch the very common user error of plugin_unload <name> and try to hint
+	// people in the right direction. otherwise strings get atoi()d silently
+	// into zero, which is just confusing and unhelpful. don't worry about
+	// numeric range/overflow, worst case scenario we get a sev 9.8 CVE for it.
+	char *end;
+	int idx = strtol(args->argv[1], &end, 10);
+	if (end == args->argv[1]) {
+		errmsg_errorx("plugin_unload takes a number, not a name");
+		errmsg_note("use plugin_print to get a list of plugin indices");
+		return;
+	}
+	if (*end) {
+		errmsg_errorx("unexpected trailing characters "
+				"(plugin_unload takes a number)");
+		return;
+	}
 	struct CPlugin **plugins = pluginhandler->plugins.m.mem;
 	if_hot (idx >= 0 && idx < pluginhandler->plugins.sz) {
 		const struct CPlugin *plugin = plugins[idx];
