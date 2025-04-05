@@ -33,7 +33,7 @@ typedef int hud_wchar;
  * Emitted when the game HUD is being drawn. Allows features to draw their own
  * additional overlays atop the game's standard HUD.
  */
-DECL_EVENT(HudPaint, void)
+DECL_EVENT(HudPaint, int /*width*/, int /*height*/)
 
 /* Font style flags */
 #define HUD_FONT_ITALIC 1

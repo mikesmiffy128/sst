@@ -54,11 +54,9 @@ static inline void drawrect(int x0, int y0, int x1, int y1, struct rgba colour,
 	if (outline) hud_drawrect(x0, y0, x1, y1, (struct rgba){.a = 255}, false);
 }
 
-HANDLE_EVENT(HudPaint) {
+HANDLE_EVENT(HudPaint, int w, int h) {
 	if (!con_getvari(sst_xhair)) return;
 	if (has_vtidx_IsInGame && engclient && !IsInGame(engclient)) return;
-	int w, h;
-	hud_screensize(&w, &h);
 	int thick = con_getvari(sst_xhair_thickness);
 	int thick1 = (thick + 1) / 2, thick2 = thick - thick1;
 	int sz = con_getvari(sst_xhair_size);

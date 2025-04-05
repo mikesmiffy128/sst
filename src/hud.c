@@ -58,7 +58,7 @@ REQUIRE_GAMEDATA(vtidx_GetIScheme)
 // IScheme
 REQUIRE_GAMEDATA(vtidx_GetFont)
 
-DEF_EVENT(HudPaint)
+DEF_EVENT(HudPaint, int /*width*/, int /*height*/)
 
 // we just use ulongs for API, but keep a struct for vcalls to ensure we get the
 // right calling convention (x86 Windows/MSVC is funny about passing structs...)
@@ -96,10 +96,9 @@ static void *matsurf, *toolspanel, *scheme;
 typedef void (*VCALLCONV Paint_func)(void *);
 static Paint_func orig_Paint;
 void VCALLCONV hook_Paint(void *this) {
-	// hopefully a smart branch predictor can figure this out - but we still
-	// want it to be the "slow" path, so that every other path does *not* need a
-	// prediction record. or.. I dunno, in theory that does make sense. shrug.
-	if_cold (this == toolspanel) EMIT_HudPaint();
+	int width, height;
+	hud_screensize(&width, &height);
+	if (this == toolspanel) EMIT_HudPaint(width, height);
 	orig_Paint(this);
 }
 

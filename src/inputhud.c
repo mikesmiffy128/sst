@@ -310,10 +310,8 @@ static const char *const fontnames[] = {
 };
 static struct { ulong h; int sz; } fonts[countof(fontnames)];
 
-HANDLE_EVENT(HudPaint) {
+HANDLE_EVENT(HudPaint, int screenw, int screenh) {
 	if (!con_getvari(sst_inputhud)) return;
-	int screenw, screenh;
-	hud_screensize(&screenw, &screenh);
 	int basesz = screenw > screenh ? screenw : screenh;
 	int boxsz = ceilf(basesz * 0.025f);
 	if (boxsz < 24) boxsz = 24;
