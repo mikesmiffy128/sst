@@ -26,8 +26,9 @@
 #define assume(x) ((void)(__assume(x), 0))
 #define cold __declspec(noinline)
 #else
-#define unreachable ((void)(0)) // might still give some warnings, but too bad
-#define assume(x) ((void)0)
+static inline _Noreturn void _invoke_ub(void) {}
+#define unreachable (_invoke_ub())
+#define assume(x) ((void)(!!(x) || (_invoke_ub(), 0)))
 #define cold
 #endif
 #endif
