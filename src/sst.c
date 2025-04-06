@@ -270,7 +270,18 @@ static bool already_loaded = false, skip_unload = false;
 
 // auto-update message. see below in do_featureinit()
 static const char *updatenotes = "\
-* More behind-the-scenes changes, as always\n\
+* Fixed the plugin crashing on game exit\n\
+* Fixed a crash under Wine/Proton\n\
+* Added sst_inputhud to visualise inputs in-game or in demo playback\n\
+* Increased sst_mouse_factor limit from 20 to 100\n\
+* sst_l4d_testwarp now performs the take-control unsticking step by default\n\
+* Added sst_l4d_previewwarp to visualise warp unsticking logic\n\
+* Added a fix for lag/stuttering in newer L4D2 versions caused by addon loading\n\
+* Added a fix for disabling all addons in L4D2 requiring a game restart\n\
+* Removed multiplayer chat rate limit in L4D series and Portal 2\n\
+* Made L4D1 demo playback backwards-compatible for Steam version demos (1022+)\n\
+* plugin_unload now displays an error when used incorrectly (without a number)\n\
+* Rewrote and optimised a whole bunch of internal stuff\n\
 ";
 
 enum { // used in generated code, must line up with 
