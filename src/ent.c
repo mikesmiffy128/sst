@@ -51,7 +51,7 @@ struct edict *ent_getedict(int idx) {
 
 void *ent_get(int idx) {
 	struct edict *e = ent_getedict(idx);
-	if_hot(e) return e->ent_unknown;
+	if_hot (e) return e->ent_unknown;
 	return 0;
 }
 
