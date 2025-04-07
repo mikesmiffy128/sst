@@ -1,7 +1,7 @@
 /*
- * Copyright © 2025 Hayden K <imaciidz@gmail.com>
- * Copyright © 2025 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © Hayden K <imaciidz@gmail.com>
+ * Copyright © Willian Henrique <wsimanbrazil@yahoo.com.br>
+ * Copyright © Michael Smith <mikesmiffy128@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above

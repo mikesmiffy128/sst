@@ -1,8 +1,8 @@
 /*
- * Copyright © 2023 Matthew Wozniak <sirtomato999@gmail.com>
- * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
- * Copyright © 2023 Willian Henrique <wsimanbrazil@yahoo.com.br>
- * Copyright © 2025 Hayden K <imaciidz@gmail.com>
+ * Copyright © Matthew Wozniak <sirtomato999@gmail.com>
+ * Copyright © Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © Willian Henrique <wsimanbrazil@yahoo.com.br>
+ * Copyright © Hayden K <imaciidz@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
