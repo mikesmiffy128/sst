@@ -1,5 +1,6 @@
 /*
  * Copyright © 2025 Michael Smith <mikesmiffy128@gmail.com>
+ * Copyright © 2025 Hayden K <imaciidz@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -103,7 +104,7 @@ bool l4dmm_firstmap() {
 				"CONTEXT_L4D_LEVEL");
 		if (!ctxt) return 0;
 		if (strncmp(ctxt->val, "CONTEXT_L4D_LEVEL_", 18)) return false;
-		return !strcmp(ctxt->val + 18, "APARTMENTS") ||
+		return !strcmp(ctxt->val + 18, "APARTMENT") ||
 				!strcmp(ctxt->val + 18, "CAVES") ||
 				!strcmp(ctxt->val + 18, "GREENHOUSE") ||
 				!strcmp(ctxt->val + 18, "HILLTOP");

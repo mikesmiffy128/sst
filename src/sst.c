@@ -272,6 +272,7 @@ static bool already_loaded = false, skip_unload = false;
 static const char *updatenotes = "\
 * Fixed the plugin crashing on game exit\n\
 * Fixed a crash under Wine/Proton\n\
+* Fixed sst_l4d_quickreset in L4D1 No Mercy\n\
 * Added sst_inputhud to visualise inputs in-game or in demo playback\n\
 * Increased sst_mouse_factor limit from 20 to 100\n\
 * sst_l4d_testwarp now performs the take-control unsticking step by default\n\
