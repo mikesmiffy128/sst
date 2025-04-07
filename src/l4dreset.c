@@ -344,6 +344,8 @@ static int getffidx(const char *campaign) {
 DEF_FEAT_CVAR(sst_l4d_quickreset_fastfwd,
 		"Fast-forward through cutscenes when quick-resetting", 1, CON_ARCHIVE)
 
+static int *FinaleEscapeState;
+
 DEF_FEAT_CCMD_HERE(sst_l4d_quickreset,
 		"Reset (or switch) campaign and clear all vote cooldowns", 0) {
 	if (cmd->argc > 2) {
@@ -374,6 +376,7 @@ DEF_FEAT_CCMD_HERE(sst_l4d_quickreset,
 			(ffidx = getffidx(campaign)) != -1) {
 		ffdelay = 45; // 1.5s
 	}
+	if (FinaleEscapeState) *FinaleEscapeState = 0; // see comment in INIT
 }
 
 // Note: this returns a pointer to subsequent bytes for find_voteissues() below
@@ -497,6 +500,9 @@ ok:	// Director::Update calls UnfreezeTeam after the first jmp instruction
 	return false;
  }
 
+
+DECL_VFUNC_DYN(int, GetEngineBuildNumber)
+
 INIT {
 	struct con_cmd *cmd_listissues = con_findcmd("listissues");
 	if_cold (!cmd_listissues) {
@@ -564,6 +570,16 @@ INIT {
 		if_cold (!find_votecallers(vtable[vtidx_Spawn])) {
 			errmsg_errorx("couldn't find vote callers list offset");
 nocd:		errmsg_note("resetting a first map will not clear vote cooldowns");
+		}
+		// Additionally, unrelated to cooldown, get a pointer to the director
+		// member responsible for the infamous bug at the start of Swamp and
+		// Crash Course which gives god mode and prevents idling and voting.
+		// We clear the value at the end of the quickreset handler above to
+		// replicate Valve's own bugfix (introduced in 2112) which clears it in
+		// CDirector::Reset().
+		if (has_vtidx_GetEngineBuildNumber &&
+				GetEngineBuildNumber(engclient) < 2112) {
+			FinaleEscapeState = mem_offset(director, off_FinaleEscapeState);
 		}
 	}
 	return FEAT_OK;

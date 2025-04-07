@@ -277,6 +277,7 @@ static const char *updatenotes = "\
 * Increased sst_mouse_factor limit from 20 to 100\n\
 * sst_l4d_testwarp now performs the take-control unsticking step by default\n\
 * Added sst_l4d_previewwarp to visualise warp unsticking logic\n\
+* sst_l4d_quickreset now fixes the Swamp Fever/Crash Course \"god mode glitch\"\n\
 * Added a fix for lag/stuttering in newer L4D2 versions caused by addon loading\n\
 * Added a fix for disabling all addons in L4D2 requiring a game restart\n\
 * Removed multiplayer chat rate limit in L4D series and Portal 2\n\

@@ -42,6 +42,8 @@ vtidx_GameShutdown 7
 vtidx_OnGameplayStart
 	L4D2 11 # note: just happens to be the same on linux!
 	L4D1 11
+off_FinaleEscapeState
+	L4D2 164 # only currently needed for 2000-2111 to fix the swamp 1 bug
 
 # CInput
 vtidx_CreateMove 3
