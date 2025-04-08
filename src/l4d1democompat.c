@@ -49,9 +49,9 @@ static GetHostVersion_func orig_GetHostVersion;
 typedef void (*VCALLCONV ReadDemoHeader_func)(void *);
 static ReadDemoHeader_func orig_ReadDemoHeader;
 
-static inline bool find_ReadDemoHeader(con_cmdcb cb) {
+static inline bool find_ReadDemoHeader(con_cmdcb listdemo_cb) {
 	// Find the call to ReadDemoHeader in the listdemo callback
-	const uchar *insns = (const uchar*)cb;
+	const uchar *insns = (const uchar *)listdemo_cb;
 	for (const uchar *p = insns; p - insns < 192;) {
 		if (p[0] == X86_LEA && p[1] == X86_MODRM(2, 1, 4) && p[2] == 0x24 &&
 				p[7] == X86_CALL && p[12] == X86_LEA &&
@@ -135,9 +135,9 @@ static int hook_midpoint() {
 }
 
 INIT {
-	con_cmdcb orig_listdemo_cb = con_findcmd("listdemo")->cb;
-	if_cold (!orig_listdemo_cb) return FEAT_INCOMPAT;
-	if_cold (!find_ReadDemoHeader(orig_listdemo_cb)) {
+	struct con_cmd *cmd_listdemo = con_findcmd("listdemo");
+	if_cold (!cmd_listdemo) return FEAT_INCOMPAT; // should never happen!
+	if_cold (!find_ReadDemoHeader(cmd_listdemo->cb)) {
 		errmsg_errorx("couldn't find ReadDemoHeader function");
 		return FEAT_INCOMPAT;
 	}

@@ -32,9 +32,9 @@ static uchar *patchedbyte;
 // So, instead of adding 0.66 to the current time, we subtract it, and that
 // means we can always chat immediately.
 
-static inline bool find_ratelimit_insn(struct con_cmd *cmd_say) {
+static inline bool find_ratelimit_insn(con_cmdcb say_cb) {
 	// Find the add instruction
-	uchar *insns = (uchar *)cmd_say->cb;
+	uchar *insns = (uchar *)say_cb;
 	for (uchar *p = insns; p - insns < 128;) {
 		// find FADD
 		if (p[0] == X86_FLTBLK5 && p[1] == X86_MODRM(0, 0, 5)) {
@@ -71,8 +71,8 @@ static inline void unpatch_ratelimit_insn() {
 
 INIT {
 	struct con_cmd *cmd_say = con_findcmd("say");
-	if_cold (!cmd_say) return false;
-	if (!find_ratelimit_insn(cmd_say)) {
+	if_cold (!cmd_say) return FEAT_INCOMPAT; // should never happen!
+	if (!find_ratelimit_insn(cmd_say->cb)) {
 		errmsg_errorx("couldn't find chat rate limit instruction");
 		return FEAT_INCOMPAT;
 	}
