@@ -29,19 +29,15 @@
 #define fS "s"
 #endif
 
-static inline noreturn die(int status, const char *s) {
+static cold noreturn die(int status, const char *s) {
 	fprintf(stderr, "gluegen: fatal: %s\n", s);
 	exit(status);
 }
 
-static inline noreturn diefile(int status, const os_char *f, int line,
+static cold noreturn diefile(int status, const os_char *f, int line,
 		const char *s) {
-	if (line) {
-		fprintf(stderr, "gluegen: fatal: %" fS ":%d: %s\n", f, line, s);
-	}
-	else {
-		fprintf(stderr, "gluegen: fatal: %" fS ": %s\n", f, s);
-	}
+	if (line) fprintf(stderr, "gluegen: fatal: %" fS ":%d: %s\n", f, line, s);
+	else fprintf(stderr, "gluegen: fatal: %" fS ": %s\n", f, s);
 	exit(status);
 }
 
@@ -330,7 +326,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 	for (u32 i = 0; i != cm->nitems; ++i) {
 		switch_exhaust_enum(cmeta_item, cm->itemtypes[i]) {
 			case CMETA_ITEM_DEF_CVAR:
-				if (!cmeta_nparams(cm, i)) {
+				if_cold (!cmeta_nparams(cm, i)) {
 					diefile(2, file, cmeta_line(cm, i),
 							"cvar macro missing required parameter");
 				}
@@ -349,7 +345,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 				}
 				break;
 			case CMETA_ITEM_DEF_CCMD:
-				if (!cmeta_nparams(cm, i)) {
+				if_cold (!cmeta_nparams(cm, i)) {
 					diefile(2, file, cmeta_line(cm, i),
 							"ccmd macro missing required parameter");
 				}
@@ -392,7 +388,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 				}
 				break;
 			case CMETA_ITEM_DEF_EVENT:
-				if (!cmeta_nparams(cm, i)) {
+				if_cold (!cmeta_nparams(cm, i)) {
 					diefile(2, file, cmeta_line(cm, i),
 							"event macro missing required parameter");
 				}
@@ -410,7 +406,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 				}
 				else {
 					e = r.stridx;
-					if (event_owners[e]) {
+					if_cold (event_owners[e]) {
 						diefile(2, file, cmeta_line(cm, i),
 							"conflicting event definition");
 					}
@@ -425,7 +421,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 				break;
 			case CMETA_ITEM_HANDLE_EVENT:
 				int nparams = cmeta_nparams(cm, i);
-				if (!nparams) {
+				if_cold (!nparams) {
 					diefile(2, file, cmeta_line(cm, i),
 							"event handler macro missing required parameter");
 				}
@@ -450,7 +446,8 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 				// note: if no param given, featdesc will still be null
 				cmeta_param_foreach (param, cm, i) {
 					mod_featdescs[mod] = param;
-					if (!radix_insertidx(featdescs, mod_featdescs, mod, true)) {
+					if_cold (!radix_insertidx(featdescs, mod_featdescs, mod,
+							true)) {
 						diefile(2, file, cmeta_line(cm, i),
 								"duplicate feature description text");
 					}
@@ -458,7 +455,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 				}
 				break;
 			case CMETA_ITEM_REQUIRE:
-				if (!cmeta_nparams(cm, i)) {
+				if_cold (!cmeta_nparams(cm, i)) {
 					diefile(2, file, cmeta_line(cm, i),
 							"dependency macro missing required parameter");
 				}
@@ -479,7 +476,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 							canpreinit = false;
 							s16 depmod = radix_lookup(mods, mod_names, param.s,
 									param.len, false);
-							if (!depmod) {
+							if_cold (!depmod) {
 								fprintf(stderr, "cmeta_fatal: %" fS ":%d: "
 										"feature `%.*s` does not exist\n",
 										file, cmeta_line(cm, i),
@@ -511,7 +508,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 				}
 				break;
 			case CMETA_ITEM_INIT:
-				if (hasinit) {
+				if_cold (hasinit) {
 					diefile(2, file, cmeta_line(cm, i), "multiple INIT blocks");
 				}
 				hasinit = true;
@@ -519,7 +516,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 				needfeat = "INIT block defined";
 				break;
 			case CMETA_ITEM_PREINIT:
-				if (haspreinit) {
+				if_cold (haspreinit) {
 					diefile(2, file, cmeta_line(cm, i),
 							"multiple PREINIT blocks");
 				}
@@ -528,29 +525,29 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 				needfeat = "PREINIT block defined";
 				break;
 			case CMETA_ITEM_END:
-				if (mod_flags[mod] & HAS_END) {
+				if_cold (mod_flags[mod] & HAS_END) {
 					diefile(2, file, cmeta_line(cm, i), "multiple END blocks");
 				}
 				mod_flags[mod] |= HAS_END;
 				needfeat = "END block defined";
 		}
 	}
-	if (needfeat && !isfeat) {
+	if_cold (needfeat && !isfeat) {
 		fprintf(stderr, "gluegen: fatal: %" fS ": %s without FEATURE()", file,
 				needfeat);
 		exit(2);
 	}
-	if (isfeat && !hasinit) {
+	if_cold (isfeat && !hasinit) {
 		diefile(2, file, 0, "feature is missing INIT block");
 	}
-	if (!canpreinit && haspreinit) {
+	if_cold (!canpreinit && haspreinit) {
 		diefile(2, file, 0, "cannot use dependencies along with PREINIT");
 	}
 }
 
 static int dfs(s16 mod, bool first);
 static int dfs_inner(s16 mod, s16 dep, bool first) {
-	if (!(mod_flags[dep] & HAS_INIT)) {
+	if_cold (!(mod_flags[dep] & HAS_INIT)) {
 		fprintf(stderr, "gluegen: fatal: feature `%.*s` tried to depend on "
 				"non-feature module `%.*s`\n",
 				mod_names[mod].len, mod_names[mod].s,
@@ -563,8 +560,7 @@ static int dfs_inner(s16 mod, s16 dep, bool first) {
 		// *so* horrendously and I'm not in the mood to replace stdio for this
 		// (maybe another time!)
 		case 1:
-			fprintf(stderr, ".-> %.*s\n",
-					mod_names[mod].len, mod_names[mod].s);
+			fprintf(stderr, ".-> %.*s\n", mod_names[mod].len, mod_names[mod].s);
 			return 2;
 		case 2:
 			fprintf(stderr, first ? "'-- %.*s\n" : "|   %.*s\n",
@@ -575,7 +571,7 @@ static int dfs_inner(s16 mod, s16 dep, bool first) {
 }
 static int dfs(s16 mod, bool first) {
 	if (mod_flags[mod] & DFS_SEEN) return 0;
-	if (mod_flags[mod] & DFS_SEEING) {
+	if_cold (mod_flags[mod] & DFS_SEEING) {
 		fprintf(stderr, "gluegen: fatal: feature dependency cycle:\n");
 		return 1;
 	}
@@ -593,15 +589,15 @@ static int dfs(s16 mod, bool first) {
 
 static inline void sortfeatures() {
 	for (int i = 1; i < nmods; ++i) {
-		if ((mod_flags[i] & HAS_INIT) && dfs(i, true)) exit(2);
+		if_cold ((mod_flags[i] & HAS_INIT) && dfs(i, true)) exit(2);
 	}
 }
 
-static inline noreturn diewrite() { die(100, "couldn't write to file"); }
+static cold noreturn diewrite() { die(100, "couldn't write to file"); }
 #define _(x) \
-	if (fprintf(out, "%s\n", x) < 0) diewrite();
+	if_cold (fprintf(out, "%s\n", x) < 0) diewrite();
 #define F(f, ...) \
-	if (fprintf(out, f "\n", __VA_ARGS__) < 0) diewrite();
+	if_cold (fprintf(out, f "\n", __VA_ARGS__) < 0) diewrite();
 #define H_() \
 	_("/* This file is autogenerated by src/build/gluegen.c. DO NOT EDIT! */")
 #define H() H_() _("")
@@ -628,7 +624,7 @@ _( "	}")
 
 static int evargs(FILE *out, s16 i, const char *suffix) {
 	int j = 1;
-	if (fprintf(out, "(") < 0) diewrite();
+	if_cold (fprintf(out, "(") < 0) diewrite();
 	list_foreach (struct cmeta_slice, param, event_params + i) {
 		if (param.len == 4 && !memcmp(param.s, "void", 4)) {
 			// UGH, crappy special case for (void). with C23 this could be
@@ -644,23 +640,23 @@ static int evargs(FILE *out, s16 i, const char *suffix) {
 		}
 		++j;
 	}
-	if (fputs(suffix, out) < 0) diewrite();
+	if_cold (fputs(suffix, out) < 0) diewrite();
 	return j;
 }
 
 static int evargs_notype(FILE *out, s16 i, const char *suffix) {
 	int j = 1;
-	if (fprintf(out, "(") < 0) diewrite();
+	if_cold (fprintf(out, "(") < 0) diewrite();
 	list_foreach(struct cmeta_slice, param, event_params + i) {
 		if (param.len == 4 && !memcmp(param.s, "void", 4)) {
 			break;
 		}
-		if (fprintf(out, "%sa%d", j == 1 ? "" : ", ", j) < 0) {
+		if_cold (fprintf(out, "%sa%d", j == 1 ? "" : ", ", j) < 0) {
 			diewrite();
 		}
 		++j;
 	}
-	if (fputs(suffix, out) < 0) diewrite();
+	if_cold (fputs(suffix, out) < 0) diewrite();
 	return j;
 }
 
@@ -844,14 +840,14 @@ _( "}")
 	for (int i = 1; i < nevents; ++i) {
 		const char *prefix = event_predicateflags[i] ?
 				"bool CHECK_" : "void EMIT_";
-		if (fprintf(out, "\n%s%.*s", prefix,
+		if_cold (fprintf(out, "\n%s%.*s", prefix,
 				event_names[i].len, event_names[i].s) < 0) {
 			diewrite();
 		}
 		evargs(out, i, ") {\n");
 		list_foreach(s16, mod, event_handlers + i) {
 			const char *type = event_predicateflags[i] ? "bool" : "void";
-			if (fprintf(out, "\t%s _evhandler_%.*s_%.*s", type,
+			if_cold (fprintf(out, "\t%s _evhandler_%.*s_%.*s", type,
 					mod_names[mod].len, mod_names[mod].s,
 					event_names[i].len, event_names[i].s) < 0) {
 				diewrite();
@@ -859,15 +855,15 @@ _( "}")
 			evargs(out, i, ");\n");
 			if (event_predicateflags[i]) {
 				if (mod_flags[mod] & HAS_INIT) {
-					if (fprintf(out, "\tif (has_%.*s && !",
+					if_cold (fprintf(out, "\tif (has_%.*s && !",
 							mod_names[mod].len, mod_names[mod].s) < 0) {
 						diewrite();
 					}
 				}
-				else if (fputs("\tif (!", out) < 0) {
+				else if_cold (fputs("\tif (!", out) < 0) {
 					diewrite();
 				}
-				if (fprintf(out, "_evhandler_%.*s_%.*s",
+				if_cold (fprintf(out, "_evhandler_%.*s_%.*s",
 						mod_names[mod].len, mod_names[mod].s,
 						event_names[i].len, event_names[i].s) < 0) {
 					diewrite();
@@ -875,14 +871,16 @@ _( "}")
 				evargs_notype(out, i, ")) return false;\n");
 			}
 			else {
-				if (fputc('\t', out) < 0) diewrite();
-				if ((mod_flags[mod] & HAS_INIT) && fprintf(out, "if (has_%.*s) ",
-						mod_names[mod].len, mod_names[mod].s) < 0) {
-					diewrite();
+				if_cold (fputc('\t', out) < 0) diewrite();
+				if ((mod_flags[mod] & HAS_INIT)) {
+					if_cold (fprintf(out, "if (has_%.*s) ",
+							mod_names[mod].len, mod_names[mod].s) < 0) {
+						diewrite();
+					}
 				}
-				if (fprintf(out, "_evhandler_%.*s_%.*s",
-					mod_names[mod].len, mod_names[mod].s,
-					event_names[i].len, event_names[i].s) < 0) {
+				if_cold (fprintf(out, "_evhandler_%.*s_%.*s",
+						mod_names[mod].len, mod_names[mod].s,
+						event_names[i].len, event_names[i].s) < 0) {
 					diewrite();
 				}
 				evargs_notype(out, i, ");\n");
@@ -897,7 +895,7 @@ _( "}")
 
 int OS_MAIN(int argc, os_char *argv[]) {
 	s16 modlookup = 0, featdesclookup = 0, eventlookup = 0;
-	if (argc > MAX_MODULES) {
+	if_cold (argc > MAX_MODULES) {
 		die(2, "too many files passed - increase MAX_MODULES in gluegen.c!");
 	}
 	nmods = argc;
@@ -931,7 +929,7 @@ int OS_MAIN(int argc, os_char *argv[]) {
 			modname.s = p; modname.len = len - lastpart - 2;
 		}
 		mod_names[i] = modname;
-		if (!radix_insertidx(&modlookup, mod_names, i, false)) {
+		if_cold (!radix_insertidx(&modlookup, mod_names, i, false)) {
 			// XXX: might have to fix this some day to handle subdirs and such.
 			// for now we rely on it happening not to be a problem basically lol
 			diefile(2, f, 0, "duplicate module name");
@@ -944,7 +942,7 @@ int OS_MAIN(int argc, os_char *argv[]) {
 	// double check that events are defined. the compiler would also catch this,
 	// but we can do it faster and with arguably more helpful error information.
 	for (int i = 1; i < nevents; ++i) {
-		if (!event_owners[i]) {
+		if_cold (!event_owners[i]) {
 			fprintf(stderr, "gluegen: fatal: undefined event %.*s\n",
 					event_names[i].len, event_names[i].s);
 			exit(2);
@@ -953,10 +951,10 @@ int OS_MAIN(int argc, os_char *argv[]) {
 	sortfeatures();
 
 	FILE *out = fopen(".build/include/glue.gen.h", "wb");
-	if (!out) die(100, "couldn't open .build/include/glue.gen.h");
+	if_cold (!out) die(100, "couldn't open .build/include/glue.gen.h");
 	H()
 	gencode(out, featdesclookup);
-	if (fflush(out)) die(100, "couldn't finish writing output");
+	if_cold (fflush(out)) die(100, "couldn't finish writing output");
 	return 0;
 }
 

@@ -67,21 +67,21 @@ Type *array_of(Type *base, int len) {
 #include "../3p/openbsd/asprintf.c" // missing from libc; plonked here for now
 #endif
 
-static noreturn die(int status, const char *s) {
+static cold noreturn die(int status, const char *s) {
 	fprintf(stderr, "cmeta: fatal: %s\n", s);
 	exit(status);
 }
 
 struct cmeta cmeta_loadfile(const os_char *path) {
 	int f = os_open_read(path);
-	if (f == -1) die(100, "couldn't open file");
+	if_cold (f == -1) die(100, "couldn't open file");
 	vlong len = os_fsize(f);
-	if (len > 1u << 30 - 1) die(2, "input file is far too large");
+	if_cold (len > 1u << 30 - 1) die(2, "input file is far too large");
 	struct cmeta ret;
 	ret.sbase = malloc(len + 1);
 	ret.sbase[len] = '\0'; // chibicc needs a null terminator
-	if (!ret.sbase) die(100, "couldn't allocate memory");
-	if (os_read(f, ret.sbase, len) != len) die(100, "couldn't read file");
+	if_cold (!ret.sbase) die(100, "couldn't allocate memory");
+	if_cold (os_read(f, ret.sbase, len) != len) die(100, "couldn't read file");
 	int maxitems = len / 4; // shortest word is "END"
 	ret.nitems = 0;
 	// eventual overall memory requirement: file size * 6. seems fine to me.
@@ -90,13 +90,13 @@ struct cmeta cmeta_loadfile(const os_char *path) {
 	//ret.itemoffs = malloc(maxitems * sizeof(*ret.itemoffs));
 	//if (!ret.itemoffs) die(100, "couldn't allocate memory");
 	ret.itemtoks = malloc(maxitems * sizeof(*ret.itemtoks));
-	if (!ret.itemtoks) die(100, "couldn't allocate memory");
+	if_cold (!ret.itemtoks) die(100, "couldn't allocate memory");
 	ret.itemtypes = malloc(maxitems * sizeof(*ret.itemtypes));
-	if (!ret.itemtypes) die(100, "couldn't allocate memory");
+	if_cold (!ret.itemtypes) die(100, "couldn't allocate memory");
 	os_close(f);
 #ifdef _WIN32
 	char *realname = malloc(wcslen(path) + 1);
-	if (!realname) die(100, "couldn't allocate memory");
+	if_cold (!realname) die(100, "couldn't allocate memory");
 	// XXX: being lazy about Unicode right now; a general purpose tool should
 	// implement WTF8 or something. SST itself doesn't have any unicode paths
 	// though, so we don't really care as much. this code still sucks though.
