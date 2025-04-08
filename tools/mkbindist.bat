@@ -5,7 +5,7 @@
 :: worry about that later.
 :: NOTE: requires 7-zip, either in the default installation dir or %SEVENZIP%
 
-call compile.bat || exit /B
+call compile.bat || goto :end
 if not exist release\ md release
 if "%SEVENZIP%"=="" set SEVENZIP=C:\Program Files\7-Zip\7z.exe
 setlocal EnableDelayedExpansion
@@ -17,14 +17,16 @@ for /F "tokens=* usebackq" %%x IN (`^(echo VERSION_MAJOR ^& echo VERSION_MINOR^)
 )
 setlocal DisableDelayedExpansion
 set name=sst-v%major%.%minor%-BETA-win32
-md TEMP-%name% || exit /B
-copy sst.dll TEMP-%name%\sst.dll || exit /B
-copy dist\LICENCE.windows TEMP-%name%\LICENCE || exit /B
+md TEMP-%name% || goto :end
+copy sst.dll TEMP-%name%\sst.dll || goto :end
+copy dist\LICENCE.windows TEMP-%name%\LICENCE || goto :end
 :: using midnight on release day to make zip deterministic! change on next release!
 powershell (Get-Item TEMP-%name%\sst.dll).LastWriteTime = new-object DateTime 2024, 8, 26, 0, 0, 0
 powershell (Get-Item TEMP-%name%\LICENCE).LastWriteTime = new-object DateTime 2024, 8, 26, 0, 0, 0
 pushd TEMP-%name%
-"%SEVENZIP%" a -mtc=off %name%.zip sst.dll LICENCE || exit /B
+"%SEVENZIP%" a -mtc=off %name%.zip sst.dll LICENCE || goto :end
 move %name%.zip ..\release\%name%.zip
 popd
-rd /s /q TEMP-%name%\ || exit /B
+rd /s /q TEMP-%name%\
+:end
+exit /b %errorlevel%
