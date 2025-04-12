@@ -10,7 +10,10 @@ Windows:
  • Install the Windows 10 SDK and MSVC toolset via the Visual Studio Installer
    (if you don’t care what else gets installed, installing the C++ Desktop
    workload should be fine).
- • Install native Clang from https://clang.llvm.org (NOT MinGW/MSYS2 Clang!).
+ • Install native Clang from the LLVM GitHub releases page. (NOT MinGW/MSYS2
+   Clang!). C23 support is required; at the time of writing Clang 16 worked, but
+   Clang 20 is being used now. If you get syntax errors or unexpected keywords
+   or something, your compiler is probably too old.
  • Run compile.bat (in lieu of a better build tool, to be added later).
 
 Linux:
@@ -22,9 +25,10 @@ Linux:
    they’re not already installed.
  • Run ./compile (in lieu of a better build tool, to be added later).
 
-NOTE: Linux code should compile now but still crashes on cvar registration and
-almost none of the features usefully work. In other words, it needs quite a lot
-more development before it's of use to anyone.
+NOTE: Linux code should maybe compile now but still crashes on cvar registration
+and almost none of the features usefully work. In other words, it needs quite a
+lot more development before it's of use to anyone. It's also not actively tested
+really so don't be surprised if it doesn't compile at all again at some point.
 
 ════ How and where to install ════
 
@@ -41,15 +45,17 @@ left4dead2/, hl2/. Left 4 Dead and later branches *ALSO* try to load from the
 top-level game directory where the EXE is, if other paths don’t work.
 
 Since this plugin is designed to be universal, a reasonable recommendation is to
-always put it in bin/ and then use the command `plugin_load ../bin/sst`. The way
-the paths work out, that always works no matter what, thus taking all the
-thought out of it. It’s also a sensible way to share the plugin between multiple
-mods in an engine installation, where relevant.
+make a directory for SST in the top-level engine directory and do for instance
+`plugin_load ../SST/sst`. The way the paths work out, that always works no
+matter what, and also avoids cluttering up your game files.
 
-It’s additionally possible to back out of the game installation with `../../`
-etcetera and load from anywhere you want, as long as it’s not on a different
-Windows drive letter. This is especially handy if you’re building from source
-and don’t want to copy it over every time.
+When actively developing the plugin, it's possible to back out of the game
+installation with `../../` etcetera and load from anywhere you want, as long as
+it’s not on a different Windows drive letter. This is essentially the best way
+to work with SST built from source as it avoids the need to copy it to different
+games. The way the build scripts are written, you can rebuild the plugin
+in-place before reloading it from the game console. It can be helpful to write
+some console aliases or set up a bind to reload the plugin quickly on-the-fly.
 
 Note: some very old (and very new) Source builds don’t have a plugin_load
 command. For the time being, these versions are unsupported.

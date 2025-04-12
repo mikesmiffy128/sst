@@ -18,7 +18,7 @@
 #include "x86.h"
 
 static int mrmsib(const uchar *p, int addrlen) {
-	// I won't lie: I thought I almost understood this, but after Bill walked me
+	// I won't lie: I thought I almost understood this, but after bill walked me
 	// through correcting a bunch of wrong cases I now realise that I don't
 	// really understand it at all. If it helps, I used this as a reference:
 	// https://github.com/Nomade040/length-disassembler/blob/e8b34546/ldisasm.cpp#L14

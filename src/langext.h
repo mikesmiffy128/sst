@@ -26,7 +26,7 @@
 #define assume(x) ((void)(__assume(x), 0))
 #define cold __declspec(noinline)
 #else
-static inline _Noreturn void _invoke_ub(void) {}
+static inline _Noreturn void _invoke_ub() {}
 #define unreachable (_invoke_ub())
 #define assume(x) ((void)(!!(x) || (_invoke_ub(), 0)))
 #define cold

@@ -20,7 +20,7 @@
 /*
  * Fast-forwards in-game time by a number of seconds, ignoring the usual
  * host_framerate and host_timescale settings. timescale controls how many
- * seconds of game pass per real-time second.
+ * seconds of game time pass per real-time second.
  */
 void fastfwd(float seconds, float timescale);
 

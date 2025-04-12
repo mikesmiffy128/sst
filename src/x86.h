@@ -558,7 +558,7 @@ enum {
  * Returns the length of an instruction, or -1 if it's a "known unknown" or
  * invalid instruction. Doesn't handle unknown unknowns: may explode or hang on
  * arbitrary untrusted data. Also doesn't handle, among other things, 3DNow!,
- * SSE, MMX, AVX, and such. Aims to be small and fast rather than comprehensive.
+ * SSE3+, MMX, AVX, and such. Aims to be small and fast, not comprehensive.
  */
 int x86_len(const void *insn);
 
