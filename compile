@@ -25,7 +25,7 @@ stdflags="-std=c2x -D_DEFAULT_SOURCE -D_FILE_OFFSET_BITS=64 -D_TIME_BITS=64"
 
 dbg=0
 if [ "$dbg" = 1 ]; then
-	cflags="-O0 -g3"
+	cflags="-O0 -g3 -fsanitize-trap=undefined"
 	ldflags="-O0 -g3"
 else
 	cflags="-O2 -fvisibility=hidden"

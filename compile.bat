@@ -26,7 +26,7 @@ set dbg=0
 :: XXX: -Og would be nice but apparently a bunch of stuff still gets inlined
 :: which can be somewhat annoying so -O0 it is.
 if "%dbg%"=="1" (
-	set cflags=-O0 -g3
+	set cflags=-O0 -g3 -fsanitize-trap=undefined
 	set ldflags=-O0 -g3
 ) else (
 	set cflags=-O2
