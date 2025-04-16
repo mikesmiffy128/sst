@@ -283,6 +283,7 @@ static const char *updatenotes = "\
 * Removed multiplayer chat rate limit in L4D series and Portal 2\n\
 * Made L4D1 demo playback backwards-compatible for Steam version demos (1022+)\n\
 * plugin_unload now displays an error when used incorrectly (without a number)\n\
+* Improved error messages in the event of functions failing to hook\n\
 * Rewrote and optimised a whole bunch of internal stuff\n\
 ";
 

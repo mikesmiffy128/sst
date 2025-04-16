@@ -180,22 +180,17 @@ INIT {
 		goto ok;
 	}
 
-	orig_GetCursorPos = (GetCursorPos_func)hook_inline((void *)&GetCursorPos,
-			(void *)&hook_GetCursorPos);
-	if_cold (!orig_GetCursorPos) {
-		errmsg_errorsys("couldn't hook %s", "GetCursorPos");
-		goto e0;
-	}
-	orig_SetCursorPos = (SetCursorPos_func)hook_inline((void *)&SetCursorPos,
-			(void *)&hook_SetCursorPos);
-	if_cold (!orig_SetCursorPos) {
-		errmsg_errorsys("couldn't hook %s", "SetCursorPos");
-		goto e1;
-	}
+	int err;
+	struct hook_inline_featsetup_ret h1 = hook_inline_featsetup(
+			(void *)GetCursorPos, (void **)&orig_GetCursorPos, "GetCursorPos");
+	if_cold (err = h1.err) goto e0;
+	struct hook_inline_featsetup_ret h2 = hook_inline_featsetup(
+			(void *)SetCursorPos, (void **)&orig_SetCursorPos, "SetCursorPos");
+	if_cold (err = h2.err) goto e0;
 	inwin = CreateWindowExW(0, L"RInput", L"RInput", 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	if_cold (!inwin) {
 		errmsg_errorsys("couldn't create input window");
-		goto e2;
+		goto e0;
 	}
 	RAWINPUTDEVICE rd = {
 		.hwndTarget = inwin,
@@ -204,18 +199,19 @@ INIT {
 	};
 	if_cold (!RegisterRawInputDevices(&rd, 1, sizeof(rd))) {
 		errmsg_errorsys("couldn't create raw mouse device");
-		goto e3;
+		err = FEAT_FAIL;
+		goto e1;
 	}
+	hook_inline_commit(h1.prologue, (void *)&hook_GetCursorPos);
+	hook_inline_commit(h2.prologue, (void *)&hook_SetCursorPos);
 
 ok:	m_rawinput->base.flags &= ~CON_HIDDEN;
 	sst_mouse_factor->base.flags &= ~CON_HIDDEN;
 	return FEAT_OK;
 
-e3:	DestroyWindow(inwin);
-e2:	unhook_inline((void *)orig_SetCursorPos);
-e1:	unhook_inline((void *)orig_GetCursorPos);
+e1:	DestroyWindow(inwin);
 e0:	UnregisterClassW(L"RInput", 0);
-	return FEAT_FAIL;
+	return err;
 }
 
 END {

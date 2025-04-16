@@ -380,12 +380,9 @@ HANDLE_EVENT(PluginUnloaded) {
 
 INIT {
 	if_cold (!find_Key_Event()) return FEAT_INCOMPAT;
-	orig_Key_Event = (Key_Event_func)hook_inline((void *)orig_Key_Event,
-			(void *)&hook_Key_Event);
-	if_cold (!orig_Key_Event) {
-		errmsg_errorsys("couldn't hook Key_Event function");
-		return FEAT_FAIL;
-	}
+	struct hook_inline_featsetup_ret h = hook_inline_featsetup(
+			(void *)orig_Key_Event, (void **)&orig_Key_Event, "Key_Event");
+	if_cold (h.err) return h.err;
 
 #ifdef _WIN32
 	keybox = VirtualAlloc(0, 4096, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
@@ -423,6 +420,7 @@ INIT {
 		// run of bytes
 		memcpy(keybox->lbpub, lbpubkeys[LBPK_L4D], 32);
 	}
+	hook_inline_commit(h.prologue, (void *)hook_Key_Event);
 	return FEAT_OK;
 
 #ifdef _WIN32
@@ -430,7 +428,6 @@ e:	VirtualFree(keybox, 4096, MEM_RELEASE);
 #else
 e:	munmap(keybox, 4096);
 #endif
-	unhook_inline((void *)orig_Key_Event);
 	return FEAT_FAIL;
 }
 

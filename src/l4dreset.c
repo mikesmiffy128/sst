@@ -549,8 +549,11 @@ INIT {
 			errmsg_errorx("couldn't find UnfreezeTeam function");
 			return FEAT_INCOMPAT;
 		}
-		orig_UnfreezeTeam = (UnfreezeTeam_func)hook_inline(
-				(void *)orig_UnfreezeTeam, (void *)&hook_UnfreezeTeam);
+		struct hook_inline_featsetup_ret h = hook_inline_featsetup(
+			(void *)orig_UnfreezeTeam, (void **)&orig_UnfreezeTeam,
+			"UnfreezeTeam");
+		if_cold (h.err) return h.err;
+		hook_inline_commit(h.prologue, (void *)&hook_UnfreezeTeam);
 	}
 #endif
 	// Only try cooldown stuff for L4D2, since L4D1 always had unlimited votes.

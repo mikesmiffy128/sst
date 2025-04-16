@@ -17,7 +17,7 @@
 
 #include <string.h>
 
-#include "con_.h"
+#include "hook.h"
 #include "intdefs.h"
 #include "langext.h"
 #include "mem.h"
@@ -35,20 +35,13 @@ __declspec(dllimport) int __stdcall FlushInstructionCache(
 // Almost certainly breaks in some weird cases. Oh well! Most of the time,
 // vtable hooking is more reliable, this is only for, uh, emergencies.
 
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((aligned(4096)))
-#elif defined(_MSC_VER)
-__declspec(align(4096))
-#else
-#error no way to align stuff!
-#endif
-static uchar trampolines[4096];
-static uchar *nexttrampoline = trampolines;
+static _Alignas(4096) uchar trampolines[4096];
+static uchar *curtrampoline = trampolines;
 
 bool hook_init() {
 	// PE doesn't support rwx sections, not sure about ELF. Meh, just set it
 	// here instead.
-	return os_mprot(trampolines, sizeof(trampolines), PAGE_EXECUTE_READWRITE);
+	return os_mprot(trampolines, 4096, PAGE_EXECUTE_READWRITE);
 }
 
 static inline void iflush(void *p, int len) {
@@ -63,51 +56,59 @@ static inline void iflush(void *p, int len) {
 #endif
 }
 
-void *hook_inline(void *func_, void *target) {
-	uchar *func = func_;
+struct hook_inline_prep_ret hook_inline_prep(void *func, void **trampoline) {
+	uchar *p = func;
 	// dumb hack: if we hit some thunk that immediately jumps elsewhere (which
 	// seems common for win32 API functions), hook the underlying thing instead.
-	while (*func == X86_JMPIW) func += mem_loads32(func + 1) + 5;
-	if_cold (!os_mprot(func, 5, PAGE_EXECUTE_READWRITE)) return 0;
+	// later: that dumb hack has now ended up having implications in the
+	// redesign of the entire API. :-)
+	while (*p == X86_JMPIW) p += mem_loads32(p + 1) + 5;
+	void *prologue = p;
 	int len = 0;
 	for (;;) {
-		// FIXME: these cases may result in somewhat dodgy error messaging. They
-		// shouldn't happen anyway though. Maybe if we're confident we just
-		// compile 'em out of release builds some day, but that sounds a little
-		// scary. For now preferring confusing messages over crashes, I guess.
-		if (func[len] == X86_CALL) {
-			con_warn("hook_inline: can't trampoline call instructions\n");
-			return 0;
+		if_cold (p[len] == X86_CALL) {
+			return (struct hook_inline_prep_ret){
+				0, "can't trampoline call instructions"
+			};
 		}
-		int ilen = x86_len(func + len);
-		if (ilen == -1) {
-			con_warn("hook_inline: unknown or invalid instruction\n");
-			return 0;
+		int ilen = x86_len(p + len);
+		if_cold (ilen == -1) {
+			return (struct hook_inline_prep_ret){
+				0, "unknown or invalid instruction"
+			};
 		}
 		len += ilen;
-		if (len >= 5) break;
-		if (func[len] == X86_JMPIW) {
-			con_warn("hook_inline: can't trampoline jmp instructions\n");
-			return 0;
+		if (len >= 5) {
+			// we should have statically made trampoline buffer size big enough
+			assume(curtrampoline - trampolines < sizeof(trampolines) - len - 6);
+			*curtrampoline = len; // stuff length in there for quick unhooking
+			uchar *newtrampoline = curtrampoline + 1;
+			curtrampoline += len + 6;
+			memcpy(newtrampoline, p, len);
+			newtrampoline[len] = X86_JMPIW;
+			u32 diff = p - (newtrampoline + 5); // goto the continuation
+			memcpy(newtrampoline + len + 1, &diff, 4);
+			*trampoline = newtrampoline;
+			return (struct hook_inline_prep_ret){prologue, 0};
+		}
+		if_cold (p[len] == X86_JMPIW) {
+			return (struct hook_inline_prep_ret){
+				0, "can't trampoline jump instructions"
+			};
 		}
 	}
-	// for simplicity, just bump alloc the trampoline. no need to free anyway
-	if_cold (nexttrampoline - trampolines > sizeof(trampolines) - len - 6) {
-		con_warn("hook_inline: out of trampoline space\n");
-		return 0;
-	}
-	uchar *trampoline = nexttrampoline;
-	nexttrampoline += len + 6; // NOT thread-safe. we don't need that anyway!
-	*trampoline++ = len; // stick length in front for quicker unhooking
-	memcpy(trampoline, func, len);
-	trampoline[len] = X86_JMPIW;
-	uint diff = func - (trampoline + 5); // goto the continuation
-	memcpy(trampoline + len + 1, &diff, 4);
-	diff = (uchar *)target - (func + 5); // goto the hook target
-	func[0] = X86_JMPIW;
-	memcpy(func + 1, &diff, 4);
-	iflush(func, 5);
-	return trampoline;
+}
+
+bool hook_inline_mprot(void *prologue) {
+	return os_mprot(prologue, 5, PAGE_EXECUTE_READWRITE);
+}
+
+void hook_inline_commit(void *restrict prologue, void *restrict target) {
+	uchar *p = prologue;
+	u32 diff = (uchar *)target - (p + 5); // goto the hook target
+	p[0] = X86_JMPIW;
+	memcpy(p + 1, &diff, 4);
+	iflush(p, 5);
 }
 
 void unhook_inline(void *orig) {

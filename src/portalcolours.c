@@ -87,6 +87,9 @@ static bool find_UTIL_Portal_Color(void *base) {
 	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)mem_offset(base, 0x1AA810);
 	if (!memcmp((void *)orig_UTIL_Portal_Color, x, sizeof(x))) return true;
 	// SteamPipe (7197370) - almost sure to break in a later update!
+	// TODO(compat): this has indeed been broken for ages.
+	// TODO(compat): we also still don't have 4104. really need to do this
+	// properly some time soon, it seems.
 	static const uchar y[] = HEXBYTES(55, 8B, EC, 8B, 45, 0C, 83, E8, 00, 74,
 			24, 48, 74, 16, 48, 8B, 45, 08, 74, 08, C7, 00, FF, FF);
 	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)mem_offset(base, 0x234C00);
@@ -100,12 +103,11 @@ INIT {
 		errmsg_errorx("couldn't find UTIL_Portal_Color");
 		return FEAT_INCOMPAT;
 	}
-	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)hook_inline(
-			(void *)orig_UTIL_Portal_Color, (void *)&hook_UTIL_Portal_Color);
-	if_cold (!orig_UTIL_Portal_Color) {
-		errmsg_errorsys("couldn't hook UTIL_Portal_Color");
-		return FEAT_INCOMPAT;
-	}
+	struct hook_inline_featsetup_ret h = hook_inline_featsetup(
+			(void *)orig_UTIL_Portal_Color, (void **)&orig_UTIL_Portal_Color,
+			"UTIL_Portal_Color");
+	if_cold (h.err) return h.err;
+	hook_inline_commit(h.prologue, (void *)&hook_UTIL_Portal_Color);
 	sst_portal_colour0->cb = &colourcb;
 	sst_portal_colour1->cb = &colourcb;
 	sst_portal_colour2->cb = &colourcb;

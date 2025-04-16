@@ -241,12 +241,11 @@ INIT {
 		return FEAT_INCOMPAT;
 	}
 	try_fix_broken_addon_check();
-	orig_FS_MAFAS = (FS_MAFAS_func)hook_inline((void *)orig_FS_MAFAS,
-			(void *)&hook_FS_MAFAS);
-	if_cold (!orig_FS_MAFAS) {
-		errmsg_errorsys("couldn't hook FileSystem_ManageAddonsForActiveSession");
-		return FEAT_FAIL;
-	}
+	struct hook_inline_featsetup_ret h = hook_inline_featsetup(
+			(void *)orig_FS_MAFAS, (void **)&orig_FS_MAFAS,
+			"FileSystem_ManageAddonsForActiveSession");
+	if_cold (h.err) return h.err;
+	hook_inline_commit(h.prologue, (void *)&hook_FS_MAFAS);
 	return FEAT_OK;
 }
 

@@ -150,29 +150,22 @@ INIT {
 		return FEAT_INCOMPAT;
 	}
 	gameversion = orig_GetHostVersion();
-	orig_GetHostVersion = (GetHostVersion_func)hook_inline(
-			(void *)orig_GetHostVersion, (void *)&hook_GetHostVersion);
-	if (!orig_GetHostVersion) {
-		errmsg_errorsys("couldn't hook GetHostVersion");
-		return FEAT_FAIL;
-	}
-	orig_ReadDemoHeader = (ReadDemoHeader_func)hook_inline(
-			(void *)orig_ReadDemoHeader, (void *)&hook_ReadDemoHeader);
-	if (!orig_ReadDemoHeader) {
-		errmsg_errorsys("couldn't hook ReadDemoHeader");
-		goto e1;
-	}
-	ReadDemoHeader_midpoint = hook_inline(
-			(void *)ReadDemoHeader_midpoint, (void *)&hook_midpoint);
-	if (!ReadDemoHeader_midpoint) {
-		errmsg_errorsys("couldn't hook ReadDemoHeader midpoint");
-		goto e2;
-	}
+	struct hook_inline_featsetup_ret h1 = hook_inline_featsetup(
+			(void *)orig_GetHostVersion, (void **)&orig_GetHostVersion,
+			"GetHostVersion");
+	if_cold (h1.err) return h1.err;
+	struct hook_inline_featsetup_ret h2 = hook_inline_featsetup(
+			(void *)orig_ReadDemoHeader, (void **)&orig_ReadDemoHeader,
+			"ReadDemoHeader");
+	if_cold (h2.err) return h2.err;
+	struct hook_inline_featsetup_ret h3 = hook_inline_featsetup(
+			ReadDemoHeader_midpoint, (void **)&hook_midpoint,
+			"ReadDemoHeader midpoint");
+	if_cold (h3.err) return h3.err;
+	hook_inline_commit(h1.prologue, (void *)&hook_GetHostVersion);
+	hook_inline_commit(h2.prologue, (void *)&hook_ReadDemoHeader);
+	hook_inline_commit(h3.prologue, (void *)&hook_midpoint);
 	return FEAT_OK;
-
-e2:	unhook_inline((void *)orig_ReadDemoHeader);
-e1:	unhook_inline((void *)orig_GetHostVersion);
-	return FEAT_FAIL;
 }
 
 END {

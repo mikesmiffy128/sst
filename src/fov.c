@@ -100,12 +100,12 @@ INIT {
 		errmsg_errorx("couldn't find SetDefaultFOV function");
 		return FEAT_INCOMPAT;
 	}
-	orig_SetDefaultFOV = (SetDefaultFOV_func)hook_inline(
-			(void *)orig_SetDefaultFOV, (void *)&hook_SetDefaultFOV);
-	if_cold (!orig_SetDefaultFOV) {
-		errmsg_errorsys("couldn't hook SetDefaultFOV function");
-		return FEAT_FAIL;
-	}
+
+	struct hook_inline_featsetup_ret h = hook_inline_featsetup(
+			(void *)orig_SetDefaultFOV, (void **)&orig_SetDefaultFOV,
+			"SetDefaultFov");
+	if_cold (h.err) return h.err;
+	hook_inline_commit(h.prologue, (void *)&hook_SetDefaultFOV);
 
 	// we might not be using our cvar but simpler to do this unconditionally
 	fov_desired->cb = &fovcb;

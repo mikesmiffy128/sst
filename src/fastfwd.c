@@ -232,19 +232,18 @@ INIT {
 		return FEAT_INCOMPAT;
 	}
 	if_cold (!(func = find_floatcall(func, 1, "_Host_RunFrame"))) {
-		errmsg_errorx("couldn't find _Host_RunFrame");
+		errmsg_errorx("couldn't find _Host_RunFrame function");
 		return FEAT_INCOMPAT;
 	}
 	if_cold (!find_Host_AccumulateTime(func)) {
-		errmsg_errorx("couldn't find Host_AccumulateTime");
+		errmsg_errorx("couldn't find Host_AccumulateTime function");
 		return FEAT_INCOMPAT;
 	}
-	orig_Host_AccumulateTime = (Host_AccumulateTime_func)hook_inline(
-			(void *)orig_Host_AccumulateTime, (void *)hook_Host_AccumulateTime);
-	if_cold (!orig_Host_AccumulateTime) {
-		errmsg_errorsys("couldn't hook Host_AccumulateTime function");
-		return FEAT_FAIL;
-	}
+	struct hook_inline_featsetup_ret h = hook_inline_featsetup(
+			(void *)orig_Host_AccumulateTime, (void **)&orig_Host_AccumulateTime,
+			"Host_AccumulateTime");
+	if_cold (h.err) return h.err;
+	hook_inline_commit(h.prologue, (void *)&hook_Host_AccumulateTime);
 	return FEAT_OK;
 }
 
