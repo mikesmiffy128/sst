@@ -24,13 +24,6 @@
 #include "os.h"
 #include "x86.h"
 
-#ifdef _WIN32
-// try to avoid pulling in all of Windows.h for this... (redundant dllimport
-// avoids warnings in hook.test.c where Windows.h is included via test.h)
-__declspec(dllimport) int __stdcall FlushInstructionCache(
-		void *, const void *, usize);
-#endif
-
 // Warning: half-arsed hacky implementation (because that's all we really need)
 // Almost certainly breaks in some weird cases. Oh well! Most of the time,
 // vtable hooking is more reliable, this is only for, uh, emergencies.
@@ -42,18 +35,6 @@ bool hook_init() {
 	// PE doesn't support rwx sections, not sure about ELF. Meh, just set it
 	// here instead.
 	return os_mprot(trampolines, 4096, PAGE_EXECUTE_READWRITE);
-}
-
-static inline void iflush(void *p, int len) {
-#if defined(_WIN32)
-	// -1 is the current process, and it's a constant in the WDK, so it's
-	// assumed we can safely avoid the useless GetCurrentProcess call
-	FlushInstructionCache((void *)-1, p, len);
-#elif defined(__GNUC__)
-	__builtin___clear_cache((char *)p, (char *)p + len);
-#else
-#error no way to flush instruction cache
-#endif
 }
 
 struct hook_inline_prep_ret hook_inline_prep(void *func, void **trampoline) {
@@ -108,7 +89,6 @@ void hook_inline_commit(void *restrict prologue, void *restrict target) {
 	u32 diff = (uchar *)target - (p + 5); // goto the hook target
 	p[0] = X86_JMPIW;
 	memcpy(p + 1, &diff, 4);
-	iflush(p, 5);
 }
 
 void unhook_inline(void *orig) {
@@ -117,7 +97,6 @@ void unhook_inline(void *orig) {
 	int off = mem_loads32(p + len + 1);
 	uchar *q = p + off + 5;
 	memcpy(q, p, 5); // XXX: not atomic atm! (does any of it even need to be?)
-	iflush(q, 5);
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
