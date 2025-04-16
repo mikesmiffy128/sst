@@ -258,12 +258,12 @@ int msg_rputssz16(unsigned char *end, int val) {
 int msg_putssz(unsigned char *out, unsigned int val) {
 	if (val <= 65535) return msg_putssz16(out, val);
 	doput32(out, 0xDB, val);
-	return (32) / 8 + 1;
+	return 5;
 }
 int msg_rputssz(unsigned char *end, unsigned int val) {
 	if (val <= 65535) return msg_rputssz16(end, val);
 	doput32(end - (32) / 8 - 1, 0xDB, val);
-	return (32) / 8 + 1;
+	return 5;
 }
 
 int msg_putbsz16(unsigned char *out, int val) {
