@@ -326,6 +326,7 @@ static void reloadfonts() {
 HANDLE_EVENT(HudPaint, int screenw, int screenh) {
 	if (!con_getvari(sst_inputhud)) return;
 	if_cold (screenw != lastw || screenh != lasth) reloadfonts();
+	lastw = screenw; lasth = screenh;
 	int basesz = screenw > screenh ? screenw : screenh;
 	int boxsz = ceilf(basesz * 0.025f);
 	if (boxsz < 24) boxsz = 24;

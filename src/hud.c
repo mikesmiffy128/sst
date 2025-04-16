@@ -97,8 +97,10 @@ typedef void (*VCALLCONV Paint_func)(void *);
 static Paint_func orig_Paint;
 void VCALLCONV hook_Paint(void *this) {
 	int width, height;
-	hud_screensize(&width, &height);
-	if (this == toolspanel) EMIT_HudPaint(width, height);
+	if (this == toolspanel) {
+		hud_screensize(&width, &height);
+		EMIT_HudPaint(width, height);
+	}
 	orig_Paint(this);
 }
 
