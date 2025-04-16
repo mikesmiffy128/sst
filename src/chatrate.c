@@ -53,7 +53,7 @@ static inline bool find_ratelimit_insn(con_cmdcb say_cb) {
 
 static inline bool patch_ratelimit_insn() {
 	// if FADD replace with FSUB; otherwise it is ADDSD, replace that with SUBSD
-	if (!os_mprot(patchedbyte, 1, PAGE_EXECUTE_READWRITE)) {
+	if_cold (!os_mprot(patchedbyte, 1, PAGE_EXECUTE_READWRITE)) {
 		errmsg_errorsys("failed to patch chat rate limit: "
 				"couldn't make memory writable");
 		return false;
