@@ -36,7 +36,10 @@
 #include "x86util.h"
 
 FEATURE("improved demo recording")
+REQUIRE_GAMEDATA(vtidx_SetSignonState)
+REQUIRE_GAMEDATA(vtidx_StartRecording)
 REQUIRE_GAMEDATA(vtidx_StopRecording)
+REQUIRE_GAMEDATA(vtidx_RecordPacket)
 
 DEF_FEAT_CVAR(sst_autorecord,
 		"Continuously record demos even after reconnecting", 1, CON_ARCHIVE)
@@ -56,7 +59,9 @@ DEF_PREDICATE(DemoControlAllowed)
 DEF_EVENT(DemoRecordStarting)
 DEF_EVENT(DemoRecordStopped, int)
 
-typedef void (*VCALLCONV SetSignonState_func)(void *, int);
+DECL_VCALL_DYN(SetSignonState, int)
+
+//typedef void (*VCALLCONV SetSignonState_func)(void *, int);
 static SetSignonState_func orig_SetSignonState;
 static void VCALLCONV hook_SetSignonState(void *this_, int state) {
 	struct CDemoRecorder *this = this_;
@@ -293,7 +298,7 @@ END {
 	if_hot (!sst_userunloaded) return;
 	// avoid dumb edge case if someone somehow records and immediately unloads
 	if (*recording && *demonum == 0) *demonum = 1;
-	void **vtable = *(void ***)demorecorder;
+	void **vtable = mem_loadptr(demorecorder);
 	unhook_vtable(vtable, vtidx_SetSignonState, (void *)orig_SetSignonState);
 	unhook_vtable(vtable, vtidx_StopRecording, (void *)orig_StopRecording);
 	cmd_record->cb = orig_record_cb;

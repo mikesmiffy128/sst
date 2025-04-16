@@ -128,7 +128,7 @@
 #define DECL_VFUNC_CDECL(ret, name, idx, ...) \
 	_DECL_VFUNC(ret, , name, idx __VA_OPT__(,) __VA_ARGS__)
 
-/* Define a virtual function with an index defined elsewhere */
+/* Define a virtual function with an index defined elsewhere (e.g. gamedata) */
 #define DECL_VFUNC_DYN(ret, name, ...) \
 	_DECL_VFUNC_DYN(ret, VCALLCONV, name __VA_OPT__(,) __VA_ARGS__)
 
