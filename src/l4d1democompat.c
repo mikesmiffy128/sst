@@ -31,11 +31,12 @@
 FEATURE("Left 4 Dead 1 demo file backwards compatibility")
 GAMESPECIFIC(L4D1_1022plus)
 
+struct CDemoFile;
 // NOTE: not bothering to put this in gamedata since it's actually a constant.
 // We could optimise the gamedata system further to constant-fold things with no
 // leaves beyond the GAMESPECIFIC cutoff or whatever. But that sounds annoying.
 #define off_CDemoFile_protocol 272
-DEF_ACCESSORS(int, CDemoFile_protocol)
+DEF_ACCESSORS(struct CDemoFile, int, CDemoFile_protocol)
 
 // L4D1 bumps the demo protocol version with every update to the game, which
 // means whenever there is a security update, you cannot watch old demos. From
@@ -106,7 +107,7 @@ static int hook_GetHostVersion() {
 }
 
 static int *this_protocol;
-static void VCALLCONV hook_ReadDemoHeader(void *this) {
+static void VCALLCONV hook_ReadDemoHeader(struct CDemoFile *this) {
 	// The mid-function hook needs to get the protocol from `this`, but by that
 	// point we won't be able to rely on the ECX register and/or any particular
 	// stack spill layout. So... offset the pointer and stick it in a global.

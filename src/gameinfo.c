@@ -39,7 +39,7 @@ const os_char *gameinfo_gamedir
 ;
 const char *gameinfo_title = title;
 
-DECL_VFUNC_DYN(const char *, GetGameDirectory)
+DECL_VFUNC_DYN(struct VEngineClient, const char *, GetGameDirectory)
 
 bool gameinfo_init() {
 	if_cold (!has_vtidx_GetGameDirectory) {

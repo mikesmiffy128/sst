@@ -24,7 +24,6 @@
 #include "hook.h"
 #include "intdefs.h"
 #include "langext.h"
-#include "mem.h"
 #include "os.h"
 #include "vcall.h"
 
@@ -33,20 +32,21 @@ REQUIRE_GAMEDATA(off_mv)
 REQUIRE_GAMEDATA(vtidx_CheckJumpButton)
 REQUIRE_GLOBAL(factory_client) // note: server will never be null
 
-DEF_ACCESSORS(struct CMoveData *, mv)
+struct CGameMovement { void **vtable; };
+DEF_ACCESSORS(struct CGameMovement, struct CMoveData *, mv)
 
-DEF_FEAT_CVAR(sst_autojump, "Jump upon hitting the ground while holding space", 0,
-		CON_REPLICATE | CON_DEMO)
+DEF_FEAT_CVAR(sst_autojump, "Jump upon hitting the ground while holding space",
+		0, CON_REPLICATE | CON_DEMO)
 
 #define NIDX 256 // *completely* arbitrary lol
 static bool justjumped[NIDX] = {0};
 static inline int handleidx(ulong h) { return h & (1 << 11) - 1; }
 
-static void *gmsv = 0, *gmcl = 0;
-typedef bool (*VCALLCONV CheckJumpButton_func)(void *);
+static struct CGameMovement *gmsv = 0, *gmcl = 0;
+typedef bool (*VCALLCONV CheckJumpButton_func)(struct CGameMovement *);
 static CheckJumpButton_func origsv, origcl;
 
-static bool VCALLCONV hooksv(void *this) {
+static bool VCALLCONV hooksv(struct CGameMovement *this) {
 	struct CMoveData *mv = get_mv(this);
 	int idx = handleidx(mv->playerhandle);
 	if (con_getvari(sst_autojump) && mv->firstrun && !justjumped[idx]) {
@@ -57,7 +57,7 @@ static bool VCALLCONV hooksv(void *this) {
 	return ret;
 }
 
-static bool VCALLCONV hookcl(void *this) {
+static bool VCALLCONV hookcl(struct CGameMovement *this) {
 	struct CMoveData *mv = get_mv(this);
 	// FIXME: this will stutter in the rare case where justjumped is true.
 	// currently doing clientside justjumped handling makes multiplayer
@@ -68,9 +68,8 @@ static bool VCALLCONV hookcl(void *this) {
 	return justjumped[0] = origcl(this);
 }
 
-static bool unprot(void *gm) {
-	void **vtable = mem_loadptr(gm);
-	bool ret = os_mprot(vtable + vtidx_CheckJumpButton, sizeof(void *),
+static bool unprot(struct CGameMovement *gm) {
+	bool ret = os_mprot(gm->vtable + vtidx_CheckJumpButton, sizeof(void *),
 			PAGE_READWRITE);
 	if (!ret) errmsg_errorsys("couldn't make virtual table writable");
 	return ret;
@@ -99,9 +98,9 @@ INIT {
 		return FEAT_FAIL;
 	}
 	if_cold (!unprot(gmcl)) return FEAT_FAIL;
-	origsv = (CheckJumpButton_func)hook_vtable(*(void ***)gmsv,
+	origsv = (CheckJumpButton_func)hook_vtable(gmsv->vtable,
 			vtidx_CheckJumpButton, (void *)&hooksv);
-	origcl = (CheckJumpButton_func)hook_vtable(*(void ***)gmcl,
+	origcl = (CheckJumpButton_func)hook_vtable(gmcl->vtable,
 			vtidx_CheckJumpButton, (void *)&hookcl);
 
 	if (GAMETYPE_MATCHES(Portal1)) {
@@ -119,8 +118,8 @@ INIT {
 }
 
 END {
-	unhook_vtable(*(void ***)gmsv, vtidx_CheckJumpButton, (void *)origsv);
-	unhook_vtable(*(void ***)gmcl, vtidx_CheckJumpButton, (void *)origcl);
+	unhook_vtable(gmsv->vtable, vtidx_CheckJumpButton, (void *)origsv);
+	unhook_vtable(gmcl->vtable, vtidx_CheckJumpButton, (void *)origcl);
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

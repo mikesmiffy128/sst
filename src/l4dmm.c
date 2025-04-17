@@ -21,10 +21,8 @@
 #include "errmsg.h"
 #include "feature.h"
 #include "gamedata.h"
-#include "gametype.h"
 #include "kvsys.h"
 #include "langext.h"
-#include "mem.h"
 #include "os.h"
 #include "vcall.h"
 
@@ -34,9 +32,12 @@ REQUIRE(kvsys)
 REQUIRE_GAMEDATA(vtidx_GetMatchNetworkMsgController)
 REQUIRE_GAMEDATA(vtidx_GetActiveGameServerDetails)
 
-DECL_VFUNC_DYN(void *, GetMatchNetworkMsgController)
-DECL_VFUNC_DYN(struct KeyValues *, GetActiveGameServerDetails,
-		struct KeyValues *)
+struct IMatchFramework;
+struct IMatchNetworkMsgController;
+DECL_VFUNC_DYN(struct IMatchFramework, struct IMatchNetworkMsgController*,
+		GetMatchNetworkMsgController)
+DECL_VFUNC_DYN(struct IMatchNetworkMsgController, struct KeyValues *,
+		GetActiveGameServerDetails, struct KeyValues *)
 
 // Old L4D1 uses a heavily modified version of the CMatchmaking in Source 2007.
 // None of it is publicly documented or well-understood but I was able to figure
@@ -47,12 +48,14 @@ struct contextval {
 	const char *val;
 	/* other stuff unknown */
 };
-DECL_VFUNC(struct contextval *, unknown_contextlookup, 67, const char *)
+struct CMatchmaking;
+DECL_VFUNC(struct CMatchmaking, struct contextval *, unknown_contextlookup, 67,
+		const char *)
 
 static void *matchfwk;
 static union { // space saving
 	struct { int sym_game, sym_campaign; }; // "game/campaign" KV lookup
-	void *oldmmiface; // old L4D1 interface
+	struct CMatchmaking *oldmmiface; // old L4D1 interface
 } U;
 #define oldmmiface U.oldmmiface
 #define sym_game U.sym_game
@@ -77,7 +80,8 @@ const char *l4dmm_curcampaign() {
 		return 0;
 	}
 #endif
-	void *ctrlr = GetMatchNetworkMsgController(matchfwk);
+	struct IMatchNetworkMsgController *ctrlr =
+			GetMatchNetworkMsgController(matchfwk);
 	struct KeyValues *kv = GetActiveGameServerDetails(ctrlr, 0);
 	if_cold (!kv) return 0; // not in server, probably
 	const char *ret = 0;

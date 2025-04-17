@@ -25,7 +25,8 @@ REQUIRE(ent)
 REQUIRE_GAMEDATA(vtidx_ClientPrintf)
 REQUIRE_GLOBAL(engserver)
 
-DECL_VFUNC_DYN(void, ClientPrintf, struct edict *, const char *)
+DECL_VFUNC_DYN(struct VEngineServer, void, ClientPrintf, struct edict *,
+		const char *)
 
 void clientcon_msg(struct edict *e, const char *s) {
 	ClientPrintf(engserver, e, s);

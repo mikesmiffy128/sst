@@ -21,7 +21,6 @@
 #include "errmsg.h"
 #include "feature.h"
 #include "gamedata.h"
-#include "gametype.h"
 #include "intdefs.h"
 #include "langext.h"
 #include "mem.h"
@@ -31,10 +30,10 @@
 
 FEATURE()
 
-DECL_VFUNC_DYN(void *, PEntityOfEntIndex, int)
+DECL_VFUNC_DYN(struct VEngineServer, struct edict *, PEntityOfEntIndex, int)
 
-DEF_PTR_ACCESSOR(struct edict *, edicts)
-DEF_ARRAYIDX_ACCESSOR(edict)
+DEF_PTR_ACCESSOR(struct CGlobalVars, struct edict *, edicts)
+DEF_ARRAYIDX_ACCESSOR(struct edict, edict)
 
 static struct edict **edicts = 0;
 

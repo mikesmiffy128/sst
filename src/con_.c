@@ -41,27 +41,27 @@
 static int dllid; // from AllocateDLLIdentifier(), lets us unregister in bulk
 int con_cmdclient;
 
-DECL_VFUNC(void *, FindCommandBase_p2, 13, const char *)
-DECL_VFUNC(void *, FindCommand_nonp2, 14, const char *)
-DECL_VFUNC(void *, FindVar_nonp2, 12, const char *)
+DECL_VFUNC(struct ICvar, void *, FindCommandBase_p2, 13, const char *)
+DECL_VFUNC(struct ICvar, void *, FindCommand_nonp2, 14, const char *)
+DECL_VFUNC(struct ICvar, void *, FindVar_nonp2, 12, const char *)
 
-DECL_VFUNC_DYN(int, AllocateDLLIdentifier)
-DECL_VFUNC_DYN(void, RegisterConCommand, /*ConCommandBase*/ void *)
-DECL_VFUNC_DYN(void, UnregisterConCommands, int)
-DECL_VFUNC_DYN(struct con_var *, FindVar, const char *)
-// DECL_VFUNC(const struct con_var *, FindVar_const, 13, const char *)
-DECL_VFUNC_DYN(struct con_cmd *, FindCommand, const char *)
-DECL_VFUNC_DYN(void, CallGlobalChangeCallbacks, struct con_var *, const char *,
-		float)
+DECL_VFUNC_DYN(struct ICvar, int, AllocateDLLIdentifier)
+DECL_VFUNC_DYN(struct ICvar, void, RegisterConCommand, /*ConCommandBase*/ void *)
+DECL_VFUNC_DYN(struct ICvar, void, UnregisterConCommands, int)
+DECL_VFUNC_DYN(struct ICvar, struct con_var *, FindVar, const char *)
+//DECL_VFUNC(struct ICvar, const struct con_var *, FindVar_const, 13, const char *)
+DECL_VFUNC_DYN(struct ICvar, struct con_cmd *, FindCommand, const char *)
+DECL_VFUNC_DYN(struct ICvar, void, CallGlobalChangeCallbacks, struct con_var *,
+		const char *, float)
 // sad: since adding the cool abstraction, we can't do varargs (because you
 // can't pass varargs to other varargs of course). we only get a pointer to it
 // via VFUNC so just declare the typedef here - I don't wanna write any more
 // macros today.
-typedef void (*ConsoleColorPrintf_func)(void *, const struct rgba *,
+typedef void (*ConsoleColorPrintf_func)(struct ICvar *, const struct rgba *,
 		const char *, ...);
 
 // these have to be extern for con_colourmsg(), due to varargs nonsense
-void *_con_iface;
+struct ICvar *_con_iface;
 ConsoleColorPrintf_func _con_colourmsgf;
 
 static inline void initval(struct con_var *v) {
@@ -136,12 +136,12 @@ static bool VCALLCONV ClampValue(struct con_var *this, float *f) {
 	return false;
 }
 
-int VCALLCONV AutoCompleteSuggest(void *this, const char *partial,
+int VCALLCONV AutoCompleteSuggest(struct con_cmd *this, const char *partial,
 		/*CUtlVector*/ void *commands) {
 	// TODO(autocomplete): implement this if needed later
 	return 0;
 }
-bool VCALLCONV CanAutoComplete(void *this) {
+bool VCALLCONV CanAutoComplete(struct con_cmd *this) {
 	return false;
 }
 void VCALLCONV Dispatch(struct con_cmd *this, const struct con_cmdargs *args) {
@@ -207,34 +207,34 @@ static void VCALLCONV InternalSetIntValue_impl(struct con_var *this, int v) {
 	}
 }
 
-DECL_VFUNC_DYN(void, InternalSetValue, const char *)
-DECL_VFUNC_DYN(void, InternalSetFloatValue, float)
-DECL_VFUNC_DYN(void, InternalSetIntValue, int)
-DECL_VFUNC_DYN(void, InternalSetColorValue, struct rgba)
+DECL_VFUNC_DYN(struct con_var, void, InternalSetValue, const char *)
+DECL_VFUNC_DYN(struct con_var, void, InternalSetFloatValue, float)
+DECL_VFUNC_DYN(struct con_var, void, InternalSetIntValue, int)
+DECL_VFUNC_DYN(struct con_var, void, InternalSetColorValue, struct rgba)
 
 // IConVar calls get this-adjusted pointers, so just subtract the offset
 static void VCALLCONV SetValue_str_thunk(void *thisoff, const char *v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	InternalSetValue(&this->parent->base, v);
+	InternalSetValue(this->parent, v);
 }
 static void VCALLCONV SetValue_f_thunk(void *thisoff, float v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	InternalSetFloatValue(&this->parent->base, v);
+	InternalSetFloatValue(this->parent, v);
 }
 static void VCALLCONV SetValue_i_thunk(void *thisoff, int v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	InternalSetIntValue(&this->parent->base, v);
+	InternalSetIntValue(this->parent, v);
 }
 static void VCALLCONV SetValue_colour_thunk(void *thisoff, struct rgba v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	InternalSetColorValue(&this->parent->base, v);
+	InternalSetColorValue(this->parent, v);
 }
 
-// more misc thunks, hopefully these just compile to a sub and a jmp
+// more misc thunks, hopefully these just compile to a lea and a jmp
 static const char *VCALLCONV GetName_thunk(void *thisoff) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
@@ -247,7 +247,9 @@ static bool VCALLCONV IsFlagSet_thunk(void *thisoff, int flags) {
 }
 
 // dunno what this is actually for...
-static int VCALLCONV GetSplitScreenPlayerSlot(void *thisoff) { return 0; }
+static int VCALLCONV GetSplitScreenPlayerSlot(struct con_var *thisoff) {
+	return 0;
+}
 
 // aand yet another Create nop
 static void VCALLCONV Create_var(void *thisoff, const char *name,

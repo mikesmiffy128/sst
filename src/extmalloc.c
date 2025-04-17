@@ -25,15 +25,15 @@
 
 #ifdef _WIN32
 
-__declspec(dllimport) void *g_pMemAlloc;
+__declspec(dllimport) struct IMemAlloc *g_pMemAlloc;
 
 // this interface has changed a bit between versions but thankfully the basic
 // functions we care about have always been at the start - nice and easy.
 // note that since Microsoft are a bunch of crazies, overloads are grouped and
 // reversed so the vtable order here is maybe not what you'd expect otherwise.
-DECL_VFUNC(void *, Alloc, 1, usize)
-DECL_VFUNC(void *, Realloc, 3, void *, usize)
-DECL_VFUNC(void, Free, 5, void *)
+DECL_VFUNC(struct IMemAlloc, void *, Alloc, 1, usize)
+DECL_VFUNC(struct IMemAlloc, void *, Realloc, 3, void *, usize)
+DECL_VFUNC(struct IMemAlloc, void, Free, 5, void *)
 
 void *extmalloc(usize sz) { return Alloc(g_pMemAlloc, sz); }
 void *extrealloc(void *mem, usize sz) { return Realloc(g_pMemAlloc, mem, sz); }

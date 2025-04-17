@@ -54,7 +54,7 @@ static char last_mission[128] = {0}, last_gamemode[128] = {0};
 static int last_addonvecsz = 0;
 static bool last_disallowaddons = false;
 
-DECL_VFUNC_DYN(void, ManageAddonsForActiveSession)
+DECL_VFUNC_DYN(struct VEngineClient, void, ManageAddonsForActiveSession)
 
 // Crazy full name: FileSystem_ManageAddonsForActiveSession. Hence the acronym.
 // Note: the 4th parameter was first added in 2.2.0.4 (21 Oct 2020), but we
@@ -141,8 +141,7 @@ e:	orig_FS_MAFAS(disallowaddons, mission, gamemode, ismutation);
 
 static inline bool find_FS_MAFAS() {
 #ifdef _WIN32
-	const uchar *insns = (const uchar *)VFUNC(engclient,
-			ManageAddonsForActiveSession);
+	const uchar *insns = engclient->vtable[vtidx_ManageAddonsForActiveSession];
 	// CEngineClient::ManageAddonsForActiveSession just calls FS_MAFAS
 	for (const uchar *p = insns; p - insns < 32;) {
 		if (p[0] == X86_CALL) {

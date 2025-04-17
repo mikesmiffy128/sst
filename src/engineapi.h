@@ -38,15 +38,14 @@ extern ifacefactory factory_client, factory_server, factory_engine,
 
 // various engine types {{{
 
-struct VEngineClient {
-	void **vtable;
-	/* opaque fields */
-};
-
-struct VEngineServer {
-	void **vtable;
-	/* opaque fields */
-};
+// Virtual classes with opaque members; vtables exposed for ease of hooking etc.
+struct ICvar { void **vtable; };
+struct VEngineClient { void **vtable; };
+struct VClient { void **vtable; };
+struct VEngineServer { void **vtable; };
+struct IServerGameDLL { void **vtable; };
+struct IInputSystem { void **vtable; };
+struct CEngineVGui { void **vtable; };
 
 struct CUtlMemory {
 	void *mem;
@@ -124,9 +123,10 @@ struct ServerClass {
 
 extern struct VEngineClient *engclient;
 extern struct VEngineServer *engserver;
-extern void *srvdll;
-extern void *globalvars;
-extern void *inputsystem, *vgui;
+extern struct IServerGameDLL *srvdll;
+extern struct CGlobalVars *globalvars;
+extern struct IInputSystem *inputsystem;
+extern struct CEngineVGui *vgui;
 
 // XXX: not exactly engine *API* but not curently clear where else to put this
 struct CPlugin_common {

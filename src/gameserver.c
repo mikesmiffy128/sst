@@ -28,9 +28,10 @@
 FEATURE()
 REQUIRE_GAMEDATA(vtidx_GetSpawnCount)
 
-DECL_VFUNC_DYN(int, GetSpawnCount)
+struct CGameServer;
+DECL_VFUNC_DYN(struct CGameServer, int, GetSpawnCount)
 
-static void *sv;
+static struct CGameServer *sv;
 
 int gameserver_spawncount() { return GetSpawnCount(sv); }
 

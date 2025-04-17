@@ -47,9 +47,11 @@ REQUIRE_GAMEDATA(vtidx_AddBoxOverlay2)
 REQUIRE_GAMEDATA(vtidx_AddLineOverlay)
 REQUIRE_GAMEDATA(vtidx_Teleport)
 
-DECL_VFUNC_DYN(void, Teleport, const struct vec3f */*pos*/,
-		const struct vec3f */*pos*/, const struct vec3f */*vel*/)
-DECL_VFUNC(const struct vec3f *, OBBMaxs, 2)
+// XXX: could make these calls type safe in future? just tricky because the
+// entity hierarchy is kind of crazy so it's not clear which type name to pick
+DECL_VFUNC_DYN(void, void, Teleport, const struct vec3f */*pos*/,
+		const struct vec3f */*ang*/, const struct vec3f */*vel*/)
+DECL_VFUNC(void, const struct vec3f *, OBBMaxs, 2)
 
 // IMPORTANT: padsz parameter is missing in L4D1, but since it's cdecl, we can
 // still call it just the same (we always pass 0, so there's no difference).
@@ -78,17 +80,18 @@ typedef void (*VCALLCONV CTraceFilterSimple_ctor)(
 #define PLAYERMASK 0x0201420B
 
 // debug overlay stuff, only used by sst_l4d_previewwarp
-static void *dbgoverlay;
-DECL_VFUNC_DYN(void, AddLineOverlay, const struct vec3f *,
-		const struct vec3f *, int, int, int, bool, float)
-DECL_VFUNC_DYN(void, AddBoxOverlay2, const struct vec3f *,
+static struct IVDebugOverlay *dbgoverlay;
+DECL_VFUNC_DYN(struct IVDebugOverlay, void, AddLineOverlay,
+		const struct vec3f *, const struct vec3f *, int, int, int, bool, float)
+DECL_VFUNC_DYN(struct IVDebugOverlay, void, AddBoxOverlay2,
 		const struct vec3f *, const struct vec3f *, const struct vec3f *,
-		const struct rgba *, const struct rgba *, float)
+		const struct vec3f *, const struct rgba *, const struct rgba *, float)
 
-DEF_ACCESSORS(struct vec3f, entpos)
-DEF_ACCESSORS(struct vec3f, eyeang)
-DEF_ACCESSORS(uint, teamnum)
-DEF_PTR_ACCESSOR(void, collision)
+// XXX: more type safety stuff here also
+DEF_ACCESSORS(void, struct vec3f, entpos)
+DEF_ACCESSORS(void, struct vec3f, eyeang)
+DEF_ACCESSORS(void, uint, teamnum)
+DEF_PTR_ACCESSOR(void, void, collision)
 
 static struct vec3f warptarget(void *ent) {
 	struct vec3f org = get_entpos(ent), ang = get_eyeang(ent);

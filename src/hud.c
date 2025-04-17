@@ -64,40 +64,42 @@ DEF_EVENT(HudPaint, int /*width*/, int /*height*/)
 // right calling convention (x86 Windows/MSVC is funny about passing structs...)
 struct handlewrap { ulong x; };
 
-// CEngineVGui
-DECL_VFUNC_DYN(unsigned int, GetPanel, int)
+struct CEngineVGui;
+DECL_VFUNC_DYN(struct CEngineVGui, unsigned int, GetPanel, int)
 
-// vgui::ISchemeManager
-DECL_VFUNC_DYN(void *, GetIScheme, struct handlewrap)
-// vgui::IScheme
-DECL_VFUNC_DYN(struct handlewrap, GetFont, const char *, bool)
+struct ISchemeManager;
+DECL_VFUNC_DYN(struct ISchemeManager, void *, GetIScheme, struct handlewrap)
+struct IScheme;
+DECL_VFUNC_DYN(struct IScheme, struct handlewrap, GetFont, const char *, bool)
 
-// vgui::ISurface
-DECL_VFUNC_DYN(void, DrawSetColor, struct rgba)
-DECL_VFUNC_DYN(void, DrawFilledRect, int, int, int, int)
-DECL_VFUNC_DYN(void, DrawOutlinedRect, int, int, int, int)
-DECL_VFUNC_DYN(void, DrawLine, int, int, int, int)
-DECL_VFUNC_DYN(void, DrawPolyLine, int *, int *, int)
-DECL_VFUNC_DYN(void, DrawSetTextFont, struct handlewrap)
-DECL_VFUNC_DYN(void, DrawSetTextColor, struct rgba)
-DECL_VFUNC_DYN(void, DrawSetTextPos, int, int)
-DECL_VFUNC_DYN(void, DrawPrintText, hud_wchar *, int, int)
-DECL_VFUNC_DYN(void, GetScreenSize, int *, int *)
-DECL_VFUNC_DYN(int, GetFontTall, struct handlewrap)
-DECL_VFUNC_DYN(int, GetCharacterWidth, struct handlewrap, int)
-DECL_VFUNC_DYN(int, GetTextSize, struct handlewrap, const hud_wchar *,
-		int *, int *)
+struct ISurface;
+DECL_VFUNC_DYN(struct ISurface, void, DrawSetColor, struct rgba)
+DECL_VFUNC_DYN(struct ISurface, void, DrawFilledRect, int, int, int, int)
+DECL_VFUNC_DYN(struct ISurface, void, DrawOutlinedRect, int, int, int, int)
+DECL_VFUNC_DYN(struct ISurface, void, DrawLine, int, int, int, int)
+DECL_VFUNC_DYN(struct ISurface, void, DrawPolyLine, int *, int *, int)
+DECL_VFUNC_DYN(struct ISurface, void, DrawSetTextFont, struct handlewrap)
+DECL_VFUNC_DYN(struct ISurface, void, DrawSetTextColor, struct rgba)
+DECL_VFUNC_DYN(struct ISurface, void, DrawSetTextPos, int, int)
+DECL_VFUNC_DYN(struct ISurface, void, DrawPrintText, hud_wchar *, int, int)
+DECL_VFUNC_DYN(struct ISurface, void, GetScreenSize, int *, int *)
+DECL_VFUNC_DYN(struct ISurface, int, GetFontTall, struct handlewrap)
+DECL_VFUNC_DYN(struct ISurface, int, GetCharacterWidth, struct handlewrap, int)
+DECL_VFUNC_DYN(struct ISurface, int, GetTextSize, struct handlewrap,
+		const hud_wchar *, int *, int *)
 
-// vgui::Panel
-DECL_VFUNC_DYN(void, SetPaintEnabled, bool)
+struct IPanel { void **vtable; };
+DECL_VFUNC_DYN(struct IPanel, void, SetPaintEnabled, bool)
 
-static void *matsurf, *toolspanel, *scheme;
+static struct ISurface *matsurf;
+static struct IPanel *toolspanel;
+static struct IScheme *scheme;
 
-typedef void (*VCALLCONV Paint_func)(void *);
+typedef void (*VCALLCONV Paint_func)(struct IPanel *);
 static Paint_func orig_Paint;
-void VCALLCONV hook_Paint(void *this) {
-	int width, height;
+void VCALLCONV hook_Paint(struct IPanel *this) {
 	if (this == toolspanel) {
+		int width, height;
 		hud_screensize(&width, &height);
 		EMIT_HudPaint(width, height);
 	}
@@ -149,8 +151,8 @@ void hud_textsize(ulong font, const ushort *s, int *width, int *height) {
 	GetTextSize(matsurf, (struct handlewrap){font}, s, width, height);
 }
 
-static bool find_toolspanel(void *enginevgui) {
-	const uchar *insns = (const uchar *)VFUNC(enginevgui, GetPanel);
+static bool find_toolspanel(struct CEngineVGui *enginevgui) {
+	const uchar *insns = enginevgui->vtable[vtidx_GetPanel];
 	for (const uchar *p = insns; p - insns < 16;) {
 		// first CALL instruction in GetPanel calls GetRootPanel, which gives a
 		// pointer to the specified panel
@@ -172,7 +174,7 @@ INIT {
 		errmsg_errorx("couldn't get MatSystemSurface006 interface");
 		return FEAT_INCOMPAT;
 	}
-	void *schememgr = factory_engine("VGUI_Scheme010", 0);
+	struct ISchemeManager *schememgr = factory_engine("VGUI_Scheme010", 0);
 	if_cold (!schememgr) {
 		errmsg_errorx("couldn't get VGUI_Scheme010 interface");
 		return FEAT_INCOMPAT;
@@ -181,13 +183,12 @@ INIT {
 		errmsg_errorx("couldn't find engine tools panel");
 		return FEAT_INCOMPAT;
 	}
-	void **vtable = *(void ***)toolspanel;
-	if_cold (!os_mprot(vtable + vtidx_Paint, sizeof(void *),
+	if_cold (!os_mprot(toolspanel->vtable + vtidx_Paint, sizeof(void *),
 			PAGE_READWRITE)) {
 		errmsg_errorsys("couldn't make virtual table writable");
 		return FEAT_FAIL;
 	}
-	orig_Paint = (Paint_func)hook_vtable(vtable, vtidx_Paint,
+	orig_Paint = (Paint_func)hook_vtable(toolspanel->vtable, vtidx_Paint,
 			(void *)&hook_Paint);
 	SetPaintEnabled(toolspanel, true);
 	// 1 is the default, first loaded scheme. should always be sourcescheme.res
@@ -198,7 +199,7 @@ INIT {
 END {
 	// don't unhook toolspanel if exiting: it's already long gone!
 	if_cold (sst_userunloaded) {
-		unhook_vtable(*(void ***)toolspanel, vtidx_Paint, (void *)orig_Paint);
+		unhook_vtable(toolspanel->vtable, vtidx_Paint, (void *)orig_Paint);
 		SetPaintEnabled(toolspanel, false);
 	}
 }

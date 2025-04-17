@@ -356,16 +356,16 @@ static void do_featureinit() {
 	}
 }
 
-typedef void (*VCALLCONV VGuiConnect_func)(void *this);
+typedef void (*VCALLCONV VGuiConnect_func)(struct CEngineVGui *this);
 static VGuiConnect_func orig_VGuiConnect;
-static void VCALLCONV hook_VGuiConnect(void *this) {
+static void VCALLCONV hook_VGuiConnect(struct CEngineVGui *this) {
 	orig_VGuiConnect(this);
 	do_featureinit();
 	fixes_apply();
-	unhook_vtable(*(void ***)vgui, vtidx_VGuiConnect, (void *)orig_VGuiConnect);
+	unhook_vtable(vgui->vtable, vtidx_VGuiConnect, (void *)orig_VGuiConnect);
 }
 
-DECL_VFUNC_DYN(bool, VGuiIsInitialized)
+DECL_VFUNC_DYN(struct CEngineVGui, bool, VGuiIsInitialized)
 
 // --- Magical deferred load order hack nonsense! ---
 // VDF plugins load right after server.dll, but long before most other stuff. We
@@ -386,13 +386,13 @@ static bool deferinit() {
 	// CEngineVGui::IsInitialized() which works everywhere.
 	if (VGuiIsInitialized(vgui)) return false;
 	sst_earlyloaded = true; // let other code know
-	if_cold (!os_mprot(*(void ***)vgui + vtidx_VGuiConnect, ssizeof(void *),
+	if_cold (!os_mprot(vgui->vtable + vtidx_VGuiConnect, ssizeof(void *),
 			PAGE_READWRITE)) {
 		errmsg_warnsys("couldn't make CEngineVGui vtable writable for deferred "
 				"feature setup");
 		goto e;
 	}
-	orig_VGuiConnect = (VGuiConnect_func)hook_vtable(*(void ***)vgui,
+	orig_VGuiConnect = (VGuiConnect_func)hook_vtable(vgui->vtable,
 			vtidx_VGuiConnect, (void *)&hook_VGuiConnect);
 	return true;
 

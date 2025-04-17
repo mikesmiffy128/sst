@@ -17,16 +17,13 @@
 #include <string.h>
 
 #include "bitbuf.h"
-#include "con_.h"
 #include "demorec.h"
 #include "engineapi.h"
-#include "errmsg.h"
 #include "feature.h"
 #include "gamedata.h"
 #include "intdefs.h"
 #include "langext.h"
 #include "mem.h"
-#include "ppmagic.h"
 #include "vcall.h"
 #include "x86.h"
 #include "x86util.h"
@@ -88,7 +85,7 @@ void democustom_write(const void *buf, int len) {
 }
 
 static bool find_WriteMessages() {
-	const uchar *insns = (*(uchar ***)demorecorder)[vtidx_RecordPacket];
+	const uchar *insns = (uchar *)demorecorder->vtable[vtidx_RecordPacket];
 	// RecordPacket calls WriteMessages right away, so just look for a call
 	for (const uchar *p = insns; p - insns < 32;) {
 		if (*p == X86_CALL) {
@@ -100,7 +97,7 @@ static bool find_WriteMessages() {
 	return false;
 }
 
-DECL_VFUNC_DYN(int, GetEngineBuildNumber)
+DECL_VFUNC_DYN(struct VEngineClient, int, GetEngineBuildNumber)
 
 INIT {
 	// More UncraftedkNowledge:

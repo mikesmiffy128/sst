@@ -16,8 +16,6 @@
  */
 
 #include "abi.h"
-#include "con_.h"
-#include "engineapi.h"
 #include "extmalloc.h"
 #include "errmsg.h"
 #include "feature.h"
@@ -25,19 +23,21 @@
 #include "hook.h"
 #include "kvsys.h"
 #include "langext.h"
-#include "mem.h"
 #include "os.h"
 #include "vcall.h"
 #include "x86.h"
 
 FEATURE()
 
-void *KeyValuesSystem(); // vstlib symbol
-static void *kvs;
+struct IKeyValuesSystem { void **vtable; };
+
+struct IKeyValuesSystem *KeyValuesSystem(); // vstlib symbol
+static struct IKeyValuesSystem *kvs;
 static int vtidx_GetSymbolForString = 3, vtidx_GetStringForSymbol = 4;
 static bool iskvv2 = false;
-DECL_VFUNC_DYN(int, GetSymbolForString, const char *, bool)
-DECL_VFUNC_DYN(const char *, GetStringForSymbol, int)
+DECL_VFUNC_DYN(struct IKeyValuesSystem, int, GetSymbolForString, const char *,
+		bool)
+DECL_VFUNC_DYN(struct IKeyValuesSystem, const char *, GetStringForSymbol, int)
 
 const char *kvsys_symtostr(int sym) { return GetStringForSymbol(kvs, sym); }
 int kvsys_strtosym(const char *s) { return GetSymbolForString(kvs, s, true); }
@@ -100,16 +100,16 @@ INIT {
 	// kvs ABI check is probably relevant for other games, but none that we
 	// currently actively support
 	if (GAMETYPE_MATCHES(L4D2x)) {
-		void **kvsvt = mem_loadptr(kvs);
-		detectabichange(kvsvt);
-		if_cold (!os_mprot(kvsvt + vtidx_GetStringForSymbol, sizeof(void *),
-				PAGE_READWRITE)) {
+		void **vtable = kvs->vtable;
+		detectabichange(vtable);
+		if_cold (!os_mprot(vtable + vtidx_GetStringForSymbol,
+				sizeof(void *), PAGE_READWRITE)) {
 			errmsg_warnx("couldn't make KeyValuesSystem vtable writable");
 			errmsg_note("won't be able to prevent any nag messages");
 		}
 		else {
 			orig_GetStringForSymbol = (GetStringForSymbol_func)hook_vtable(
-					kvsvt, vtidx_GetStringForSymbol,
+					vtable, vtidx_GetStringForSymbol,
 					(void *)hook_GetStringForSymbol);
 		}
 	}
@@ -118,7 +118,7 @@ INIT {
 
 END {
 	if (orig_GetStringForSymbol) {
-		unhook_vtable(*(void ***)kvs, vtidx_GetStringForSymbol,
+		unhook_vtable(kvs->vtable, vtidx_GetStringForSymbol,
 				(void *)orig_GetStringForSymbol);
 	}
 }

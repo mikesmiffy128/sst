@@ -21,6 +21,7 @@
 #include "gametype.h"
 #include "intdefs.h"
 #include "trace.h"
+#include "vcall.h"
 
 FEATURE()
 // TODO(compat): limiting to tested branches for now; support others as needed
@@ -35,10 +36,9 @@ struct ray {
 	bool isray, isswept;
 };
 
-static void *srvtrace;
-
-DECL_VFUNC(void, TraceRay, 5, struct ray *, uint /*mask*/, void */*filter*/,
-		struct CGameTrace *)
+static struct IEngineTraceServer *srvtrace;
+DECL_VFUNC(struct IEngineTraceServer, void, TraceRay, 5,
+		struct ray *, uint /*mask*/, void */*filter*/, struct CGameTrace *)
 
 static inline bool nonzero(struct vec3f v) {
 	union { struct vec3f v; struct { unsigned int x, y, z; }; } u = {v};

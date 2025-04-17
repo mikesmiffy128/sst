@@ -281,8 +281,11 @@ struct inputevent {
 	int data, data2, data3;
 };
 
-DECL_VFUNC_DYN(void, GetDesktopResolution, int *, int *)
-DECL_VFUNC_DYN(void, DispatchAllStoredGameMessages)
+struct IGameUIFuncs { void **vtable; };
+struct IGame { void **vtable; };
+
+DECL_VFUNC_DYN(struct IGameUIFuncs, void, GetDesktopResolution, int *, int *)
+DECL_VFUNC_DYN(struct IGame, void, DispatchAllStoredGameMessages)
 
 typedef void (*Key_Event_func)(struct inputevent *);
 static Key_Event_func orig_Key_Event;
@@ -314,13 +317,14 @@ static bool find_Key_Event() {
 	//  -> IGame/CGame (first mov into ECX)
 	//   -> CGame::DispatchAllStoredGameMessages vfunc
 	//    -> First call instruction (either DispatchInputEvent or Key_Event)
-	void *gameuifuncs = factory_engine("VENGINE_GAMEUIFUNCS_VERSION005", 0);
+	struct IGameUIFuncs *gameuifuncs = factory_engine(
+			"VENGINE_GAMEUIFUNCS_VERSION005", 0);
 	if_cold (!gameuifuncs) {
 		errmsg_errorx("couldn't get engine game UI interface");
 		return false;
 	}
-	void *cgame;
-	const uchar *insns = (const uchar *)VFUNC(gameuifuncs, GetDesktopResolution);
+	struct IGame *cgame;
+	const uchar *insns = gameuifuncs->vtable[vtidx_GetDesktopResolution];
 	for (const uchar *p = insns; p - insns < 16;) {
 		if (p[0] == X86_MOVRMW && p[1] == X86_MODRM(0, 1, 5)) {
 			void **indirect = mem_loadptr(p + 2);
@@ -332,7 +336,7 @@ static bool find_Key_Event() {
 	errmsg_errorx("couldn't find pointer to CGame instance");
 	return false;
 
-ok:	insns = (const uchar *)VFUNC(cgame, DispatchAllStoredGameMessages);
+ok:	insns = cgame->vtable[vtidx_DispatchAllStoredGameMessages];
 	for (const uchar *p = insns; p - insns < 128;) {
 		if (p[0] == X86_CALL) {
 			orig_Key_Event = (Key_Event_func)(p + 5 + mem_loads32(p + 1));

@@ -27,15 +27,16 @@
 #endif
 
 /*
- * Defines a function to offset a pointer from a struct/class to a field based
+ * Defines a function to offset a pointer from a struct/class to a member based
  * on a corresponding offset value off_<field>. Such an offset would be
  * generally defined in gamedata. The function will be named getptr_<field>.
  * Essentially allows easy access to an opaque thing contained with another
  * opaque thing.
  */
-#define DEF_PTR_ACCESSOR(type, field) \
-	_ACCESSOR_UNUSED static inline typeof(type) *getptr_##field(void *obj) { \
-		return mem_offset(obj, off_##field); \
+#define DEF_PTR_ACCESSOR(class, type, member) \
+	_ACCESSOR_UNUSED static inline typeof(type) *getptr_##member( \
+			typeof(class) *obj) { \
+		return mem_offset(obj, off_##member); \
 	}
 
 /*
@@ -43,21 +44,22 @@
  * Requires that the field type is complete - that is, either scalar or a fully
  * defined struct.
  */
-#define DEF_ACCESSORS(type, field) \
-	DEF_PTR_ACCESSOR(type, field) \
-	_ACCESSOR_UNUSED static inline typeof(type) get_##field(const void *obj) { \
-		return *getptr_##field((void *)obj); \
+#define DEF_ACCESSORS(class, type, member) \
+	DEF_PTR_ACCESSOR(class, type, member) \
+	_ACCESSOR_UNUSED static inline typeof(type) get_##member( \
+			const typeof(class) *obj) { \
+		return *getptr_##member((typeof(class) *)obj); \
 	} \
-	_ACCESSOR_UNUSED static inline void set_##field(const void *obj, \
+	_ACCESSOR_UNUSED static inline void set_##member(typeof(class) *obj, \
 			typeof(type) val) { \
-		*getptr_##field((void *)obj) = val; \
+		*getptr_##member(obj) = val; \
 	}
 
 /*
- * Defines an array indexing function arrayidx_<class> which allows offsetting
- * an opaque pointer by sz_<class> bytes. This size value would generally be
- * defined in gamedata. Allows iterating over structs/classes with sizes that
- * vary by game and are thus unknown at compile time.
+ * Defines an array indexing function arrayidx_<classname> which allows
+ * offsetting an opaque pointer by sz_<classname> bytes. This size value would
+ * generally be defined in gamedata. Allows iterating over structs/classes with
+ * sizes that vary by game and are thus unknown at compile time.
  *
  * Note that idx is signed so this can also be used for relative pointer offsets
  * in either direction.
@@ -68,10 +70,10 @@
  * single load of the global followed by repeated addition with no need for
  * multiplication, given that we use LTO, so... don't worry about it! It's fine!
  */
-#define DEF_ARRAYIDX_ACCESSOR(class) \
-	_ACCESSOR_UNUSED static inline struct class *arrayidx_##class(void *array, \
-			ssize idx) { \
-		return mem_offset(array, idx * sz_##class); \
+#define DEF_ARRAYIDX_ACCESSOR(type, classname) \
+	_ACCESSOR_UNUSED static inline typeof(type) *arrayidx_##classname( \
+			typeof(type) *array, ssize idx) { \
+		return mem_offset(array, idx * sz_##classname); \
 	}
 
 #endif

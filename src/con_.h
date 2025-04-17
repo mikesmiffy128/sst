@@ -180,9 +180,10 @@ void con_warn(const char *fmt, ...) _CON_PRINTF(1, 2) __asm__("Warning");
 #endif
 
 struct rgba; // in engineapi.h - forward declare here to avoid warnings
+struct ICvar; // "
 
-extern void *_con_iface;
-extern void (*_con_colourmsgf)(void *this, const struct rgba *c,
+extern struct ICvar *_con_iface;
+extern void (*_con_colourmsgf)(struct ICvar *this, const struct rgba *c,
 		const char *fmt, ...) _CON_PRINTF(3, 4);
 /*
  * This provides the same functionality as ConColorMsg which was removed from
@@ -233,12 +234,7 @@ extern struct _con_vtab_iconvar_wrap {
 		.parent = &_cvar_##name_, /* bizarre, but how the engine does it */ \
 		.defaultval = _Generic(value, char *: value, int: #value, \
 				double: #value), \
-		/* N.B. the NOLINT comment below isn't for you, the reader, it's for the
-		   computer, because clangd decided the only way to turn off a bogus
-		   warning is to write a bogus comment. Also note, this comment you're
-		   reading now isn't very useful either, I'm just angry. */ \
-		.strlen = _Generic(value, char *: sizeof(value), /*NOLINT*/ \
-				default: sizeof(#value)), \
+		.strlen = sizeof(_Generic(value, char *: value, default: #value)), \
 		.fval = _Generic(value, char *: 0, int: value, double: value), \
 		.ival = _Generic(value, char *: 0, int: value, double: (int)value), \
 		.hasmin = hasmin_, .minval = (min), .hasmax = hasmax_, .maxval = (max) \

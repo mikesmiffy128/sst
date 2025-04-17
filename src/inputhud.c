@@ -61,7 +61,7 @@ DEF_FEAT_CVAR_MINMAX(sst_inputhud_y,
 		"Input HUD y position (fraction between screen top and bottom)",
 		0.95, 0, 1, CON_ARCHIVE)
 
-static void *input;
+static struct CInput { void **vtable; } *input;
 static int heldbuttons = 0, tappedbuttons = 0;
 
 static struct rgba colours[3] = {
@@ -98,8 +98,8 @@ struct CUserCmd {
 };
 
 #define vtidx_GetUserCmd_l4dbased vtidx_GetUserCmd
-DECL_VFUNC_DYN(struct CUserCmd *, GetUserCmd, int)
-DECL_VFUNC_DYN(struct CUserCmd *, GetUserCmd_l4dbased, int, int)
+DECL_VFUNC_DYN(struct CInput, struct CUserCmd *, GetUserCmd, int)
+DECL_VFUNC_DYN(struct CInput, struct CUserCmd *, GetUserCmd_l4dbased, int, int)
 
 typedef void (*VCALLCONV CreateMove_func)(void *, int, float, bool);
 static CreateMove_func orig_CreateMove;
@@ -114,16 +114,17 @@ static void VCALLCONV hook_CreateMove(void *this, int seq, float ft,
 	if (cmd) { heldbuttons = cmd->buttons; tappedbuttons |= cmd->buttons; }
 }
 // basically a dupe, but calling the other version of GetUserCmd
-static void VCALLCONV hook_CreateMove_l4dbased(void *this, int seq, float ft,
-		bool active) {
+static void VCALLCONV hook_CreateMove_l4dbased(struct CInput *this, int seq,
+		float ft, bool active) {
 	orig_CreateMove(this, seq, ft, active);
 	struct CUserCmd *cmd = GetUserCmd_l4dbased(this, -1, seq);
 	if (cmd) { heldbuttons = cmd->buttons; tappedbuttons |= cmd->buttons; }
 }
 
-typedef void (*VCALLCONV DecodeUserCmdFromBuffer_func)(void *, void *, int);
-typedef void (*VCALLCONV DecodeUserCmdFromBuffer_l4dbased_func)(void *, int,
+typedef void (*VCALLCONV DecodeUserCmdFromBuffer_func)(struct CInput *,
 		void *, int);
+typedef void (*VCALLCONV DecodeUserCmdFromBuffer_l4dbased_func)(struct CInput *,
+		int, void *, int);
 static union {
 	DecodeUserCmdFromBuffer_func prel4d;
 	DecodeUserCmdFromBuffer_l4dbased_func l4dbased;
@@ -131,13 +132,13 @@ static union {
 #define orig_DecodeUserCmdFromBuffer _orig_DecodeUserCmdFromBuffer.prel4d
 #define orig_DecodeUserCmdFromBuffer_l4dbased \
 		_orig_DecodeUserCmdFromBuffer.l4dbased
-static void VCALLCONV hook_DecodeUserCmdFromBuffer(void *this, void *reader,
-		int seq) {
+static void VCALLCONV hook_DecodeUserCmdFromBuffer(struct CInput *this,
+		void *reader, int seq) {
 	orig_DecodeUserCmdFromBuffer(this, reader, seq);
 	struct CUserCmd *cmd = GetUserCmd(this, seq);
 	if (cmd) { heldbuttons = cmd->buttons; tappedbuttons |= cmd->buttons; }
 }
-static void VCALLCONV hook_DecodeUserCmdFromBuffer_l4dbased(void *this,
+static void VCALLCONV hook_DecodeUserCmdFromBuffer_l4dbased(struct CInput *this,
 		int slot, void *reader, int seq) {
 	orig_DecodeUserCmdFromBuffer_l4dbased(this, slot, reader, seq);
 	struct CUserCmd *cmd = GetUserCmd_l4dbased(this, slot, seq);
@@ -366,13 +367,12 @@ HANDLE_EVENT(HudPaint, int screenw, int screenh) {
 }
 
 // find the CInput "input" global
-static inline bool find_input(void* vclient) {
+static inline bool find_input(struct VClient *vclient) {
 #ifdef _WIN32
 	// the only CHLClient::DecodeUserCmdFromBuffer() does is call a virtual
 	// function, so find its thisptr being loaded into ECX
-	void* decodeusercmd =
-		(*(void***)vclient)[vtidx_VClient_DecodeUserCmdFromBuffer];
-	for (uchar *p = (uchar *)decodeusercmd; p - (uchar *)decodeusercmd < 32;) {
+	uchar *insns = vclient->vtable[vtidx_VClient_DecodeUserCmdFromBuffer];
+	for (uchar *p = insns; p - insns < 32;) {
 		if (p[0] == X86_MOVRMW && p[1] == X86_MODRM(0, 1, 5)) {
 			void **indirect = mem_loadptr(p + 2);
 			input = *indirect;
@@ -387,7 +387,7 @@ static inline bool find_input(void* vclient) {
 }
 
 INIT {
-	void *vclient;
+	struct VClient *vclient;
 	if (!(vclient = factory_client("VClient015", 0)) &&
 			!(vclient = factory_client("VClient016", 0)) &&
 			!(vclient = factory_client("VClient017", 0))) {
@@ -398,7 +398,7 @@ INIT {
 		errmsg_errorx("couldn't find input global");
 		return FEAT_INCOMPAT;
 	}
-	void **vtable = mem_loadptr(input);
+	void **vtable = input->vtable;
 	// just unprotect the first few pointers (GetUserCmd is 8)
 	if_cold (!os_mprot(vtable, sizeof(void *) * 8, PAGE_READWRITE)) {
 		errmsg_errorsys("couldn't make virtual table writable");
@@ -446,11 +446,10 @@ INIT {
 }
 
 END {
-	void **vtable = mem_loadptr(input);
-	unhook_vtable(vtable, vtidx_CreateMove, (void *)orig_CreateMove);
+	unhook_vtable(input->vtable, vtidx_CreateMove, (void *)orig_CreateMove);
 	// N.B.: since the orig_ function is in a union, we don't have to worry
 	// about which version we're unhooking
-	unhook_vtable(vtable, vtidx_DecodeUserCmdFromBuffer,
+	unhook_vtable(input->vtable, vtidx_DecodeUserCmdFromBuffer,
 			(void *)orig_DecodeUserCmdFromBuffer);
 }
 

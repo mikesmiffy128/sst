@@ -26,7 +26,7 @@
 FEATURE("custom crosshair drawing")
 REQUIRE(hud)
 
-DECL_VFUNC_DYN(bool, IsInGame)
+DECL_VFUNC_DYN(struct VEngineClient, bool, IsInGame)
 
 DEF_FEAT_CVAR(sst_xhair, "Enable custom crosshair", 0, CON_ARCHIVE)
 DEF_FEAT_CVAR(sst_xhair_colour,

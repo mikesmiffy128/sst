@@ -28,8 +28,8 @@
 #include "fastfwd.h"
 #include "feature.h"
 #include "gamedata.h"
-#include "gametype.h"
 #include "gameserver.h"
+#include "gametype.h"
 #include "hook.h"
 #include "intdefs.h"
 #include "langext.h"
@@ -55,11 +55,11 @@ REQUIRE_GAMEDATA(vtidx_GameFrame) // note: for L4D1 only, always defined anyway
 REQUIRE_GAMEDATA(vtidx_GameShutdown)
 REQUIRE_GAMEDATA(vtidx_OnGameplayStart)
 
-static void **votecontroller;
+static struct CVoteController **votecontroller;
 static int off_callerrecords = -1;
 static int off_voteissues;
 
-static void *director; // "TheDirector" server global
+struct CDirector { void **vtable; } *director; // "TheDirector" server global
 
 // Note: the vote callers vector contains these as elements. We don't currently
 // do anything with the structure, but we're keeping it here for reference.
@@ -73,12 +73,13 @@ static void *director; // "TheDirector" server global
 };*/
 
 struct CVoteIssue;
-DECL_VFUNC(const char *, SetIssueDetails, 1 + NVDTOR, const char *)
-DECL_VFUNC(const char *, GetDisplayString, 8 + NVDTOR)
-DECL_VFUNC(const char *, ExecuteCommand, 9 + NVDTOR)
+DECL_VFUNC(struct CVoteIssue, const char *, SetIssueDetails, 1 + NVDTOR,
+		const char *)
+DECL_VFUNC(struct CVoteIssue, const char *, GetDisplayString, 8 + NVDTOR)
+DECL_VFUNC(struct CVoteIssue, const char *, ExecuteCommand, 9 + NVDTOR)
 
-DEF_PTR_ACCESSOR(struct CUtlVector, voteissues)
-DEF_PTR_ACCESSOR(struct CUtlVector, callerrecords)
+DEF_PTR_ACCESSOR(struct CVoteController, struct CUtlVector, voteissues)
+DEF_PTR_ACCESSOR(struct CVoteController, struct CUtlVector, callerrecords)
 
 static struct CVoteIssue *getissue(const char *textkey) {
 	struct CVoteIssue **issues = getptr_voteissues(*votecontroller)->m.mem;
@@ -234,9 +235,9 @@ HANDLE_EVENT(Tick, bool simulating) {
 	}
 }
 
-typedef void (*VCALLCONV OnGameplayStart_func)(void *this);
+typedef void (*VCALLCONV OnGameplayStart_func)(struct CDirector *this);
 static OnGameplayStart_func orig_OnGameplayStart;
-static void VCALLCONV hook_OnGameplayStart(void *this) {
+static void VCALLCONV hook_OnGameplayStart(struct CDirector *this) {
 	orig_OnGameplayStart(this);
 	if (nextmapnum) {
 		// if we changed map more than 1 time, cancel the reset. this'll happen
@@ -500,8 +501,8 @@ ok:	// Director::Update calls UnfreezeTeam after the first jmp instruction
 	return false;
  }
 
-
-DECL_VFUNC_DYN(int, GetEngineBuildNumber)
+// XXX: duped def in democustom: should this belong somewhere else?
+DECL_VFUNC_DYN(struct VEngineClient, int, GetEngineBuildNumber)
 
 INIT {
 	struct con_cmd *cmd_listissues = con_findcmd("listissues");
@@ -533,7 +534,7 @@ INIT {
 #ifdef _WIN32 // L4D1 has no Linux build, no need to check whether L4D2
 	if (GAMETYPE_MATCHES(L4D2)) {
 #endif
-		vtable = mem_loadptr(director);
+		vtable = director->vtable;
 		if_cold (!os_mprot(vtable + vtidx_OnGameplayStart, sizeof(*vtable),
 				PAGE_READWRITE)) {
 			errmsg_errorsys("couldn't make virtual table writable");
@@ -544,7 +545,7 @@ INIT {
 #ifdef _WIN32 // L4D1 has no Linux build!
 	}
 	else /* L4D1 */ {
-		void *GameFrame = (*(void ***)srvdll)[vtidx_GameFrame];
+		void *GameFrame = srvdll->vtable[vtidx_GameFrame];
 		if_cold (!find_UnfreezeTeam(GameFrame)) {
 			errmsg_errorx("couldn't find UnfreezeTeam function");
 			return FEAT_INCOMPAT;

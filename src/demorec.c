@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "con_.h"
+#include "demorec.h"
 #include "engineapi.h"
 #include "errmsg.h"
 #include "event.h"
@@ -29,7 +30,6 @@
 #include "langext.h"
 #include "mem.h"
 #include "os.h"
-#include "ppmagic.h"
 #include "sst.h"
 #include "vcall.h"
 #include "x86.h"
@@ -44,7 +44,7 @@ REQUIRE_GAMEDATA(vtidx_RecordPacket)
 DEF_FEAT_CVAR(sst_autorecord,
 		"Continuously record demos even after reconnecting", 1, CON_ARCHIVE)
 
-void *demorecorder;
+struct CDemoRecorder *demorecorder;
 static int *demonum;
 static bool *recording;
 const char *demorec_basename;
@@ -59,12 +59,11 @@ DEF_PREDICATE(DemoControlAllowed)
 DEF_EVENT(DemoRecordStarting)
 DEF_EVENT(DemoRecordStopped, int)
 
-DECL_VCALL_DYN(SetSignonState, int)
+struct CDemoRecorder;
 
-//typedef void (*VCALLCONV SetSignonState_func)(void *, int);
+typedef void (*VCALLCONV SetSignonState_func)(struct CDemoRecorder *, int);
 static SetSignonState_func orig_SetSignonState;
-static void VCALLCONV hook_SetSignonState(void *this_, int state) {
-	struct CDemoRecorder *this = this_;
+static void VCALLCONV hook_SetSignonState(struct CDemoRecorder *this, int state) {
 	// NEW fires once every map or save load, but only bumps number if demo file
 	// was left open (i.e. every transition). bump it unconditionally instead!
 	if (state == SIGNONSTATE_NEW) {
@@ -81,9 +80,9 @@ static void VCALLCONV hook_SetSignonState(void *this_, int state) {
 	orig_SetSignonState(this, state);
 }
 
-typedef void (*VCALLCONV StopRecording_func)(void *);
+typedef void (*VCALLCONV StopRecording_func)(struct CDemoRecorder *);
 static StopRecording_func orig_StopRecording;
-static void VCALLCONV hook_StopRecording(void *this) {
+static void VCALLCONV hook_StopRecording(struct CDemoRecorder *this) {
 	bool wasrecording = *recording;
 	int lastnum = *demonum;
 	orig_StopRecording(this);
@@ -99,7 +98,7 @@ static void VCALLCONV hook_StopRecording(void *this) {
 	}
 }
 
-DECL_VFUNC_DYN(void, StartRecording)
+DECL_VFUNC_DYN(struct CDemoRecorder, void, StartRecording)
 
 static struct con_cmd *cmd_record, *cmd_stop;
 static con_cmdcb orig_record_cb, orig_stop_cb;
@@ -268,7 +267,7 @@ INIT {
 		errmsg_errorx("couldn't find demo recorder instance");
 		return FEAT_INCOMPAT;
 	}
-	void **vtable = mem_loadptr(demorecorder);
+	void **vtable = demorecorder->vtable;
 	// XXX: 16 is totally arbitrary here! figure out proper bounds later
 	if_cold (!os_mprot(vtable, 16 * sizeof(void *), PAGE_READWRITE)) {
 		errmsg_errorsys("couldn't make virtual table writable");
@@ -298,7 +297,7 @@ END {
 	if_hot (!sst_userunloaded) return;
 	// avoid dumb edge case if someone somehow records and immediately unloads
 	if (*recording && *demonum == 0) *demonum = 1;
-	void **vtable = mem_loadptr(demorecorder);
+	void **vtable = demorecorder->vtable;
 	unhook_vtable(vtable, vtidx_SetSignonState, (void *)orig_SetSignonState);
 	unhook_vtable(vtable, vtidx_StopRecording, (void *)orig_StopRecording);
 	cmd_record->cb = orig_record_cb;

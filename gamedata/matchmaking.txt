@@ -1,6 +1,8 @@
 # IMatchFramework
 vtidx_GetMatchNetworkMsgController
 	L4D 10 # NOTE: probably same for aswarm or p2 except with IAppSystem shift
+
+# IMatchNetworkMsgController
 vtidx_GetActiveGameServerDetails
 	L4D 1
 

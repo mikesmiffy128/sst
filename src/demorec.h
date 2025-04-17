@@ -20,8 +20,9 @@
 
 #include "event.h"
 
-// For internal use by democustom
-extern void *demorecorder;
+// For internal use by democustom. Consider this opaque.
+// XXX: should the struct be put in engineapi or something?
+extern struct CDemoRecorder { void **vtable; } *demorecorder;
 
 /*
  * Whether to ignore the value of the sst_autorecord cvar and just keep

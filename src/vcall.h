@@ -109,32 +109,33 @@
 #define _VCALL_UNUSED
 #endif
 
-#define _DECL_VFUNC_DYN(ret, conv, name, ...) \
-	typedef typeof(ret) (*conv name##_func)(void * __VA_OPT__(,) __VA_ARGS__); \
-	static inline _VCALL_UNUSED typeof(ret) name(void *this __VA_OPT__(,) \
-			_VCALL_ARGLIST(__VA_ARGS__)) { \
+#define _DECL_VFUNC_DYN(class, ret, conv, name, ...) \
+	typedef typeof(ret) (*conv name##_func)(typeof(class) * __VA_OPT__(,) \
+			__VA_ARGS__); \
+	static inline _VCALL_UNUSED typeof(ret) name( \
+			typeof(class) *this __VA_OPT__(,) _VCALL_ARGLIST(__VA_ARGS__)) { \
 		_VCALL_RET(ret) VCALL(this, name __VA_OPT__(,) \
 				_VCALL_PASSARGS(__VA_ARGS__)); \
 	}
-#define _DECL_VFUNC(ret, conv, name, idx, ...) \
+#define _DECL_VFUNC(class, ret, conv, name, idx, ...) \
 	enum { vtidx_##name = (idx) }; \
-	_DECL_VFUNC_DYN(ret, conv, name __VA_OPT__(,) __VA_ARGS__)
+	_DECL_VFUNC_DYN(class, ret, conv, name __VA_OPT__(,) __VA_ARGS__)
 
-/* Define a virtual function with a known index */
-#define DECL_VFUNC(ret, name, idx, ...) \
-	_DECL_VFUNC(ret, VCALLCONV, name, idx __VA_OPT__(,) __VA_ARGS__)
+/* Define a virtual function with a known index. */
+#define DECL_VFUNC(class, ret, name, idx, ...) \
+	_DECL_VFUNC(class, ret, VCALLCONV, name, idx __VA_OPT__(,) __VA_ARGS__)
 
 /* Define a virtual function with a known index, without thiscall convention */
-#define DECL_VFUNC_CDECL(ret, name, idx, ...) \
-	_DECL_VFUNC(ret, , name, idx __VA_OPT__(,) __VA_ARGS__)
+#define DECL_VFUNC_CDEFCL(class, ret, name, idx, ...) \
+	_DECL_VFUNC(class, ret, , name, idx __VA_OPT__(,) __VA_ARGS__)
 
 /* Define a virtual function with an index defined elsewhere (e.g. gamedata) */
-#define DECL_VFUNC_DYN(ret, name, ...) \
-	_DECL_VFUNC_DYN(ret, VCALLCONV, name __VA_OPT__(,) __VA_ARGS__)
+#define DECL_VFUNC_DYN(class, ret, name, ...) \
+	_DECL_VFUNC_DYN(class, ret, VCALLCONV, name __VA_OPT__(,) __VA_ARGS__)
 
 /* Define a virtual function with an index defined elsewhere, without thiscall */
-#define DECL_VFUNC_CDECLDYN(ret, name, ...) \
-	_DECL_VFUNC_DYN(ret, , name __VA_OPT__(,) __VA_ARGS__)
+#define DECL_VFUNC_CDECLDYN(class, ret, name, ...) \
+	_DECL_VFUNC_DYN(class, void, ret, , name __VA_OPT__(,) __VA_ARGS__)
 
 #endif
 
