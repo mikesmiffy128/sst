@@ -86,9 +86,10 @@ static void hook_FS_MAFAS(bool disallowaddons, char *mission, char *gamemode,
 	// are enabled. Both disconnecting from a server and using the addon menu
 	// call FS_MAFAS to allow every enabled VPK to be loaded, so we let those
 	// calls go through. This fixes the vast majority of laggy cases without
-	// breaking anything practice.
+	// breaking anything in practice.
 	//
-	// As a bonus, doing all this also seems to speed up map loads by about 1s.
+	// As a bonus, doing all this also seems to speed up map loads by about 1s
+	// per skipped call, which ends up being quite a significant saving.
 	//
 	// TODO(opt): There's one unhandled edge case reconnecting the to the same
 	// server we were just on, if the server hasn't changed maps. It's unclear
@@ -96,47 +97,46 @@ static void hook_FS_MAFAS(bool disallowaddons, char *mission, char *gamemode,
 
 	int curaddonvecsz = *addonvecsz;
 	if (curaddonvecsz != last_addonvecsz) {
-		// addons list has changed, meaning we're in the main menu. we will have
-		// already been called with null mission and/or gamemode and reset the
-		// last_ things, so update the count then call the original function.
+		// If the length changed, the list obviously changed, which also implies
+		// we're in the main menu. We'll have already just been passed nulls for
+		// gamemode and mission, so just note the size and continue as normal.
 		last_addonvecsz = curaddonvecsz;
-		goto e;
 	}
-
-	// if we have zero addons loaded, we can skip doing anything else.
-	if (!curaddonvecsz) return;
-
-	// we have some addons, which may or may not have changed. based on the
-	// above assumption that nothing will change *during* a campaign, cache
-	// campaign and mode names try to early-exit if neither has changed. the
-	// mission string can be empty if playing a gamemode not supported by the
-	// current map (such as survival on c8m1), so always call the original in
-	// that case since we can't know whether we changed campaigns or not.
-	if (mission && gamemode && *mission) {
+	else if (!curaddonvecsz) {
+		// We have zero addons loaded, and nothing changed, so skip the call.
+		return;
+	}
+	else if (mission && gamemode && *mission) {
+		// We have some addons, and the count didn't change, but the exact list
+		// could have. However, we assume nothing changes *during* a campaign.
+		// If we know what both the mission and gamemode are, and we know they
+		// haven't changed, then we can skip the cache invalidation call.
 		int missionlen = strlen(mission + 1) + 1;
 		int gamemodelen = strlen(gamemode);
-		if (missionlen < sizeof(last_mission) &&
+		bool canskip = false;
+		if_hot (missionlen < sizeof(last_mission) &&
 				gamemodelen < sizeof(last_gamemode)) {
-			bool canskip = disallowaddons == last_disallowaddons &&
+			canskip = disallowaddons == last_disallowaddons &&
 					!strncmp(mission, last_mission, missionlen + 1) &&
 					!strncmp(gamemode, last_gamemode, gamemodelen + 1);
-			if_hot (canskip) {
-				disallowaddons = last_disallowaddons;
-				memcpy(last_mission, mission, missionlen + 1);
-				memcpy(last_gamemode, gamemode, gamemodelen + 1);
-				return;
-			}
 		}
+		last_disallowaddons = disallowaddons;
+		memcpy(last_mission, mission, missionlen + 1);
+		memcpy(last_gamemode, gamemode, gamemodelen + 1);
+		if_hot (canskip) return;
 	}
-
-	// If we get here, we don't know for sure whether something might have
-	// changed, so we have to assume it did; we reset our cached values to avoid
-	// any false negatives in future, and then call the original function.
-	last_disallowaddons = false;
-	last_mission[0] = '\0';
-	last_gamemode[0] = '\0';
-
-e:	orig_FS_MAFAS(disallowaddons, mission, gamemode, ismutation);
+	else {
+		// If we get here, either we've left a game (null mission and gamemode)
+		// or been given an unknown mission (empty string). The latter case
+		// happens whenever the map doesn't support the campaign, e.g. c8m1
+		// survival, and implies we have to assume something might have changed.
+		// In either case, reset our cached values to prevent and subsequent
+		// false positives.
+		last_disallowaddons = false;
+		last_mission[0] = '\0';
+		last_gamemode[0] = '\0';
+	}
+	orig_FS_MAFAS(disallowaddons, mission, gamemode, ismutation);
 }
 
 static inline bool find_FS_MAFAS() {
