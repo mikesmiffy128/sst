@@ -265,6 +265,32 @@ _i("}")
 _( "}")
 }
 
+static inline void dbgdump(FILE *out) {
+_( "static void dumpgamedata() {")
+	int cursrc = -1;
+	for (int i = 0; i < nents; ++i) {
+		if (indents[i] != 0) continue;
+		if_cold (srcfiles[i] != cursrc) {
+			cursrc = srcfiles[i];
+F( "	con_msg(\"-- %" fS " --\\n\");", srcnames[cursrc])
+		}
+		const char *s = sbase + tags[i];
+		int line = srclines[i];
+		if (exprs[i]) {
+F( "	con_msg(\"  [x] %s = %%d  (line %d)\\n\", %s);", s, line, s)
+		}
+		else {
+F( "	if (has_%s) {", sbase + tags[i])
+F( "		con_msg(\"  [x] %s = %%d  (line %d)\\n\", %s);", s, line, s)
+_( "	}")
+_( "	else {")
+F( "		con_msg(\"  [ ] %s  (line %d)\\n\");", s, line);
+_( "	}")
+		}
+	}
+_( "}")
+}
+
 int OS_MAIN(int argc, os_char *argv[]) {
 	srcnames = (const os_char *const *)argv;
 	int sbase_len = 0, sbase_max = 65536;
@@ -304,6 +330,13 @@ int OS_MAIN(int argc, os_char *argv[]) {
 	defs(out);
 	_("")
 	init(out);
+
+	// technically we don't need this header in release builds, but whatever.
+	out = fopen(".build/include/gamedatadbg.gen.h", "wb");
+	if_cold (!out) die(100, "couldn't open gamedatadbg.gen.h");
+	H();
+	dbgdump(out);
+
 	return 0;
 }
 

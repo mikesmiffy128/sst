@@ -23,43 +23,54 @@
 
 extern u32 _gametype_tag;
 
-/* general engine branches used in a bunch of stuff */
-#define _gametype_tag_OE		1
-#define _gametype_tag_OrangeBox	(1 << 1)
-#define _gametype_tag_2013		(1 << 2)
+#define GAMETYPE_BASETAGS(X) \
+	/* general engine branches used in a bunch of stuff */ \
+	X(OE) \
+	X(OrangeBox) \
+	X(2013) \
+\
+	/* specific games with dedicated branches / engine changes */ \
+	/* TODO(compat): detect dmomm, if only to fail (VEngineServer broke) */ \
+	X(DMoMM) \
+	X(L4D1) \
+	X(L4D2) \
+	X(L4DS) /* Survivors (weird arcade port) */ \
+	X(Portal2) \
+\
+	/* games needing game-specific stuff, but not tied to a singular branch */ \
+	X(Portal1) \
+	X(HL2series) /* HL2, episodes, mods */ \
+\
+	/* VEngineClient versions */ \
+	X(Client015) \
+	X(Client014) \
+	X(Client013) \
+	X(Client012) \
+\
+	/* VEngineServer versions */ \
+	X(Server021) \
+\
+	/* ServerGameDLL versions */ \
+	X(SrvDLL009) /* 2013-ish */ \
+	X(SrvDLL005) /* mostly everything else, it seems */ \
+\
+	/* games needing version-specific stuff */ \
+	X(Portal1_3420) \
+	X(L4D1_1015plus) /* Crash Course update */ \
+	X(L4D1_1022plus) /* Mac update, bunch of code reshuffling */ \
+	X(L4D2_2125plus) \
+	X(TheLastStand) /* The JAiZ update */ \
 
-/* specific games with dedicated branches / engine changes */
-// TODO(compat): detect dmomm, even if only just to fail (VEngineServer broke)
-// TODO(compat): buy dmomm in a steam sale to implement and test the above, lol
-#define _gametype_tag_DMoMM		(1 << 3)
-#define _gametype_tag_L4D1		(1 << 4)
-#define _gametype_tag_L4D2		(1 << 5)
-#define _gametype_tag_L4DS		(1 << 6) /* Survivors (weird arcade port) */
-#define _gametype_tag_Portal2	(1 << 7)
+enum {
+#define _GAMETYPE_ENUMBIT(x) _gametype_tagbit_##x,
+GAMETYPE_BASETAGS(_GAMETYPE_ENUMBIT)
+#undef _GAMETYPE_ENUMBIT
+#define _GAMETYPE_ENUMVAL(x) _gametype_tag_##x = 1 << _gametype_tagbit_##x,
+GAMETYPE_BASETAGS(_GAMETYPE_ENUMVAL)
+#undef _GAMETYPE_ENUMVAL
+};
 
-/* games needing game-specific stuff, but not tied to a singular branch */
-#define _gametype_tag_Portal1	(1 << 8)
-#define _gametype_tag_HL2series	(1 << 9) /* HL2, episodes, and mods */
-
-/* VEngineClient versions */
-#define _gametype_tag_Client015 (1 << 10)
-#define _gametype_tag_Client014 (1 << 11)
-#define _gametype_tag_Client013 (1 << 12)
-#define _gametype_tag_Client012 (1 << 13)
-#define _gametype_tag_Server021 (1 << 14)
-
-/* ServerGameDLL versions */
-#define _gametype_tag_SrvDLL009	(1 << 15) // 2013-ish
-#define _gametype_tag_SrvDLL005	(1 << 16) // mostly everything else, it seems
-
-/* games needing version-specific stuff */
-#define _gametype_tag_Portal1_3420	(1 << 17)
-#define _gametype_tag_L4D1_1015plus	(1 << 18) // Crash Course update
-#define _gametype_tag_L4D1_1022plus	(1 << 19) // Mac update, with code shuffling
-#define _gametype_tag_L4D2_2125plus	(1 << 20)
-#define _gametype_tag_TheLastStand	(1 << 21) /* The JAiZ update */
-
-/* Matches for any multiple possible tags */
+/* Matches for any of multiple possible tags */
 #define _gametype_tag_L4D		(_gametype_tag_L4D1 | _gametype_tag_L4D2)
 // XXX: *stupid* naming, refactor one day (damn Survivors ruining everything)
 #define _gametype_tag_L4D2x		(_gametype_tag_L4D2 | _gametype_tag_L4DS)

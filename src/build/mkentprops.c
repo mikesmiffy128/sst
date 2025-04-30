@@ -368,6 +368,21 @@ _( "	}")
 _( "}")
 }
 
+static inline void dodbgdump(FILE *out) {
+_( "static inline void dumpentprops() {")
+_( "	con_msg(\"-- entprops.txt --\\n\");")
+	for (int i = 0; i < ndecls; ++i) {
+		const char *s = sbase + decls[i];
+F( "	if (has_%s) {", s);
+F( "		con_msg(\"  [x] %s = %%d\\n\", %s);", s, s)
+_( "	}")
+_( "	else {")
+F( "		con_msg(\"  [ ] %s\\n\");", s)
+_( "	}")
+	}
+_( "}")
+}
+
 int OS_MAIN(int argc, os_char *argv[]) {
 	if_cold (argc != 2) die(1, "wrong number of arguments");
 	int f = os_open_read(argv[1]);
@@ -389,6 +404,13 @@ int OS_MAIN(int argc, os_char *argv[]) {
 	if_cold (!out) die(100, "couldn't open entpropsinit.gen.h");
 	H();
 	doinit(out);
+
+	// technically we don't need this header in release builds, but whatever.
+	out = fopen(".build/include/entpropsdbg.gen.h", "wb");
+	if_cold (!out) die(100, "couldn't open entpropsdbg.gen.h");
+	H();
+	dodbgdump(out);
+
 	return 0;
 }
 

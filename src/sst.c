@@ -287,12 +287,24 @@ static const char *updatenotes = "\
 * Rewrote and optimised a whole bunch of internal stuff\n\
 ";
 
-enum { // used in generated code, must line up with 
+enum { // used in generated code, must line up with featmsgs arrays below
 	REQFAIL = _FEAT_INTERNAL_STATUSES,
 	NOGD,
 	NOGLOBAL
 };
-static const char *const featmsgs[] = { // "
+#ifdef SST_DBG
+static const char *const _featmsgs[] = {
+	"%s: SKIP\n",
+	"%s: OK\n",
+	"%s: FAIL\n",
+	"%s: INCOMPAT\n",
+	"%s: REQFAIL\n",
+	"%s: NOGD\n",
+	"%s: NOGLOBAL\n"
+};
+#define featmsgs (_featmsgs + 1)
+#else
+static const char *const featmsgs[] = {
 	" [     OK!     ] %s\n",
 	" [   FAILED!   ] %s (error in initialisation)\n",
 	" [ unsupported ] %s (incompatible with this game or engine)\n",
@@ -300,6 +312,7 @@ static const char *const featmsgs[] = { // "
 	" [ unsupported ] %s (missing required gamedata entry)\n",
 	" [   FAILED!   ] %s (failed to access engine)\n"
 };
+#endif
 
 static inline void successbanner() { // called by generated code
 	con_colourmsg(&(struct rgba){64, 255, 64, 255},
@@ -336,6 +349,19 @@ static void do_featureinit() {
 	}
 	// ... and now for the real magic! (n.b. this also registers feature cvars)
 	initfeatures();
+#ifdef SST_DBG
+	struct rgba purple = {192, 128, 240, 255};
+	con_colourmsg(&purple, "Matched gametype tags: ");
+	bool first = true;
+#define PRINTTAG(x) \
+if (GAMETYPE_MATCHES(x)) { \
+	con_colourmsg(&purple, "%s%s", first ? "" : ", ", #x); \
+	first = false; \
+}
+	GAMETYPE_BASETAGS(PRINTTAG)
+#undef PRINTTAG
+	con_colourmsg(&purple, "\n"); // xkcd 2109-compliant whitespace
+#endif
 
 	// if we're autoloaded and the external autoupdate script downloaded a new
 	// version, let the user know about the cool new stuff!
