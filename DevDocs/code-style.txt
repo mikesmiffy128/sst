@@ -1,0 +1,850 @@
+════ mike’s code style guide ════
+
+I have a lot of implicit hand-wavy rules about code structure and style which I
+never really formalised anywhere. Mostly this is because I don’t believe in
+having a totally rigid set of formatting rules and instead try to make the form
+of each chunk of code the best compromise for that particular bit of code.
+
+A lot of that is based on vibes and subjective judgement. There are essentially
+no hard rules.
+
+This document aims to state some of my thoughts and feelings on such matters so
+that anyone looking to contribute patches can at least aim to approximate my
+style a little closer. It might also give some insight into why all my code is
+so awesome and/or terrible.
+
+Please don’t get too caught up in this though. It’s very unlikely that you’ll
+consistently make the exact aesthetic judgements I would make because we don’t
+share the same brain. For all intents and purposes, you should be quite happy
+not to have my brain, so don’t worry about it.
+
+Also, this guide does not pertain to the actual programming logic side of
+things. For that, you should refer to code-standards.txt , once that is written.
+The plan is to get round to that at some point eventually.
+
+══ First, the hard rules ══
+
+Okay, I lied, there actually are some hard rules, but mostly about the actual
+data on disk rather than anything stylistic:
+
+• Source files are text files. This means every line ends in with an end-of-line
+  character (\n), including the last line. If your editor mistreats the final \n
+  as an extra blank line, that’s a you problem. Lines without end-of-lines are
+  not lines and text files ending in non-lines are not text files. I will die on
+  this hill.
+
+• \r\n is not a line ending. It is an erroneous carriage return character,
+  followed by a line ending. Your source files generally should not include
+  weird non-printable characters, least of all at the end of every single line.
+  Exception: Windows batch files, which require a carriage return at the end of
+  each line to ensure that labels/gotos work correctly.
+
+• Git for Windows is configured to wildly misbehave by default. If you have not
+  set core.eol=lf and core.autocrlf=false prior to cloning this repo, and Git
+  starts mangling file contents in confusing ways, then that’s a you problem.
+
+• SST uses UTF-8-encoded source files. It should go without saying but there
+  should be no BOM. Generally comments will use ASCII only for ease of typing,
+  although we use Unicode in the copyright headers to be fancy, because we can,
+  and if you gain something by putting Unicode characters in a doc comment, then
+  hell, go for it.
+
+• String literals with Unicode in them should put the UTF-8 straight in the
+  literal rather than doing the obfuscated \U nonsense. Although, be aware that
+  the environment SST runs in is prone to completely bungling Unicode display,
+  so most user-facing strings inside the codebase are gonna be limited to ASCII.
+
+• No spaces or Unicode in file paths. That’s just obnoxious.
+
+• We use tabs for indentation, and line width guidelines (see below) assume a
+  tab width of 4 spaces, but you can configure this to 8 or something for
+  reading purposes if you prefer. This configurability is one reason we don’t
+  indent with spaces. Another reason is that text editors still behave more
+  stupid with spaces. I don’t care what anyone says about how a good editor will
+  make spaces feel exactly the same as tabs. Empirical evidence shows that that
+  is clearly bollocks.
+
+• The asterisk goes on the right in pointer declarations. This is dictated by
+  the syntax and semantics of the language. Putting it on the left is
+  misleading, and looks wrong to most C programmers — as it should, because it
+  is. People coming from C++ may have to unlearn a bad habit here, but on the
+  plus side, when they go back to C++, they can do it correctly there now too!
+
+• No spaces between function names and parentheses. Yes spaces between control
+  flow keywords and parentheses. No space padding inside parentheses. Also no
+  space padding inside braces for initialisers, although yes spaces for small
+  struct declarations. Don’t ask me why on that last one, it’s just how I do it.
+
+• Spaces around all arithmetic operators. No spaces around dots or arrows;
+  hopefully this one’s not contentious‽
+
+• Spaces between string literal pieces and/or macros representing literal
+  pieces. This one’s actually a dumb C++ one that can probably go but it’s
+  everywhere and I don’t really care so just stick to it for consistency.
+
+• No spaces between casts and castees.
+
+• Just look at the code. Do what the code does. The rest of the rules will cover
+  nebulous edge cases but these really basic things should be easy. I trust you!
+
+══ Nebulous formatting and whitespace guidelines ══
+
+In no particular order:
+
+• Usually each statement should go on its own line for obvious reasons, but very
+  simple statements that are very closely related can go together if it improves
+  the information density of the code without sacrificing clarity.
+
+  Rationale:
+  I like to maximise the amount of information being conveyed in the smallest
+  amount of space, especially on the vertical axis. Being able to fit more
+  context on screen at once makes it easier to keep track of what’s going on in
+  complex regions of code.
+
+  Bad example:
+    ++x;
+    ++y;
+    ++z;
+
+  Good example:
+    ++x; ++y; ++z;
+
+• Try and keep lines under 80 characters. If wrapping would look really stupid
+  and unbalanced and the last character on the line is not important to the
+  understanding of the line, 81 might do. In very rare cases, we can suffer 82.
+
+  Rationale:
+  People who argue about We Don’t Use 80 Character Terminals Any More™ are
+  missing the point. Really long lines are just obnoxious to read. Plus, it’s
+  nice to be able to fit 3 or 4 files on screen side-by-side (or views of the
+  same file if it’s a big one!). However, sometimes you just need to squeeze in
+  a semicolon and realistically 80 is an arbitrary limit, so it’s okay to apply
+  something like the TeX badness system where you trade one form of ugliness for
+  a lesser form. In this case, an overly long line to avoid really ugly wrapping.
+
+• Continue hard-wrapped lines with 2 tabs of indentation.
+
+  Rationale:
+  I don’t have a good reason for this. I used to do it in Java when I was a
+  child and now my editor still does it by default in C so it’s just kind of
+  what I do. I think it looks fine and at least one other option is worse.
+
+  "Bad" example:
+    if (cond1 &&
+      cond2) {
+        do_thing();
+    }
+
+  "Good" example:
+    if (cond1 &&
+            cond2) {
+        do_thing();
+    }
+
+• Try to hard-wrap lines at a natural reading break point. Don’t just wrap on a
+  word if you can keep an entire string literal or struct initialiser together
+  for instance. This is ultimately a subjective judgement, but do your best.
+
+  Rationale:
+  Keeping individual _things_ like strings or structs together makes it a little
+  easier to scan with the eyes. It also makes it a lot easier to grep. If you
+  break a string into lines mid-phrase, grep is ruined. If you really need to
+  break up a long string literal, at least putting the break between sentences
+  will make grepping less likely to fail.
+
+  Bad example:
+    errmsg_warn("could not do operation with rather lengthy description: failed"
+            " to lookup that important thing");
+
+  Good example:
+    errmsg_warn("could not do operation with rather lengthy description: "
+            "failed to lookup that important thing");
+
+• Hard wrap a little earlier if it avoids leaving a single dangling token which,
+  as with poorly-typeset prose, just looks stupid.
+
+  Rationale:
+  You want something substantial on each line for your eyes to lock onto. Dangly
+  diminutive tailpieces look stupid and ugly and have no friends.
+
+  Bad example:
+    call_function("parameter 1 takes up some space", param_2 + 5, another_var,
+          x);
+
+  Good example:
+    call_function("parameter 1 takes up some space", param_2 + 5,
+            another_var, x);
+
+  Maybe better example (it’s up to you):
+    call_function("parameter 1 takes up some space",
+            param_2 + 5, another_var, x);
+
+  Note: that maybe better example would become a definitely better example if
+  the middle two (or last three) parameters were related in some way.
+
+• Don’t hard wrap before punctuation. Closing parentheses, commas, semicolons,
+  conditional operators and so on should remain attached to a preceding token.
+
+  Rationale:
+  Starting a line with punctuation in code looks just as wonky to me as it would
+  in natural language prose. Ending on punctuation also primes my brain to read
+  a continuation on the next line.
+
+  Bad example:
+    if (cond1
+            && cond2)
+
+  Good example:
+    if (cond1 &&
+            cond2)
+
+• An open brace should always be on the same line as the function header or
+  conditional statement that precedes it. Even if a line is wrapped, do not
+  leave the brace on its own. Take something else with it.
+
+  Rationale:
+  I prefer the visual flow of a brace being attached to a thing and think it
+  looks kind of silly on its own line. I also strongly avoid wasting vertical
+  space in most cases.
+
+  Bad example:
+    void my_function_name()
+    {
+      // ...
+    }
+
+  Good example:
+    void my_function_name() {
+      // ...
+    }
+
+• Control flow statements should always use braces if the body is on its own
+  line, even if it’s only one statement. No classic Unix/BSD-style hanging
+  statements.
+
+  Rationale:
+  It’s harder to introduce stupid bugs if the addition of a new statement to a
+  block does not require fiddling with braces, and it’s less editing work to add
+  or remove statements when the braces are always there. Braces also provide a
+  stronger visual association with the controlling statement than just an
+  indent.
+
+  Bad example:
+    if (err)
+        invoke_error_handler(err, context, "tried to do thing and it failed!");
+
+  Good example:
+    if (err) {
+        invoke_error_handler(err, context, "tried to do thing and it failed!");
+    }
+
+• If a control flow statement and its associated single statement can fit on one
+  line, then go ahead and do that, with no need for braces. If there’s more than
+  one statement but they’re very trivial and/or closely related, a braced
+  one-liner is also alright.
+
+  Rationale:
+  This saves a ton of vertical space for trivial conditions, especially when
+  there’s a bunch of them in a row.
+
+  Bad example:
+    if (err) {
+        return false;
+    }
+    if (extrastuff) {
+        process_florbs();
+        refresh_grumbles();
+    }
+
+  Good example:
+    if (err) return false;
+    if (extrastuff) { process_florbs(); refresh_grumbles(); }
+
+• Paired if/else statements should either both be one-liners (or maybe even a
+  one-liner altogether), or both use braces. No mixing and matching.
+
+  Rationale:
+  This improves the visual rhythm and consistency when reading through the file.
+  It reduces the extent to which a reader’s eyes must jump around the screen to
+  find the correct bit of text to read.
+
+  Bad example:
+    if (!p) errmsg_warn("unexpected null value");
+    else {
+        p->nsprungles += 71;
+        defrombulate(p);
+        errmsg_note("we do be defrombulating them sprungles!!!");
+    }
+
+  Good example:
+    if (!p) {
+        errmsg_warn("unexpected null value");
+    }
+    else {
+        p->nsprungles += 71;
+        defrombulate(p);
+        errmsg_note("we do be defrombulating them sprungles!!!");
+    }
+
+• When putting the else on its own line, put it on its own line. Don’t hug the
+  closing brace of the if.
+
+  Rationale:
+  Having the if and else line up in the same column looks better to me when
+  scanning vertically through the file. It also makes it easier to edit and move
+  things aruond when selection can be done linewise, and easier to comment stuff
+  out temporarily for debugging and such.
+
+  Bad example:
+    if (cond) {
+        do_some_cool_stuff();
+    } else {
+        do_something_else();
+    }
+
+  Good example:
+    if (cond) {
+        do_some_cool_stuff();
+    }
+    else {
+        do_something_else();
+    }
+
+• If there are a bunch of related conditionals in a row, and only some of them
+  fit on one line, consider keeping them all braced to improve the visual
+  symmetry.
+
+  Rationale:
+  This reads better, similarly to the if-else example, and is easier to edit.
+
+  Bad example:
+    if (cond1) return;
+    if (cond2 || flag3 == THIS_IS_VERY_LONG_BY_COMPARISON) {
+        do_other_thing(false);
+    }
+    if (cond3 || flag3 == SHORTER_ONE) continue;
+
+  Good example (note that this one is way more subjective and case-by-case!):
+    if (cond1) {
+        return;
+    }
+    if (cond2 || flag3 == THIS_IS_VERY_LONG_BY_COMPARISON) {
+        do_other_thing(false);
+    }
+    if (cond3 || flag3 == SHORTER_ONE) {
+        continue;
+    }
+
+• Favour inter-line visual symmetry over compactness of any individual line.
+
+  Rationale:
+  Basically a generalised form of many of these other rules. It seemed like a
+  good idea to just state this outright. Plus, it lets me give a very specific
+  example that would be hard to shoehorn in elsewhere.
+
+  Bad example:
+  x[0] = y[0]; x[1] = y[1]; x[2] = y[2]; x[3] = y[3]; x[4] = y[4];
+  x[5] = y[5]; x[6] = y[6]; x[7] = y[7];
+
+  Good example:
+  x[0] = y[0]; x[1] = y[1]; x[2] = y[2]; x[3] = y[3];
+  x[4] = y[4]; x[5] = y[5]; x[6] = y[6]; x[7] = y[7];
+
+• Spread large struct initialisers over multiple lines. Don’t do the usual
+  two-tab hard wrapping, but instead do a brace indent thing and put each member
+  on a line.
+
+  Rationale:
+  Visual weight and symmetry, and ease of amendment. As usual.
+
+  Bad example:
+    struct gizmo g = {"this string exists to make the example line long!", 15,
+            sizeof(whatever)};
+
+  Good example:
+    struct gizmo g = {
+        "this string exists to make the example line long!",
+        15,
+        sizeof(whatever)
+    };
+
+• As an exception to the above, very closely related things might go on the same
+  line. Use judgement as to whether that grouping makes things clearer or worse.
+
+  Rationale:
+  Hopefully by now the theme is emerging that I value hard rule consistency less
+  than moment-to-moment clarity. In cases where most things are on different
+  lines, grouping things on the same line can sometimes aid clarity and/or
+  information density. It’s the same idea as grouping statements/declarations.
+
+  Examples: N/A. This is way too subjective and situational to make up a
+  contrived example. But you’ll see it sometimes in my code and you’re welcome
+  to do it yourself whenever the vibes are right. It’s all just vibes.
+
+• Declare multiple *related* variables of the same type on one line as a
+  comma-separated list.
+
+  Rationale:
+  This makes things more terse and compact in cases when the grouping is
+  obvious. As soon as the declarations need to span multiple lines, there seems
+  to be less benefit to doing this, but in cases where there’s a small number of
+  things and the compaction creates no real loss of clarity, it makes sense.
+
+  Bad example:
+    int a;
+    int b;
+    int c;
+    char *x;
+    char *y;
+
+  Good example (assuming these things are related):
+    int a, b, c;
+    char *x, *y;
+
+• Cram goto labels into the indent margins, on the same line as the actual code.
+
+  Rationale:
+  Labels can introduce visual noise, especially in the case of many cascading/
+  unwinding error cleanup handlers. Considering that goto use tends to be
+  limited, it doesn’t seem that important to give highly descriptive names to
+  labels.
+
+  Bad example:
+    void myfunc() {
+        if (!thing1()) goto err_1;
+        if (!thing2()) goto err_2;
+        return true;
+
+    err_2:
+        cleanup1();
+    err_1:
+        cleanup2();
+        return false;
+    }
+
+  Good example:
+    void myfunc() {
+        if (!thing1()) goto e1;
+        if (!thing2()) goto e2;
+        return true;
+
+    e2: cleanup1();
+    e1: cleanup2();
+        return false;
+    }
+
+• Don’t indent preprocessor directives.
+
+  Rationale:
+  The preprocessor is its own meta language and it’s not really helpful to
+  intermingle it with the main control flow syntax. It also just kind of looks
+  subjectively messy to have preprocessor stuff reaching far across the screen.
+  I do see the argument for indenting nested ifdefs, but usually there’s few
+  enough of them that it won’t be that confusing either way and in cases where
+  there’s a lot of nesting… well, you have bigger problems.
+
+  Bad example:
+    #ifndef _WIN32
+        #ifdef __LP64__
+            #define IS64BIT 1
+        #else
+            #define IS64BIT 0
+        #endif
+    #endif
+
+  Good example:
+    #ifndef _WIN32
+    #ifdef __LP64__
+    #define IS64BIT 1
+    #else
+    #define IS64BIT 0
+    #endif
+    #endif
+
+• Use C++/C99-style comments for explanatory notes, and classic C-style comments
+  for documentation in headers etc. As an exception, C-style comments can be
+  used inside multi-line macro bodies with line continuation, but should not be
+  padded with extra asterisks in such cases.
+
+  Rationale:
+  It’s nice to have a way to quickly visually distinguish public documentation
+  from internal notes. To me, the single-line comments have a bit less formality
+  about them, so they’re good for quickly jotting something down, whereas the
+  big banner comments stand out a bit more like formal declarations of important
+  information.
+
+  Bad example:
+    // This function computes the sum of two integers. It assumes the result
+    // will not overflow.
+    int sum(int x, int y) {
+        return x + y; /* no need for a comment here but this is an example! */
+    }
+
+    #define DO_INTERESTING_CALCULATION() do { \
+        /*
+         * There's quite a lot to explain here. We not only have to increment
+         * one of the numbers, but we also have to multiply the result by
+         * another number, and then multiply that by yet another number, and add
+         * 9 to that. This behaviour is specified in detail in one of the WHATWG
+         * specs, presumably.
+         */ \
+        ++foo; \
+        bar *= foo; \
+        baz = baz * bar + 9; \
+    } while (0)
+
+  Good example:
+    /*
+     * This function computes the sum of two integers. It assumes the result
+     * will not overflow.
+     */
+    int sum(int x, int y) {
+        return x + y; // no need for a comment here but this is an example!
+    }
+
+    #define DO_INTERESTING_CALCULATION() do { \
+        /* There's quite a lot to explain here. We not only have to increment
+           one of the numbers, but we also have to multiply the result by
+           another number. I won't repeat the entire stupid joke again. */ \
+        ++foo; \
+        bar *= foo; \
+        baz = baz * bar + 9; \
+    } while (0)
+
+    Caveat: note that generally the /**/ documentation comments should also go
+    in the header rather than the implementation file, as this allows for both
+    easy manual reading and LSP hover support, but whatever, you get the idea.
+
+• Put short comments pertaining to single lines of code at the ends of those
+  lines if you can make them fit. Otherwise, write them above the relevant code.
+  Do not continue an end-of-line comment onto an over-indented blank line.
+
+  Rationale:
+  Probably obvious by now. Don’t waste space. Having comments hang off the ends
+  of lines and melt down the right-hand side of the screen not only wastes space
+  but also makes you look like a child writing with crayons.
+
+  Bad example:
+    if (cond1 || cond2) reasonably_long_call(param1); // either conditiom can
+                                                      // trigger this here due
+                                                      // to that thing I
+                                                      // mentioned.
+  Good example:
+    // either condition cam trigger this here due to that thing I mentioned.
+    if (cond1 || cond2) reasonably_long_call(param1);
+
+  Pro tip: if you use Vim or Neovim as I do, consider doing set fo-=oc in your
+  config to stop this dangling idiocy from happening when you take a new line.
+
+══ The second hard problem in computer science ══
+
+… Naming things!
+
+Firstly we have some rules about interfacing with Valve’s code, since that’s
+kind of a core thing we have to do in this project:
+
+• Use British English in all code and documentation.
+
+  Rationale:
+  I am from Scotland.
+
+  Bad example: void analyze();
+  Good example: void analyse();
+
+• Use exact SDK names (where known) for Source engine types (structs/classes).
+
+  Rationale:
+  This makes it trivial to look things up in the official SDK sources. Since the
+  naming here differs greatly from the naming elsewhere it stands out as being
+  its own thing. There are some exceptions, notably the con_var and con_cmd
+  structs which are our names for ConVar and ConCommand. The reasoning for those
+  is that they are effectively part of SST’s internal API, so we’ve made them
+  stylistically our own.
+
+  Bad example:
+    struct baseent {
+        void *vtable;
+        // ...
+    };
+
+  Good example:
+    struct CBaseEntity {
+        void *vtable;
+        // ...
+    };
+
+• Generally, prefer exact names for SDK functions too.
+
+  Rationale:
+  Same as above; it makes it obvious which bit of the engine we’re referring to.
+
+  Bad example:
+    DECL_VFUNC(struct CGameMovement, bool, checkjump)
+
+  Good example:
+    DECL_VFUNC(struct CGameMovement, bool, CheckJumpButton)
+
+• Don’t bother with exact names for struct members or other variables.
+
+  Rationale:
+  A lot of the time we’re poking into internals and in many cases the variables
+  aren’t even at consistent byte offsets from one game version to the next (see
+  also gamedata files). Many of Valve’s chosen variable names are also very
+  annoying and violate every other guideline you’re about to see, so at the
+  granularity of local variables I made the decision long ago to write whatever
+  names made sense to me and not worry about it.
+
+  Bad example:
+    int buttons = mv->m_iButtons;
+
+  Good example:
+    int buttons = mv->buttons;
+
+The rest of these points apply to first-party code, i.e., SST itself:
+
+• Functions, variable names and struct/enum tags should all be lowercase.
+
+  Rationale:
+    TitleCase is annoying to type and camelCase looks ugly. Most C code uses
+    lowercase stuff so this looks the most familiar to most people, probably.
+
+  Bad example:
+    int myVar;
+    struct MyStruct;
+
+  Good example:
+    int myvar;
+    struct mystruct;
+
+• typedefs should almost never be used, except for base integer type
+  abbrevations (intdefs.h) and function pointers. The latter are annoying to
+  write out over and over so the typical convention (in cases like hooking) is
+  to declare a FunctionName_func and then use that everywhere else. Even when
+  dealing with e.g. Windows APIs which typedef the hell out of everything, try
+  to avoid actually using those typedefs unless your hand is truly forced.
+
+  Rationale:
+  C doesn’t treat typedefs as different types, so all typedefs really achieve on
+  numeric and pointer types is obfuscation. In the case of structs, I always
+  liked having the separate struct namespace, and using a typedef obviously goes
+  against that. In more recent times I have *somewhat* thought about changing my
+  mind on that, but it’d be a big change and I still don’t feel that strongly in
+  favour of it. Also, since everything is lowercase, the struct keyword does
+  help disambiguate a bit. If we were gonna typedef structs, there’d probably
+  also be some discussion about using TitleCase or something.
+
+• const definitions and enum values should be uppercase.
+
+  Rationale:
+  This distinguishes them from variables, indicating that they are essentially
+  build-time symbols that get substituted by the compiler, similar to macros
+  (see also the next point).
+
+  Bad example: static const int maxents = 64;
+  Good example: static const int MAXENTS = 64;
+
+  Caveat:
+  I feel like I might have unthinkingly broken this rule myself at some point,
+  and at the time of writing I’m not intent on doing a full cleanup pass to find
+  out. Said cleanup pass is bound happen at some point though, don’t worry.
+
+• The case of macros… kind of depends. If your macro is a constant, or a
+  function-like macro that expands to a blob of context-dependent syntax, then
+  it should be uppercase to indicate that it’s effectively also a symbolic
+  constant. If your macro essentially behaves as an inline function, then it
+  should be lowercase, although you should also consider just writing an inline
+  function instead. If your macro aims to extend the syntax of C like the things
+  in langext.h, it can also be lowercase in order to look like a real keyword.
+
+  Rationale: I’m very accustomed to using uppercase for constants but not all
+  macros behave as constants. My usual goal with macros is for the interface not
+  to feel like macros, even if the implementation is macros. That principle
+  becomes really important when you see how horrendous some of the macros can
+  get under the hood.
+
+  Bad example:
+    #define MyConstant 4
+    #define FOREACH_THING(x) /* impl here */
+    #define doerrorcheck(var) do if (!var) die("couldn't get " #var); while (0)
+
+  Good example:
+    #define MYCONSTANT 4
+    #define foreach_thing(x) /* impl here */
+    #define DOERRORCHECK(var) do if (!var) die("couldn't get " #var); while (0)
+
+• A few special things actually do use TitleCase, namely event names and
+  gametype tags.
+
+  Rationale:
+  These are sort of special things, and always passed into macros. They’re not
+  regular tokens that you’d see anywhere else in the code, so it sort of felt
+  right to give them a bit of a different style. Honestly, it’s all just vibes.
+
+  Bad example:
+    DEF_EVENT(redraw_copilot_widget)
+    X(portal4) /* (in GAMETYPE_BASETAGS in gametype.h) */
+
+  Good example:
+    DEF_EVENT(RedrawCopilotWidget)
+    X(Portal4) /* (in GAMETYPE_BASETAGS in gametype.h) */
+
+• Prefer the shortest name you can get away with. If you feel that a longer name
+  is necessary for understanding, that is okay. But if you can abbreviate
+  without losing too much clarity, then that is a good idea. If your variable is
+  local to a small scope you can probably get away with an even shorter name.
+
+  Rationale:
+  The only research I’ve seen on the topic indicates that longer names do not
+  meaningfully quicken debugging speed even for developers unfamiliar with a
+  codebase. Since I prefer higher information density, I strongly prefer
+  cramming more structure into the same amount of space via smaller individual
+  tokens, rather than having longer and more redundant names. You’ll see a ton
+  of abbreviations in this codebase and some of them might seem a bit obtuse to
+  begin with, but it seems that other people have been able to get used to that.
+
+  Bad example:
+    bool success = check_conditions(has_required_data, parse_integer(input));
+
+  Good example:
+    bool ok = checkcond(has_data, parseint(input));
+
+• Try to make a name slightly shorter again if you can avoid wrapping.
+
+  Rationale: all the previous whitespace rules aiming to minimise ugliness can
+  often be aided by fudging the actual text a bit. See also: Tom 7’s “Badness 0”
+  from SIGBOVIK 2024. https://youtu.be/Y65FRxE7uMc
+
+  Examples: can’t be bothered contriving one of these, but watch that video,
+  it’s very funny.
+
+• Underscores are used for namespaces and semantic groupings. Don’t use them as
+  spaces. Having two or three words joined without spaces is perfectly fine.
+
+  Rationale:
+  Overusing underscores leads to long verbose names, which goes against the
+  previous guideline. Calling a variable “gametypeid” instead of “game_type_id”
+  is not, in my opinion, that much less readable, and it allows underscores to
+  be reserved for a more specific purpose. This is not a hard rule in the event
+  that you absolutely insist that an underscore looks significantly better, but
+  be prepared for me to ignore your insistence some percentage of the time.
+
+  Examples:
+  Exactly the same as above, really. Note the lack of underscores in the good
+  example; has_data is an exception because we have a has_ convention throughout
+  the codebase; it is essentially a namespace.
+
+• External-linkage (aka public) functions, variables, and structures should be
+  prefixed with the module name, which is the source file basename. For
+  instance, any part of the API defined in ent.c should generally be named
+  ent_something. The same idea goes for uppercase names of macros and enum
+  values, usually.
+
+  Rationale:
+  This makes it extremely easy to tell where something is defined at a glance.
+  It also encourages thinking about where stuff should go, since the best name
+  for something will kind of dictate where it belongs *and* vice-versa.
+
+  Examples: N/A. This should be blindingly obvious, come on.
+
+• Special macros that define or declare things will begin with DEF_ or DECL_,
+  respectively, rather than following the above rule. Again, there are no hard
+  rules. Event handlers use HANDLE_EVENT and the feature.h macros just do
+  whatever.
+
+  Rationale:
+  In these specific cases, clarity was thought to be aided by having the purpose
+  of the macro front and center, and in the case of DEF/DECL, by grouping them
+  semantically with other similar macros across the codebase. Most macros will
+  not be subject to such exceptions, but like everything in this codebase, you
+  must always allow for exceptions, except in cases where you shouldn’t.
+
+  Examples: N/A.
+
+• Stuff that’s forced to go in public headers but isn’t supposed to be part of
+  the interface should be prefixed with an underscore.
+
+  Rationale: this communicates that it’s unstable private API, and also stops it
+  from showing up unhelpfully in autocompletion results.
+
+  Bad example: int mything_lookupinternalthingmy();
+  Good example: int _mything_lookupinternalthingmy();
+
+══ General naming conventions ══
+
+We have a few recurring patterns in the source, some of which are even required
+for certain macros to work correctly! These include:
+
+• vtidx_* for virtual table indices, used by DECL_VFUNC_DYN.
+• off_* for offsets to member variables, used by DEF_ACCESSORS.
+• sz_* for sizes of structs/classes, used by DEF_ARRAYIDX_ACCESSOR.
+• has_* in front of any generated gamedata/entprops value, to indicate the
+  presence or absence of a known value at runtime, in the current game/engine.
+  Also used in front of a feature name when REQUEST() is specified.
+
+Some other common prefixes and suffixes are just good for making the whole thing
+feel coherent to a human reader even if nothing really requires them:
+
+• *_func for function pointer typedefs.
+• orig_* for a function pointer used to call an original function from a hook.
+• hook_* for the hook function itself, which intercepts calls to the original.
+• find_* for a function within a feature which attempts to find some variable or
+  function buried within the engine, usually by chasing pointers through machine
+  instructions or internal engine data structures or something.
+
+And there’s a bunch of abbreviations I tend to use often without thinking, which
+I’ve been told in the past may be confusing to new players:
+
+• ctxt for context
+• sz for size
+• cb for callback
+• msg for message
+• cmd for command
+• insns for instructions
+• ret or sometimes r for any return value
+• i for a loop counter or temporary variable
+• p or maybe ptr for a temporary pointer
+• the first letter of any type name for a temporary variable in a narrow scope
+
+Hopefully you get the idea: there’s a general tendency toward terseness. Usually
+the names don’t actually matter that much, to be honest. Most of the guidelines
+around naming here have to do with upholding an overall structure and consistent
+feeling when reading the codebase rather than worrying about the giving every
+individual thing the perfect name. If one thing gets a really dumb name, the sky
+will still be up there. You can always rename it later. The thing I mean, not
+the sky. And also a sky by any name would smell just as sweet I mean a rose.
+
+══ Miscellany ══
+
+• Trivial but worth mentioning: don’t write void for zero-argument functions.
+
+  Rationale: This is a C23 codebase. () is adequate.
+  Bad example: void stub(void);
+  Good example: void stub();
+
+• Do still use {0} for default struct initialisation, rather than {}.
+
+  Rationale: C23 is still not that widely supported and I don’t want to demand a
+  super-cutting-edge compiler version, in case something breaks. Eventually,
+  after the dust has settled, this rule will be flipped over.
+
+  Bad example: struct gizmo g = {}
+  Good example: struct gizmo g = {0};
+
+• Always put the & in front of a function when creating a function pointer.
+
+  Rationale: it’s a pointer, innit. No need to rely on legacy implicit weirdness.
+  Bad example: regcb(cb);
+  Good example: regcb(&cb);
+
+That’s about it, I think.
+
+Thanks, and have fun!
+
+────────────────────────────────────────────────────────────────────────────────
+Copyright © Michael Smith <mikesmiffy128@gmail.com>
+
+Permission to use, copy, modify, and/or distribute this documentation file for
+any purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THIS DOCUMENTATION IS PROVIDED “AS-IS” AND HAS NO WARRANTY.

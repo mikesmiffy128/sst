@@ -22,6 +22,10 @@ the copyright notices in individual files for full details.
 
 The README file is also in the public domain.
 
+Documentation files under DevDocs/ are generally provided under similar terms to
+the source code, with slightly different wording; refer to the notices at the
+ends of individual files for details.
+
 Files under src/3p/ are written and licensed by third parties. See the copyright
 notices in and alongside those files for details of authorship and relevant
 redistribution rights. Some — but not all — of this third party code is
