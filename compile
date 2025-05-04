@@ -110,7 +110,7 @@ ld
 
 $HOSTCC -O2 -g3 $warnings $stdflags -include test/test.h -o .build/bitbuf.test test/bitbuf.test.c
 .build/bitbuf.test
-# skipping this test on linux for now, since inline hooks aren't compiled in
+# XXX: skipping this test on linux for now but should enable when we can test it
 #$HOSTCC -m32 -O2 -g3 -include test/test.h -o .build/hook.test test/hook.test.c
 #.build/hook.test
 $HOSTCC -O2 -g3 $warnings $stdflags -include test/test.h -o .build/kv.test test/kv.test.c

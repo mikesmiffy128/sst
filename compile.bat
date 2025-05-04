@@ -43,10 +43,6 @@ set dmodname= -DMODULE_NAME=%basename%
 if "%dmodname%"==" -DMODULE_NAME=con_" set dmodname= -DMODULE_NAME=con
 if "%dmodname%"==" -DMODULE_NAME=sst" set dmodname=
 set objs=%objs% .build/%basename%.o
-:: note: we use a couple of C23 things now because otherwise we'd have to wait a
-:: year to get anything done. typeof=__typeof prevents pedantic warnings caused
-:: by typeof still technically being an extension, and stdbool gives us
-:: predefined bool/true/false before compilers start doing that by default
 %CC% -c -flto -mno-stack-arg-probe %cflags% %warnings% %stdflags% -I.build/include ^
 -D_DLL%dmodname% -o .build/%basename%.o %1 || goto :end
 goto :eof
