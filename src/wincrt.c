@@ -10,29 +10,42 @@
 //
 // Is it actually reasonable to have to do any of this? Of course not.
 
-// TODO(opt): this feels like a sad implementation, can we do marginally better?
-int memcmp(const void *x_, const void *y_, unsigned int sz) {
+int memcmp(const void *restrict x, const void *restrict y, unsigned int sz) {
+#if defined(__GNUC__) || defined(__clang__)
+	int a, b;
+	__asm__ volatile (
+		"xor %%eax, %%eax\n"
+		"repz cmpsb\n"
+		: "+D" (x), "+S" (y), "+c" (sz), "=@cca"(a), "=@ccb"(b)
+		:
+		: "ax", "memory"
+	);
+	return b - a;
+#else
 	const char *x = x_, *y = y_;
 	for (unsigned int i = 0; i < sz; ++i) {
 		if (x[i] > y[i]) return 1;
 		if (x[i] < y[i]) return -1;
 	}
 	return 0;
+#endif
 }
 
 void *memcpy(void *restrict x, const void *restrict y, unsigned int sz) {
-#ifdef __clang__
+#if defined(__GNUC__) || defined(__clang__)
+	void *r = x;
 	__asm__ volatile (
-		"rep movsb\n" :
-		"+D" (x), "+S" (y), "+c" (sz) :
+		"rep movsb\n"
+		: "+D" (x), "+S" (y), "+c" (sz)
 		:
-		"memory"
+		: "memory"
 	);
-#else // terrible fallback just in case someone wants to use this with MSVC
+	return r;
+#else
 	char *restrict xb = x; const char *restrict yb = y;
 	for (unsigned int i = 0; i < sz; ++i) xb[i] = yb[i];
-#endif
 	return x;
+#endif
 }
 
 int __stdcall _DllMainCRTStartup(void *inst, unsigned int reason,
