@@ -160,7 +160,7 @@ INIT {
 			"ReadDemoHeader");
 	if_cold (h2.err) return h2.err;
 	struct hook_inline_featsetup_ret h3 = hook_inline_featsetup(
-			ReadDemoHeader_midpoint, (void **)&hook_midpoint,
+			ReadDemoHeader_midpoint, &ReadDemoHeader_midpoint,
 			"ReadDemoHeader midpoint");
 	if_cold (h3.err) return h3.err;
 	hook_inline_commit(h1.prologue, (void *)&hook_GetHostVersion);

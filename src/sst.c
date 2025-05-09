@@ -240,11 +240,11 @@ DEF_CCMD_HERE(sst_printversion, "Display plugin version information", 0) {
 // interested parties identify the version of SST used by just writing a dummy
 // cvar to the top of the demo. this will be removed later, once there's a less
 // stupid way of achieving the same goal.
-#if VERSION_MAJOR != 0 || VERSION_MINOR != 9
+#if VERSION_MAJOR != 0 || VERSION_MINOR != 10
 #error Need to change this manually, since gluegen requires it to be spelled \
 out in DEF_CVAR - better yet, can we get rid of this yet?
 #endif
-DEF_CVAR(__sst_0_9_beta, "", 0, CON_HIDDEN | CON_DEMO)
+DEF_CVAR(__sst_0_10_beta, "", 0, CON_HIDDEN | CON_DEMO)
 
 // most plugin callbacks are unused - define dummy functions for each signature
 static void VCALLCONV nop_v_v(void *this) {}
@@ -270,21 +270,7 @@ static bool already_loaded = false, skip_unload = false;
 
 // auto-update message. see below in do_featureinit()
 static const char *updatenotes = "\
-* Fixed the plugin crashing on game exit\n\
-* Fixed a crash under Wine/Proton\n\
-* Fixed sst_l4d_quickreset in L4D1 No Mercy\n\
-* Added sst_inputhud to visualise inputs in-game or in demo playback\n\
-* Increased sst_mouse_factor limit from 20 to 100\n\
-* sst_l4d_testwarp now performs the take-control unsticking step by default\n\
-* Added sst_l4d_previewwarp to visualise warp unsticking logic\n\
-* sst_l4d_quickreset now fixes the Swamp Fever/Crash Course \"god mode glitch\"\n\
-* Added a fix for lag/stuttering in newer L4D2 versions caused by addon loading\n\
-* Added a fix for disabling all addons in L4D2 requiring a game restart\n\
-* Removed multiplayer chat rate limit in L4D series and Portal 2\n\
-* Made L4D1 demo playback backwards-compatible for Steam version demos (1022+)\n\
-* plugin_unload now displays an error when used incorrectly (without a number)\n\
-* Improved error messages in the event of functions failing to hook\n\
-* Rewrote and optimised a whole bunch of internal stuff\n\
+* Fixed crashing on L4D1\n\
 ";
 
 enum { // used in generated code, must line up with featmsgs arrays below
