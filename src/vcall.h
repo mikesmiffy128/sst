@@ -126,7 +126,7 @@
 	_DECL_VFUNC(class, ret, VCALLCONV, name, idx __VA_OPT__(,) __VA_ARGS__)
 
 /* Define a virtual function with a known index, without thiscall convention */
-#define DECL_VFUNC_CDEFCL(class, ret, name, idx, ...) \
+#define DECL_VFUNC_CDECL(class, ret, name, idx, ...) \
 	_DECL_VFUNC(class, ret, , name, idx __VA_OPT__(,) __VA_ARGS__)
 
 /* Define a virtual function with an index defined elsewhere (e.g. gamedata) */
