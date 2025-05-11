@@ -177,43 +177,36 @@ static inline bool find_addonvecsz(con_cmdcb show_addon_metadata_cb) {
 static void *broken_addon_check = 0;
 static uchar orig_broken_addon_check_bytes[13];
 
-enum { SMALLNOP = 9, BIGNOP = 13 };
-static inline bool nop_addon_check(int noplen) {
-	// In versions prior to 2204 (21 Oct 2020), FS_MAFAS checks if any
-	// addons are enabled before doing anything else. If no addons are enabled,
-	// then the function just returns immediately. FS_MAFAS gets called by
-	// update_addon_paths, which is run when you click 'Done' in the addons
-	// menu. This means that turning off all addons breaks everything until the
-	// game is restarted or another addon is loaded. To fix this, we just
-	// replace the CMP and JZ instructions with NOPs. Depending on the version
-	// of the code, we either have to replace 9 bytes (e.g. 2203) or 13 bytes
-	// (e.g. 2147). So, we have a 9-byte NOP followed by a 4-byte NOP and can
-	// just use the given length value.
-	static const uchar nops[] =
-		HEXBYTES(66, 0F, 1F, 84, 00, 00, 00, 00, 00, 0F, 1F, 40, 00);
-	// NOTE: always using 13 for orig even though noplen can be 9 or 13; not
-	// worth tracking that vs. just always putting 13 bytes back later.
-	// Also passing 13 to mprot just in case the instructions straddle a page
-	// boundary (unlikely, of course).
-	if_hot (os_mprot(broken_addon_check, 13, PAGE_EXECUTE_READWRITE)) {
-		memcpy(orig_broken_addon_check_bytes, broken_addon_check, 13);
-		memcpy(broken_addon_check, nops, noplen);
-		return true;
-	}
-	else {
-		errmsg_warnsys("couldn't fix broken addon check: "
-				"couldn't make make memory writable");
-		return false;
-	}
-}
-
 static inline void try_fix_broken_addon_check() {
 	uchar *insns = (uchar *)orig_FS_MAFAS;
 	for (uchar *p = insns; p - insns < 32;) {
 		if (p[0] == X86_ALUMI8S && p[1] == X86_MODRM(0, 7, 5) &&
 				mem_loadptr(p + 2) == addonvecsz) {
-			if (nop_addon_check(p[7] == X86_2BYTE ? SMALLNOP : BIGNOP)) {
+			// In versions prior to 2204 (21 Oct 2020), FS_MAFAS checks if any
+			// addons are enabled before doing anything else. If no addons are
+			// enabled, then the function just returns immediately. FS_MAFAS
+			// gets called by update_addon_paths, which is run when you click
+			// 'Done' in the addons menu. This means that turning off all addons
+			// breaks everything until the game is restarted or another addon is
+			// loaded. To fix this, we just replace the CMP and JZ instructions
+			// with NOPs. Depending on the version of the code, we either have
+			// to replace 9 bytes (e.g. 2203) or 13 bytes (e.g. 2147). So, we
+			// have a 9-byte NOP followed by a 4-byte NOP and can just determine
+			// a length to use by peeking at an instruction.
+			static const uchar nops[] =
+				HEXBYTES(66, 0F, 1F, 84, 00, 00, 00, 00, 00, 0F, 1F, 40, 00);
+			int noplen = p[7] == X86_2BYTE ? 13 : 9;
+			// note: we always copy 13 to orig so we can put it back
+			// unconditionally without having to store a length. give 13 to
+			// mprot too just so there's no page boundary issues
+			if_hot (os_mprot(p, 13, PAGE_EXECUTE_READWRITE)) {
 				broken_addon_check = p; // conditional so END doesn't crash!
+				memcpy(orig_broken_addon_check_bytes, broken_addon_check, 13);
+				memcpy(broken_addon_check, nops, noplen);
+			}
+			else {
+				errmsg_warnsys("couldn't fix broken addon check: "
+						"couldn't make make memory writable");
 			}
 			return;
 		}
