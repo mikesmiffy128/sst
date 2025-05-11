@@ -753,7 +753,7 @@ The rest of these points apply to first-party code, i.e., SST itself:
 
   Rationale:
   In these specific cases, clarity was thought to be aided by having the purpose
-  of the macro front and center, and in the case of DEF/DECL, by grouping them
+  of the macro front and centre, and in the case of DEF/DECL, by grouping them
   semantically with other similar macros across the codebase. Most macros will
   not be subject to such exceptions, but like everything in this codebase, you
   must always allow for exceptions, except in cases where you shouldn’t.
