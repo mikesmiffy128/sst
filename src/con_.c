@@ -610,8 +610,28 @@ bool con_detect(int pluginver) {
 	return false;
 }
 
+static int *find_host_initialized() {
+	const uchar *insns = colourmsgf;
+	for (const uchar *p = insns; p - insns < 32;) {
+		// cmp byte ptr [<pointer>], <value>
+		if (p[0] == X86_ALUMI8 && p[1] == X86_MODRM(0, 7, 5)) {
+			return mem_loadptr(p + 2);
+		}
+		NEXT_INSN(p, "host_initialized variable");
+	}
+	return 0;
+}
+
 void con_init() {
-	if (!GAMETYPE_MATCHES(OE)) {
+	if (GAMETYPE_MATCHES(OE)) {
+		// if we're autoloaded, we have to set host_initialized early or colour
+		// log output (including error output!) won't be visible, for some inane
+		// reason. *as far as we know* this doesn't have any bad side effects.
+		// note: if this fails, too bad. not like we can log a warning.
+		int *host_initialized = find_host_initialized();
+		if (host_initialized && *host_initialized == 0) *host_initialized = 1;
+	}
+	else {
 		colourmsgf = coniface->vtable[vtidx_ConsoleColorPrintf];
 		dllid = AllocateDLLIdentifier(coniface);
 	}
