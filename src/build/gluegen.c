@@ -816,10 +816,13 @@ _( "")
 		if (!(cvar_flags[i] & CMETA_CVAR_UNREG)) {
 			if (cvar_flags[i] & CMETA_CVAR_FEAT) {
 				struct cmeta_slice modname = mod_names[cvar_feats[i]];
-F( "	if (status_%.*s != FEAT_SKIP) con_regvar(%.*s);",
+F( "	if (status_%.*s != FEAT_SKIP) {",
+		modname.len, modname.s)
+F( "		con_regvar(%.*s);",
+		cvar_names[i].len, cvar_names[i].s)
+F( "		if (status_%.*s != FEAT_OK) %.*s->base.flags |= CON_HIDDEN;",
 		modname.len, modname.s, cvar_names[i].len, cvar_names[i].s)
-F( "	else if (status_%.*s != FEAT_OK) %.*s->base.flags |= CON_HIDDEN;",
-		modname.len, modname.s, cvar_names[i].len, cvar_names[i].s)
+_( "	}")
 			}
 			else {
 F( "	con_regvar(%.*s);", cvar_names[i].len, cvar_names[i].s)
