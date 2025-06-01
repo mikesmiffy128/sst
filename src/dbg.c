@@ -127,6 +127,10 @@ static void dumptable(struct SendTable *st, int indent) {
 	}
 }
 DEF_CCMD_HERE(sst_dbg_sendtables, "Dump ServerClass/SendTable hierarchy", 0) {
+	if (!srvdll) {
+		errmsg_errorx("can't iterate ServerClass list: missing srvdll global");
+		return;
+	}
 	for (struct ServerClass *class = GetAllServerClasses(srvdll); class;
 			class = class->next) {
 		struct SendTable *st = class->table;
