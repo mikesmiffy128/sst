@@ -91,7 +91,7 @@ INIT {
 		errmsg_errorx("couldn't get server-side game movement interface");
 		return FEAT_FAIL;
 	}
-	if_cold (!unprot(gmsv)) return false;
+	if_cold (!unprot(gmsv)) return FEAT_FAIL;
 	gmcl = factory_client("GameMovement001", 0);
 	if_cold (!gmcl) {
 		errmsg_errorx("couldn't get client-side game movement interface");

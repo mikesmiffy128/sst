@@ -42,9 +42,9 @@ static void VCALLCONV hook_SleepUntilInput(void *this, int timeout) {
 }
 
 PREINIT {
-	if (con_findvar("engine_no_focus_sleep")) return false;
+	if (con_findvar("engine_no_focus_sleep")) return FEAT_SKIP;
 	con_regvar(engine_no_focus_sleep);
-	return true;
+	return FEAT_OK;
 }
 
 INIT {

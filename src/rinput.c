@@ -126,8 +126,8 @@ static uint VCALLCONV hook_GetRawMouseAccumulators(void *this, int *x, int *y) {
 INIT {
 	bool has_rawinput = !!con_findvar("m_rawinput");
 	if (has_rawinput) {
-		if (!has_vtidx_GetRawMouseAccumulators) return false;
-		if (!inputsystem) return false;
+		if (!has_vtidx_GetRawMouseAccumulators) return FEAT_INCOMPAT;
+		if (!inputsystem) return FEAT_INCOMPAT;
 		vtable_insys = mem_loadptr(inputsystem);
 		// XXX: this is kind of duping nosleep, but that won't always init...
 		if_cold (!os_mprot(vtable_insys + vtidx_GetRawMouseAccumulators,
