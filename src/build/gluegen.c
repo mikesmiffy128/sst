@@ -752,13 +752,13 @@ _( "static inline void initfeatures() {")
 	for (int i = 0; i < nfeatures; ++i) { // N.B.: this *should* be 0-indexed!
 		const char *else_ = "";
 		s16 mod = feat_initorder[i];
+F( "	s8 status_%.*s;", mod_names[mod].len, mod_names[mod].s)
 		if (mod_flags[mod] & HAS_PREINIT) {
-F( "	s8 status_%.*s = feats.preinit_%.*s;",
+F( "	if (feats.preinit_%.*s != FEAT_OK) status_%.*s = feats.preinit_%.*s;",
+		mod_names[mod].len, mod_names[mod].s,
 		mod_names[mod].len, mod_names[mod].s,
 		mod_names[mod].len, mod_names[mod].s)
-		}
-		else {
-F( "	s8 status_%.*s;", mod_names[mod].len, mod_names[mod].s)
+			else_ = "else ";
 		}
 		if (mod_gamespecific[mod].s) {
 F( "	%sif (!GAMETYPE_MATCHES(%.*s)) status_%.*s = FEAT_SKIP;", else_,
