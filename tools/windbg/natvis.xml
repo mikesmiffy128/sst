@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<!-- trivial example, but we can add to this later! -->
+	<Type Name="con_var"><DisplayString>ConVar: {strval}</DisplayString></Type>
+</AutoVisualizer>

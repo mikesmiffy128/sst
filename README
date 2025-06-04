@@ -19,16 +19,33 @@ Windows:
 Linux:
  • Install Clang (and LLD) via your system package manager. Technically, GCC
    should be able to compile most of this too, but we are currently relying on
-   a Clang-specific extension or two, and GCC in general doesn't get tested nor
-   used for binary releases, so it's probably not worth wasting time on.
+   a Clang-specific extension or two, and GCC in general doesn’t get tested nor
+   used for binary releases, so it’s probably not worth wasting time on.
  • Install 32-bit glibc and libstdc++ libraries and associated C headers if
    they’re not already installed.
  • Run ./compile (in lieu of a better build tool, to be added later).
 
 NOTE: Linux code should maybe compile now but still crashes on cvar registration
 and almost none of the features usefully work. In other words, it needs quite a
-lot more development before it's of use to anyone. It's also not actively tested
-really so don't be surprised if it doesn't compile at all again at some point.
+lot more development before it’s of use to anyone. It’s also not actively tested
+really so don’t be surprised if it doesn’t compile at all again at some point.
+
+════ Debugging ════
+
+On Windows, SST’s preferred debugger is WinDBG (specifically the new frontend),
+because it does everything we need, is free, and isn’t horribly slow usually.
+
+The script tools/windbg/windbg.bat will automatically download the latest
+version into tools/windbg/bin and run it. Alternatively, if you already have a
+copy, set the environment variable WINDBG_BIN and that copy will be used
+instead.
+
+NatVis definitions are contained in tools/windbg/natvis.xml. Currently there is
+not much in there but it can be expanded as and when useful things come up.
+
+Note that after debugging some specific games (mainly some old versions of Left
+4 Dead 2) it may be necessary to run tools/steamfix.bat to make other Steam
+games launch correctly again.
 
 ════ How and where to install ════
 
@@ -49,7 +66,7 @@ make a directory for SST in the top-level engine directory and do for instance
 `plugin_load ../SST/sst`. The way the paths work out, that always works no
 matter what, and also avoids cluttering up your game files.
 
-When actively developing the plugin, it's possible to back out of the game
+When actively developing the plugin, it’s possible to back out of the game
 installation with `../../` etcetera and load from anywhere you want, as long as
 it’s not on a different Windows drive letter. This is essentially the best way
 to work with SST built from source as it avoids the need to copy it to different

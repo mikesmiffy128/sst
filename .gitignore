@@ -1,6 +1,5 @@
 /.build/
 /sst.dll
-/sst.pdb
 /sst.so
 /compile_commands.json
 /compile_flags.txt
