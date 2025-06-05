@@ -69,15 +69,6 @@ static inline void initval(struct con_var *v) {
 	memcpy(v->strval, v->defaultval, v->strlen);
 }
 
-// to try and match the engine even though it's probably not strictly required,
-// we call the Internal* virtual functions via the actual vtable. since vtables
-// are built dynamically (below), we store this index; other indices are just
-// offset from it since these 3-or-4 functions are all right next to each other.
-static int vtidx_InternalSetValue;
-#define vtidx_InternalSetFloatValue (vtidx_InternalSetValue + 1)
-#define vtidx_InternalSetIntValue (vtidx_InternalSetValue + 2)
-#define vtidx_InternalSetColorValue (vtidx_InternalSetValue + 3)
-
 static void VCALLCONV dtor(void *_) {} // we don't use constructors/destructors
 
 static bool VCALLCONV IsCommand_cmd(void *this) { return true; }
@@ -87,38 +78,38 @@ static bool VCALLCONV IsFlagSet_cmd(struct con_cmd *this, int flags) {
 	return !!(this->base.flags & flags);
 }
 static bool VCALLCONV IsFlagSet_var(struct con_var *this, int flags) {
-	return !!(this->parent->base.flags & flags);
+	return !!(this->base.flags & flags);
 }
 static void VCALLCONV AddFlags_cmd(struct con_cmd *this, int flags) {
 	this->base.flags |= flags;
 }
 static void VCALLCONV AddFlags_var(struct con_var *this, int flags) {
-	this->parent->base.flags |= flags;
+	this->base.flags |= flags;
 }
 static void VCALLCONV RemoveFlags_cmd(struct con_cmd *this, int flags) {
 	this->base.flags &= ~flags;
 }
 static void VCALLCONV RemoveFlags_var(struct con_var *this, int flags) {
-	this->parent->base.flags &= ~flags;
+	this->base.flags &= ~flags;
 }
 static int VCALLCONV GetFlags_cmd(struct con_cmd *this) {
 	return this->base.flags;
 }
 static int VCALLCONV GetFlags_var(struct con_var *this) {
-	return this->parent->base.flags;
+	return this->base.flags;
 }
 
 static const char *VCALLCONV GetName_cmd(struct con_cmd *this) {
 	return this->base.name;
 }
 static const char *VCALLCONV GetName_var(struct con_var *this) {
-	return this->parent->base.name;
+	return this->base.name;
 }
 static const char *VCALLCONV GetHelpText_cmd(struct con_cmd *this) {
 	return this->base.help;
 }
 static const char *VCALLCONV GetHelpText_var(struct con_var *this) {
-	return this->parent->base.help;
+	return this->base.help;
 }
 static bool VCALLCONV IsRegistered(struct con_cmdbase *this) {
 	return this->registered;
@@ -145,8 +136,8 @@ bool VCALLCONV CanAutoComplete(struct con_cmd *this) {
 	return false;
 }
 void VCALLCONV Dispatch(struct con_cmd *this, const struct con_cmdargs *args) {
-	// only try cb; cbv1 and iface should never get used by us
-	if (this->use_newcb && this->cb) this->cb(args);
+	// just assuming we *always* define a (V2) callback, per the DEF_CCMD macros
+	this->cb(args);
 }
 
 static void VCALLCONV ChangeStringValue(struct con_var *this, const char *s,
@@ -167,7 +158,12 @@ static void VCALLCONV ChangeStringValue(struct con_var *this, const char *s,
 	CallGlobalChangeCallbacks(_con_iface, this, old, oldf);
 }
 
-static void VCALLCONV InternalSetValue_impl(struct con_var *this, const char *v) {
+// NOTE: these Internal* functions are virtual in the engine, but nowadays we
+// just call them directly since they're private to us. We still put them in the
+// vtable just in case (see below), though arguably nothing in the engine
+// *should* be calling these internal things anyway.
+
+static void VCALLCONV InternalSetValue(struct con_var *this, const char *v) {
 	float oldf = this->fval;
 	float newf = atof(v);
 	char tmp[32];
@@ -182,7 +178,7 @@ static void VCALLCONV InternalSetValue_impl(struct con_var *this, const char *v)
 	if (!(this->base.flags & CON_NOPRINT)) ChangeStringValue(this, v, oldf);
 }
 
-static void VCALLCONV InternalSetFloatValue_impl(struct con_var *this, float v) {
+static void VCALLCONV InternalSetFloatValue(struct con_var *this, float v) {
 	if (v == this->fval) return;
 	ClampValue(this, &v);
 	float old = this->fval;
@@ -194,7 +190,7 @@ static void VCALLCONV InternalSetFloatValue_impl(struct con_var *this, float v) 
 	}
 }
 
-static void VCALLCONV InternalSetIntValue_impl(struct con_var *this, int v) {
+static void VCALLCONV InternalSetIntValue(struct con_var *this, int v) {
 	if (v == this->ival) return;
 	float f = (float)v;
 	if (ClampValue(this, &f)) v = (int)f;
@@ -207,31 +203,26 @@ static void VCALLCONV InternalSetIntValue_impl(struct con_var *this, int v) {
 	}
 }
 
-DECL_VFUNC_DYN(struct con_var, void, InternalSetValue, const char *)
-DECL_VFUNC_DYN(struct con_var, void, InternalSetFloatValue, float)
-DECL_VFUNC_DYN(struct con_var, void, InternalSetIntValue, int)
-DECL_VFUNC_DYN(struct con_var, void, InternalSetColorValue, struct rgba)
-
 // IConVar calls get this-adjusted pointers, so just subtract the offset
 static void VCALLCONV SetValue_str_thunk(void *thisoff, const char *v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	InternalSetValue(this->parent, v);
+	InternalSetValue(this, v);
 }
 static void VCALLCONV SetValue_f_thunk(void *thisoff, float v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	InternalSetFloatValue(this->parent, v);
+	InternalSetFloatValue(this, v);
 }
 static void VCALLCONV SetValue_i_thunk(void *thisoff, int v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	InternalSetIntValue(this->parent, v);
+	InternalSetIntValue(this, v);
 }
 static void VCALLCONV SetValue_colour_thunk(void *thisoff, struct rgba v) {
 	struct con_var *this = mem_offset(thisoff,
 			-offsetof(struct con_var, vtable_iconvar));
-	InternalSetColorValue(this->parent, v);
+	InternalSetIntValue(this, v.val);
 }
 
 // more misc thunks, hopefully these just compile to a lea and a jmp
@@ -357,13 +348,12 @@ void con_init() {
 	*pv++ = (void *)&Create_base;
 	*pv++ = (void *)&Init;
 	// var-specific
-	vtidx_InternalSetValue = pv - _con_vtab_var;
-	*pv++ = (void *)&InternalSetValue_impl;
-	*pv++ = (void *)&InternalSetFloatValue_impl;
-	*pv++ = (void *)&InternalSetIntValue_impl;
+	*pv++ = (void *)&InternalSetValue;
+	*pv++ = (void *)&InternalSetFloatValue;
+	*pv++ = (void *)&InternalSetIntValue;
 	if (GAMETYPE_MATCHES(L4D2x) || GAMETYPE_MATCHES(Portal2)) { // ugh, annoying
 		// InternalSetColorValue, literally the same machine instructions as int
-		*pv++ = (void *)&InternalSetIntValue_impl;
+		*pv++ = (void *)&InternalSetIntValue;
 	}
 	*pv++ = (void *)&ClampValue;;
 	*pv++ = (void *)&ChangeStringValue;
@@ -473,6 +463,9 @@ struct con_cmd *con_findcmd(const char *name) {
 	return FindCommand(_con_iface, name);
 }
 
+// NOTE: getters here still go through the parent pointer although we stopped
+// doing that internally, just in case we run into parented cvars in the actual
+// engine. a little less efficient, but safest and simplest for now.
 #define GETTER(T, N, M) T N(const struct con_var *v) { return v->parent->M; }
 GETTER(const char *, con_getvarstr, strval)
 GETTER(float, con_getvarf, fval)

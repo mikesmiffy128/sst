@@ -266,7 +266,7 @@ extern struct _con_vtab_iconvar_wrap {
 		.cb = &func, \
 		.use_newcb = true \
 	}; \
-	struct con_cmd *varname = (struct con_cmd *)&_ccmd_##varname;
+	struct con_cmd *varname = &_ccmd_##varname;
 
 /* Defines a command with a given function as its handler. */
 #define DEF_CCMD(name, desc, func, flags) \
