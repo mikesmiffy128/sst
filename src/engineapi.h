@@ -23,7 +23,6 @@
 #define INC_ENGINEAPI_H
 
 #include "intdefs.h"
-#include "vcall.h"
 
 /*
  * Here, we define a bunch of random data types as well as interfaces that don't
@@ -128,7 +127,7 @@ extern struct CGlobalVars *globalvars;
 extern struct IInputSystem *inputsystem;
 extern struct CEngineVGui *vgui;
 
-// XXX: not exactly engine *API* but not curently clear where else to put this
+// XXX: not exactly engine *API* but not currently clear where else to put this
 struct CPlugin_common {
 	bool paused;
 	void *theplugin; // our own "this" pointer (or whichever other plugin it is)
@@ -143,8 +142,8 @@ struct CPlugin {
 		struct CPlugin_common v1;
 		struct {
 			char basename[128]; // WHY VALVE WHYYYYYYY!!!!
-			struct CPlugin_common common;
-		} v2;
+			struct CPlugin_common v2;
+		};
 	};
 };
 struct CServerPlugin /* : IServerPluginHelpers */ {

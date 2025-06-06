@@ -427,63 +427,71 @@ static bool ispluginv1(const struct CPlugin *plugin) {
 	// basename string is set with strncpy(), so if there's null bytes with more
 	// stuff after, we can't be looking at a v2 struct. and we expect null bytes
 	// in ifacever, since it's a small int value
-	return (plugin->v2.basename[0] == 0 || plugin->v2.basename[0] == 1) &&
+	return (plugin->basename[0] == 0 || plugin->basename[0] == 1) &&
 			plugin->v1.theplugin && plugin->v1.ifacever < 256 &&
 			plugin->v1.ifacever;
 }
 
 static void hook_plugin_load_cb(const struct con_cmdargs *args) {
-	if (args->argc == 1) return;
-	if (!CHECK_AllowPluginLoading(true)) return;
+	if (args->argc > 1 && !CHECK_AllowPluginLoading(true)) return;
+	int prevnplugins = pluginhandler->plugins.sz;
 	orig_plugin_load_cb(args);
-	EMIT_PluginLoaded();
+	// note: if loading fails, we won't see an increase in the plugin count.
+	// we of course only want to raise the PluginLoaded event on success
+	if (pluginhandler->plugins.sz != prevnplugins) EMIT_PluginLoaded();
 }
 static void hook_plugin_unload_cb(const struct con_cmdargs *args) {
-	if (args->argc == 1) return;
-	if (!CHECK_AllowPluginLoading(false)) return;
-	if (!*args->argv[1]) {
-		errmsg_errorx("plugin_unload expects a numeric index");
-		return;
-	}
-	// catch the very common user error of plugin_unload <name> and try to hint
-	// people in the right direction. otherwise strings get atoi()d silently
-	// into zero, which is just confusing and unhelpful. don't worry about
-	// numeric range/overflow, worst case scenario we get a sev 9.8 CVE for it.
-	char *end;
-	int idx = strtol(args->argv[1], &end, 10);
-	if (end == args->argv[1]) {
-		errmsg_errorx("plugin_unload takes a number, not a name");
-		errmsg_note("use plugin_print to get a list of plugin indices");
-		return;
-	}
-	if (*end) {
-		errmsg_errorx("unexpected trailing characters "
-				"(plugin_unload takes a number)");
-		return;
-	}
-	struct CPlugin **plugins = pluginhandler->plugins.m.mem;
-	if_hot (idx >= 0 && idx < pluginhandler->plugins.sz) {
-		const struct CPlugin *plugin = plugins[idx];
-		// XXX: *could* memoise the ispluginv1 call, but... meh. effort.
-		const struct CPlugin_common *common = ispluginv1(plugin) ?
-				&plugin->v1: &plugin->v2.common;
-		if (common->theplugin == &plugin_obj) {
-			sst_userunloaded = true;
-			ownidx = idx;
+	if (args->argc > 1) {
+		if (!CHECK_AllowPluginLoading(false)) return;
+		if (!*args->argv[1]) {
+			errmsg_errorx("plugin_unload expects a number, got an empty string");
+			return;
 		}
+		// catch the very common user error of plugin_unload <name> and try to
+		// hint people in the right direction. otherwise strings get atoi()d
+		// silently into zero, which is confusing and unhelpful. don't worry
+		// about numeric range/overflow, worst case scenario it's a sev 9.8 CVE.
+		char *end;
+		int idx = strtol(args->argv[1], &end, 10);
+		if (end == args->argv[1]) {
+			errmsg_errorx("plugin_unload takes a number, not a name");
+			errmsg_note("use plugin_print to get a list of plugin indices");
+			return;
+		}
+		if (*end) {
+			errmsg_errorx("unexpected trailing characters "
+					"(plugin_unload takes a number)");
+			return;
+		}
+		struct CPlugin **plugins = pluginhandler->plugins.m.mem;
+		if_hot (idx >= 0 && idx < pluginhandler->plugins.sz) {
+			const struct CPlugin *plugin = plugins[idx];
+			// XXX: *could* memoise the ispluginv1 call, but... meh. effort.
+			const struct CPlugin_common *common = ispluginv1(plugin) ?
+					&plugin->v1 : &plugin->v2;
+			if (common->theplugin == &plugin_obj) {
+				sst_userunloaded = true;
+				ownidx = idx;
 #ifdef __clang__
-		// thanks clang for forcing use of return here and THEN warning about it
+			// thanks clang for forcing use of return here and ALSO warning!
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpedantic"
-		__attribute__((musttail)) return orig_plugin_unload_cb(args);
+			__attribute__((musttail)) return orig_plugin_unload_cb(args);
 #pragma clang diagnostic pop
 #else
 #error We are tied to clang without an assembly solution for this!
 #endif
+			}
+			// if it's some other plugin being unloaded, we can keep doing stuff
+			// after, so we raise the event.
+			orig_plugin_unload_cb(args);
+			EMIT_PluginUnloaded();
+			return;
+		}
 	}
-	// if it's some other plugin being unloaded, we can keep doing stuff after
+	// if the index is either unspecified or out-of-range, let the original
+	// handler produce an appropriate error message
 	orig_plugin_unload_cb(args);
-	EMIT_PluginUnloaded();
 }
 
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
