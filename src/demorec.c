@@ -101,7 +101,7 @@ static void VCALLCONV hook_StopRecording(struct CDemoRecorder *this) {
 DECL_VFUNC_DYN(struct CDemoRecorder, void, StartRecording)
 
 static struct con_cmd *cmd_record, *cmd_stop;
-static con_cmdcb orig_record_cb, orig_stop_cb;
+static con_cmdcbv2 orig_record_cb, orig_stop_cb;
 
 static void hook_record_cb(const struct con_cmdargs *args) {
 	if_cold (!CHECK_DemoControlAllowed()) return;
@@ -260,9 +260,9 @@ int demorec_demonum() {
 
 INIT {
 	cmd_record = con_findcmd("record");
-	orig_record_cb = con_getcmdcb(cmd_record);
+	orig_record_cb = con_getcmdcbv2(cmd_record);
 	cmd_stop = con_findcmd("stop");
-	orig_stop_cb = con_getcmdcb(cmd_stop);
+	orig_stop_cb = con_getcmdcbv2(cmd_stop);
 	if_cold (!find_demorecorder()) {
 		errmsg_errorx("couldn't find demo recorder instance");
 		return FEAT_INCOMPAT;
@@ -287,8 +287,8 @@ INIT {
 	orig_StopRecording = (StopRecording_func)hook_vtable(vtable,
 			vtidx_StopRecording, (void *)&hook_StopRecording);
 
-	cmd_record->cb = &hook_record_cb;
-	cmd_stop->cb = &hook_stop_cb;
+	cmd_record->cb_v2 = &hook_record_cb;
+	cmd_stop->cb_v2 = &hook_stop_cb;
 
 	return FEAT_OK;
 }
@@ -300,8 +300,8 @@ END {
 	void **vtable = demorecorder->vtable;
 	unhook_vtable(vtable, vtidx_SetSignonState, (void *)orig_SetSignonState);
 	unhook_vtable(vtable, vtidx_StopRecording, (void *)orig_StopRecording);
-	cmd_record->cb = orig_record_cb;
-	cmd_stop->cb = orig_stop_cb;
+	cmd_record->cb_v2 = orig_record_cb;
+	cmd_stop->cb_v2 = orig_stop_cb;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

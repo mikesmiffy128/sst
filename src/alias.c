@@ -51,7 +51,7 @@ void alias_rm(const char *name) {
 }
 
 DEF_FEAT_CCMD_HERE(sst_alias_clear, "Remove all command aliases", 0) {
-	if (cmd->argc != 1) {
+	if (argc != 1) {
 		con_warn("usage: sst_alias_clear\n");
 		return;
 	}
@@ -59,19 +59,18 @@ DEF_FEAT_CCMD_HERE(sst_alias_clear, "Remove all command aliases", 0) {
 }
 
 DEF_FEAT_CCMD_HERE(sst_alias_remove, "Remove a command alias", 0) {
-	if (cmd->argc != 2) {
+	if (argc != 2) {
 		con_warn("usage: sst_alias_remove name\n");
 		return;
 	}
-	if (strlen(cmd->argv[1]) > 31) {
+	if (strlen(argv[1]) > 31) {
 		con_warn("invalid alias name (too long)\n");
 		return;
 	}
-	alias_rm(cmd->argv[1]);
+	alias_rm(argv[1]);
 }
 
-static bool find_alias_head(con_cmdcb alias_cb) {
-	const uchar *insns = (const uchar *)alias_cb;
+static bool find_alias_head(const uchar *insns) {
 #ifdef _WIN32
 	for (const uchar *p = insns; p - insns < 64;) {
 		// alias command with no args calls ConMsg() then loads the head pointer
@@ -94,7 +93,7 @@ INIT {
 	if (GAMETYPE_MATCHES(Portal2)) return FEAT_INCOMPAT;
 
 	struct con_cmd *cmd_alias = con_findcmd("alias");
-	if_cold (!find_alias_head(con_getcmdcb(cmd_alias))) {
+	if_cold (!find_alias_head(cmd_alias->cb_insns)) {
 		errmsg_warnx("couldn't find alias list");
 		return FEAT_INCOMPAT;
 	}

@@ -82,18 +82,18 @@ void dbg_asmdump(const char *name, const void *p, int len) {
 }
 
 DEF_CCMD_HERE(sst_dbg_getcmdcb, "Get the address of a command callback", 0) {
-	if (cmd->argc != 2) {
+	if (argc != 2) {
 		con_warn("usage: sst_dbg_getcmdcb command\n");
 		return;
 	}
-	struct con_cmd *thecmd = con_findcmd(cmd->argv[1]);
+	struct con_cmd *thecmd = con_findcmd(argv[1]);
 	if (!thecmd) {
-		errmsg_errorstd("couldn't find command %s\n", cmd->argv[1]);
+		errmsg_errorstd("couldn't find command %s\n", argv[1]);
 		return;
 	}
 #ifdef _WIN32
-	con_msg("addr: %p\nghidra: %p\n", (void *)thecmd->cb,
-			(void *)dbg_toghidra((void *)thecmd->cb)); // ugh
+	con_msg("addr: %p\nghidra: %p\n", (void *)thecmd->cb_insns,
+			(void *)dbg_toghidra((void *)thecmd->cb_insns)); // ugh
 #else
 	con_msg("addr: %p\n", (void *)thecmd->cb);
 #endif

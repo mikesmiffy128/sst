@@ -349,7 +349,7 @@ static int *FinaleEscapeState;
 
 DEF_FEAT_CCMD_HERE(sst_l4d_quickreset,
 		"Reset (or switch) campaign and clear all vote cooldowns", 0) {
-	if (cmd->argc > 2) {
+	if (argc > 2) {
 		con_warn("usage: sst_l4d_quickreset [campaignid]\n");
 		return;
 	}
@@ -358,9 +358,9 @@ DEF_FEAT_CCMD_HERE(sst_l4d_quickreset,
 		return;
 	}
 	const char *campaign = l4dmm_curcampaign();
-	if (cmd->argc == 2 && (!campaign || strcasecmp(campaign, cmd->argv[1]))) {
-		change(cmd->argv[1]);
-		campaign = cmd->argv[1];
+	if (argc == 2 && (!campaign || strcasecmp(campaign, argv[1]))) {
+		change(argv[1]);
+		campaign = argv[1];
 		nextmapnum = gameserver_spawncount() + 1; // immediate next changelevel
 	}
 	else {
@@ -381,8 +381,7 @@ DEF_FEAT_CCMD_HERE(sst_l4d_quickreset,
 }
 
 // Note: this returns a pointer to subsequent bytes for find_voteissues() below
-static inline const uchar *find_votecontroller(con_cmdcbv1 listissues_cb) {
-	const uchar *insns = (const uchar *)listissues_cb;
+static inline const uchar *find_votecontroller(const uchar *insns) {
 #ifdef _WIN32
 	// The "listissues" command calls CVoteController::ListIssues, loading
 	// g_voteController into ECX
@@ -510,8 +509,7 @@ INIT {
 		errmsg_errorx("couldn't find \"listissues\" command");
 		return FEAT_INCOMPAT;
 	}
-	con_cmdcbv1 listissues_cb = con_getcmdcbv1(cmd_listissues);
-	const uchar *nextinsns = find_votecontroller(listissues_cb);
+	const uchar *nextinsns = find_votecontroller(cmd_listissues->cb_insns);
 	if_cold (!nextinsns) {
 		errmsg_errorx("couldn't find vote controller variable");
 		return FEAT_INCOMPAT;

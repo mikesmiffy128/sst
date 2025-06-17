@@ -419,7 +419,7 @@ DEF_EVENT(PluginLoaded)
 DEF_EVENT(PluginUnloaded)
 
 static struct con_cmd *cmd_plugin_load, *cmd_plugin_unload;
-static con_cmdcb orig_plugin_load_cb, orig_plugin_unload_cb;
+static con_cmdcbv2 orig_plugin_load_cb, orig_plugin_unload_cb;
 
 static int ownidx; // XXX: super hacky way of getting this to do_unload()
 
@@ -518,11 +518,11 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	if (!deferinit()) { do_featureinit(); fixes_apply(); }
 	if_hot (pluginhandler) {
 		cmd_plugin_load = con_findcmd("plugin_load");
-		orig_plugin_load_cb = cmd_plugin_load->cb;
-		cmd_plugin_load->cb = &hook_plugin_load_cb;
+		orig_plugin_load_cb = cmd_plugin_load->cb_v2;
+		cmd_plugin_load->cb_v2 = &hook_plugin_load_cb;
 		cmd_plugin_unload = con_findcmd("plugin_unload");
-		orig_plugin_unload_cb = cmd_plugin_unload->cb;
-		cmd_plugin_unload->cb = &hook_plugin_unload_cb;
+		orig_plugin_unload_cb = cmd_plugin_unload->cb_v2;
+		cmd_plugin_unload->cb_v2 = &hook_plugin_unload_cb;
 	}
 	return true;
 }
@@ -530,8 +530,8 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 static void do_unload() {
 	// slow path: reloading shouldn't happen all the time, prioritise fast exit
 	if_cold (sst_userunloaded) { // note: if we're here, pluginhandler is set
-		cmd_plugin_load->cb = orig_plugin_load_cb;
-		cmd_plugin_unload->cb = orig_plugin_unload_cb;
+		cmd_plugin_load->cb_v2 = orig_plugin_load_cb;
+		cmd_plugin_unload->cb_v2 = orig_plugin_unload_cb;
 #ifdef _WIN32 // this bit is only relevant in builds that predate linux support
 		struct CPlugin **plugins = pluginhandler->plugins.m.mem;
 		// see comment in CPlugin struct. setting this to the real handle right

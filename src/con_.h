@@ -66,10 +66,13 @@ enum {
 	CON_CCMDEXEC = 1 << 30		/* ClientCmd() function may run the command */
 };
 
-/* A callback function invoked to execute a command. */
-typedef void (*con_cmdcb)(const struct con_cmdargs *cmd);
+/* A callback function invoked by SST to execute its own commands. */
+typedef void (*con_cmdcb)(int argc, const char *const *argv);
 
-/* Obsolete callback; not used by SST, but might still exist in the engine. */
+/* A callback function used by most commands in most versions of the engine. */
+typedef void (*con_cmdcbv2)(const struct con_cmdargs *cmd);
+
+/* An older style of callback function used by some old commands, and in OE. */
 typedef void (*con_cmdcbv1)();
 
 /*
@@ -101,9 +104,11 @@ struct con_cmdbase { // ConCommandBase in engine
 struct con_cmd { // ConCommand in engine
 	struct con_cmdbase base;
 	union {
+		con_cmdcb cb; // N.B.: only used by *our* commands!
 		con_cmdcbv1 cb_v1;
-		con_cmdcb cb;
-		/*ICommandCallback*/ void *cb_iface; // does source even use this?
+		con_cmdcbv2 cb_v2;
+		const uchar *cb_insns; // for the sake of instruction-scanning and such
+		/*ICommandCallback*/ void *cb_iface; // what in Source even uses this?
 	};
 	union {
 		con_complcb complcb;
@@ -160,7 +165,7 @@ void con_setvari(struct con_var *v, int i);
  * callback being requested. If this is already known, consider just grabbing
  * the member directly to avoid the small amount of unnecessary work.
  */
-con_cmdcb con_getcmdcb(const struct con_cmd *cmd);
+con_cmdcbv2 con_getcmdcbv2(const struct con_cmd *cmd);
 con_cmdcbv1 con_getcmdcbv1(const struct con_cmd *cmd);
 
 /*
@@ -264,7 +269,6 @@ extern struct _con_vtab_iconvar_wrap {
 			.name = "" #name_, .help = "" desc, .flags = (flags_) \
 		}, \
 		.cb = &func, \
-		.use_newcb = true \
 	}; \
 	struct con_cmd *varname = &_ccmd_##varname;
 
@@ -282,13 +286,13 @@ extern struct _con_vtab_iconvar_wrap {
 
 /*
  * Defines a console command with the handler function body immediately
- * following the macro (like in Source itself). The function takes the argument
- * `struct con_cmdargs *cmd` for command arguments.
+ * following the macro (like in Source itself). The function takes the implicit
+ * arguments `int argc` and `const char *const *argv` for command arguments.
  */
 #define DEF_CCMD_HERE(name, desc, flags) \
-	static void _cmdf_##name(const struct con_cmdargs *cmd); \
+	static void _cmdf_##name(int argc, const char *const *argv); \
 	_DEF_CCMD(name, name, desc, _cmdf_##name, flags) \
-	static void _cmdf_##name(const struct con_cmdargs *cmd) \
+	static void _cmdf_##name(int argc, const char *const *argv) \
 	/* { body here } */
 
 /*

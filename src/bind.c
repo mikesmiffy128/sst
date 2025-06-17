@@ -36,9 +36,8 @@ static struct keyinfo *keyinfo; // engine keybinds list (s_pKeyInfo[])
 
 const char *bind_get(int keycode) { return keyinfo[keycode].binding; }
 
-static bool find_keyinfo(con_cmdcb klbc_cb) {
+static bool find_keyinfo(const uchar *insns) {
 #ifdef _WIN32
-	const uchar *insns = (const uchar *)klbc_cb;
 	for (const uchar *p = insns; p - insns < 64;) {
 		// key_listboundkeys loops through each index, moving into a register:
 		// mov <reg>, dword ptr [<reg> * 8 + s_pKeyInfo]
@@ -57,8 +56,7 @@ static bool find_keyinfo(con_cmdcb klbc_cb) {
 
 INIT {
 	struct con_cmd *cmd_key_listboundkeys = con_findcmd("key_listboundkeys");
-	con_cmdcb cb = con_getcmdcb(cmd_key_listboundkeys);
-	if_cold (!find_keyinfo(cb)) {
+	if_cold (!find_keyinfo(cmd_key_listboundkeys->cb_insns)) {
 		errmsg_warnx("couldn't find key binding list");
 		return FEAT_INCOMPAT;
 	}

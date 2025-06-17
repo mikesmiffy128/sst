@@ -136,8 +136,7 @@ bool VCALLCONV CanAutoComplete(struct con_cmd *this) {
 	return false;
 }
 void VCALLCONV Dispatch(struct con_cmd *this, const struct con_cmdargs *args) {
-	// just assuming we *always* define a (V2) callback, per the DEF_CCMD macros
-	this->cb(args);
+	this->cb(args->argc, args->argv);
 }
 
 static void VCALLCONV ChangeStringValue(struct con_var *this, const char *s,
@@ -484,8 +483,8 @@ SETTER(float, vtidx_SetValue_f, con_setvarf)
 SETTER(int, vtidx_SetValue_i, con_setvari)
 #undef SETTER
 
-con_cmdcb con_getcmdcb(const struct con_cmd *cmd) {
-	return !cmd->use_newcmdiface && cmd->use_newcb ? cmd->cb : 0;
+con_cmdcbv2 con_getcmdcbv2(const struct con_cmd *cmd) {
+	return !cmd->use_newcmdiface && cmd->use_newcb ? cmd->cb_v2 : 0;
 }
 
 con_cmdcbv1 con_getcmdcbv1(const struct con_cmd *cmd) {

@@ -110,10 +110,10 @@ DEF_FEAT_CCMD_HERE(sst_l4d_testwarp, "Simulate a bot warping to you "
 		CON_SERVERSIDE | CON_CHEAT) {
 	bool staystuck = false;
 	// TODO(autocomplete): suggest this argument
-	if (cmd->argc == 2 && !strcmp(cmd->argv[1], "staystuck")) {
+	if (argc == 2 && !strcmp(argv[1], "staystuck")) {
 		staystuck = true;
 	}
-	else if (cmd->argc != 1) {
+	else if (argc != 1) {
 		clientcon_reply("usage: sst_l4d_testwarp [staystuck]\n");
 		return;
 	}
