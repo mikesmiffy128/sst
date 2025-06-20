@@ -94,6 +94,7 @@ setlocal DisableDelayedExpansion
 :+ nosleep.c
 :+ os.c
 :+ portalcolours.c
+:+ portalisg.c
 :+ rinput.c
 :+ sst.c
 :+ trace.c
@@ -122,7 +123,7 @@ if %host64%==1 (
 -L.build %lbcryptprimitives_host% -o .build/mkentprops.exe src/build/mkentprops.c src/os.c || goto :end
 .build\gluegen.exe%src% || goto :end
 .build\mkgamedata.exe gamedata/engine.txt gamedata/gamelib.txt gamedata/inputsystem.txt ^
-gamedata/matchmaking.txt gamedata/vgui2.txt gamedata/vguimatsurface.txt || goto :end
+gamedata/matchmaking.txt gamedata/vgui2.txt gamedata/vguimatsurface.txt gamedata/vphysics.txt || goto :end
 .build\mkentprops.exe gamedata/entprops.txt || goto :end
 llvm-rc /FO .build\dll.res src\dll.rc || goto :end
 for %%b in (%src%) do ( call :cc %%b || goto :end )

@@ -101,7 +101,7 @@ $HOSTCC -O2 -fuse-ld=lld $warnings $stdflags \
 		-o .build/mkentprops src/build/mkentprops.c src/os.c
 .build/gluegen `for s in $src; do echo "src/$s"; done`
 .build/mkgamedata gamedata/engine.txt gamedata/gamelib.txt gamedata/inputsystem.txt \
-gamedata/matchmaking.txt gamedata/vgui2.txt gamedata/vguimatsurface.txt
+gamedata/matchmaking.txt gamedata/vgui2.txt gamedata/vguimatsurface.txt gamedata/vphysics.txt
 .build/mkentprops gamedata/entprops.txt
 for s in $src; do cc "$s"; done
 $CC -shared -fpic -fuse-ld=lld -O0 -w -o .build/libtier0.so src/stubs/tier0.c

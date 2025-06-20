@@ -1,0 +1,10 @@
+# IPhysics
+vtidx_CreateEnvironment 5
+
+# IPhysicsEnvironment
+vtidx_CreatePolyObject 7
+
+# IPhysicsObject
+vtidx_RecheckCollisionFilter 26
+
+# vi: sw=4 ts=4 noet tw=80 cc=80
