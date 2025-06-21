@@ -240,11 +240,11 @@ DEF_CCMD_HERE(sst_printversion, "Display plugin version information", 0) {
 // interested parties identify the version of SST used by just writing a dummy
 // cvar to the top of the demo. this will be removed later, once there's a less
 // stupid way of achieving the same goal.
-#if VERSION_MAJOR != 0 || VERSION_MINOR != 13
+#if VERSION_MAJOR != 0 || VERSION_MINOR != 14
 #error Need to change this manually, since gluegen requires it to be spelled \
 out in DEF_CVAR - better yet, can we get rid of this yet?
 #endif
-DEF_CVAR(__sst_0_13_beta, "", 0, CON_HIDDEN | CON_DEMO)
+DEF_CVAR(__sst_0_l4_beta, "", 0, CON_HIDDEN | CON_DEMO)
 
 // most plugin callbacks are unused - define dummy functions for each signature
 static void VCALLCONV nop_v_v(void *this) {}
