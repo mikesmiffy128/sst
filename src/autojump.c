@@ -78,7 +78,7 @@ static bool unprot(struct CGameMovement *gm) {
 // reimplementing cheats check for dumb and bad reasons, see below
 static struct con_var *sv_cheats;
 static void cheatcb(struct con_var *this) {
-	if (this->ival) if_cold (!con_getvari(sv_cheats)) {
+	if (con_getvari(this)) if_cold (!con_getvari(sv_cheats)) {
 		con_warn("Can't use cheat cvar sst_autojump, unless server has "
 				"sv_cheats set to 1.\n");
 		con_setvari(this, 0);

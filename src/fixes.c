@@ -32,7 +32,10 @@
 
 static void chflags(const char *name, int unset, int set) {
 	struct con_var *v = con_findvar(name);
-	if (v) v->parent->base.flags = v->parent->base.flags & ~unset | set;
+	if (v) {
+		struct con_var *p = con_getvarcommon(v)->parent;
+		p->base.flags = p->base.flags & ~unset | set;
+	}
 }
 
 static inline void unhide(const char *name) {
@@ -93,17 +96,19 @@ static void generalfixes() {
 		// for L4D games, generally changing anything above normal limits is
 		// disallowed, but externally capping FPS will always be possible so we
 		// might as well allow lowering it ingame for convenience.
-		if (v->parent->base.flags & (CON_HIDDEN | CON_DEVONLY)) {
-			v->parent->base.flags &= ~(CON_HIDDEN | CON_DEVONLY);
-			v->parent->hasmax = true; v->parent->maxval = 300;
+		struct con_var *p = con_getvarcommon(v)->parent;
+		struct con_var_common *c = con_getvarcommon(p);
+		if (p->base.flags & (CON_HIDDEN | CON_DEVONLY)) {
+			p->base.flags &= ~(CON_HIDDEN | CON_DEVONLY);
+			c->hasmax = true; c->maxval = 300;
 		}
-		else if (!v->parent->hasmax) {
+		else if (!c->hasmax) {
 			// in TLS, this was made changeable, but still limit to 1000 to
 			// prevent breaking the engine
-			v->parent->hasmax = true; v->parent->maxval = 1000;
+			c->hasmax = true; c->maxval = 1000;
 		}
 		// also show the lower limit in help, and prevent 0 (which is unlimited)
-		v->parent->hasmin = true; v->parent->minval = 30;
+		c->hasmin = true; c->minval = 30;
 		con_setvarf(v, con_getvarf(v)); // hack: reapply limit if we loaded late
 	}
 }
@@ -128,11 +133,13 @@ static void l4d2specific() {
 	// possible on these earlier versions (who knows if that breaks
 	// something...).
 	struct con_var *v = con_findvar("mat_queue_mode");
-	if_hot (v && !(v->parent->base.flags & CON_ARCHIVE)) { // not already fixed
-		v->parent->base.flags = v->parent->base.flags &
+	struct con_var *p = con_getvarcommon(v)->parent;
+	if_hot (v && !(p->base.flags & CON_ARCHIVE)) { // not already fixed
+		struct con_var_common *c = con_getvarcommon(p);
+		p->base.flags = p->base.flags &
 				~(CON_HIDDEN | CON_DEVONLY) | CON_ARCHIVE;
-		v->parent->hasmin = true; v->parent->minval = -1;
-		v->parent->hasmax = true; v->parent->maxval = 0;
+		c->hasmin = true; c->minval = -1;
+		c->hasmax = true; c->maxval = 0;
 	}
 
 #ifdef _WIN32

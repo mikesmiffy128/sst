@@ -432,14 +432,16 @@ INIT {
 	// HL2 sprint HUD, so move it up. This is a bit yucky, but at least we don't
 	// have to go through all the virtual setter crap twice...
 	if (GAMETYPE_MATCHES(L4D)) {
-		sst_inputhud_y->defaultval = "0.82";
-		sst_inputhud_y->fval = 0.82f;
-		sst_inputhud_y->ival = 0;
+		struct con_var_common *c = con_getvarcommon(sst_inputhud_y);
+		c->defaultval = "0.82";
+		c->fval = 0.82f;
+		c->ival = 0;
 	}
 	else if (GAMETYPE_MATCHES(HL2series)) {
-		sst_inputhud_y->defaultval = "0.75";
-		sst_inputhud_y->fval = 0.75f;
-		sst_inputhud_y->ival = 0;
+		struct con_var_common *c = con_getvarcommon(sst_inputhud_y);
+		c->defaultval = "0.75";
+		c->fval = 0.75f;
+		c->ival = 0;
 	}
 
 	return FEAT_OK;

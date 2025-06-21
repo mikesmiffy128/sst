@@ -65,8 +65,8 @@ struct ICvar *_con_iface;
 ConsoleColorPrintf_func _con_colourmsgf;
 
 static inline void initval(struct con_var *v) {
-	v->strval = extmalloc(v->strlen); // note: strlen is preset in _DEF_CVAR()
-	memcpy(v->strval, v->defaultval, v->strlen);
+	v->v2.strval = extmalloc(v->v2.strlen); // note: _DEF_CVAR() sets strlen
+	memcpy(v->v2.strval, v->v2.defaultval, v->v2.strlen);
 }
 
 static void VCALLCONV dtor(void *_) {} // we don't use constructors/destructors
@@ -122,8 +122,14 @@ static void VCALLCONV Create_base(struct con_cmdbase *this, const char *name,
 static void VCALLCONV Init(struct con_cmdbase *this) {} // ""
 
 static bool VCALLCONV ClampValue(struct con_var *this, float *f) {
-	if (this->hasmin && this->minval > *f) { *f = this->minval; return true; }
-	if (this->hasmax && this->maxval < *f) { *f = this->maxval; return true; }
+	if (this->v2.hasmin && this->v2.minval > *f) {
+		*f = this->v2.minval;
+		return true;
+	}
+	if (this->v2.hasmax && this->v2.maxval < *f) {
+		*f = this->v2.maxval;
+		return true;
+	}
 	return false;
 }
 
@@ -141,14 +147,14 @@ void VCALLCONV Dispatch(struct con_cmd *this, const struct con_cmdargs *args) {
 
 static void VCALLCONV ChangeStringValue(struct con_var *this, const char *s,
 		float oldf) {
-	char *old = alloca(this->strlen);
-	memcpy(old, this->strval, this->strlen);
+	char *old = alloca(this->v2.strlen);
+	memcpy(old, this->v2.strval, this->v2.strlen);
 	int len = strlen(s) + 1;
-	if (len > this->strlen) {
-		this->strval = extrealloc(this->strval, len);
-		this->strlen = len;
+	if (len > this->v2.strlen) {
+		this->v2.strval = extrealloc(this->v2.strval, len);
+		this->v2.strlen = len;
 	}
-	memcpy(this->strval, s, len);
+	memcpy(this->v2.strval, s, len);
 	// callbacks don't matter as far as ABI compat goes (and thank goodness
 	// because e.g. portal2 randomly adds a *list* of callbacks!?). however we
 	// do need callbacks for at least one feature, so do our own minimal thing
@@ -163,41 +169,39 @@ static void VCALLCONV ChangeStringValue(struct con_var *this, const char *s,
 // *should* be calling these internal things anyway.
 
 static void VCALLCONV InternalSetValue(struct con_var *this, const char *v) {
-	float oldf = this->fval;
+	float oldf = this->v2.fval;
 	float newf = atof(v);
 	char tmp[32];
-	// NOTE: calling our own ClampValue and ChangeString, not bothering with
-	// vtable (it's internal anyway, so we're never calling into engine code)
 	if (ClampValue(this, &newf)) {
 		snprintf(tmp, sizeof(tmp), "%f", newf);
 		v = tmp;
 	}
-	this->fval = newf;
-	this->ival = (int)newf;
+	this->v2.fval = newf;
+	this->v2.ival = (int)newf;
 	if (!(this->base.flags & CON_NOPRINT)) ChangeStringValue(this, v, oldf);
 }
 
 static void VCALLCONV InternalSetFloatValue(struct con_var *this, float v) {
-	if (v == this->fval) return;
+	if (v == this->v2.fval) return;
 	ClampValue(this, &v);
-	float old = this->fval;
-	this->fval = v; this->ival = (int)this->fval;
+	float old = this->v2.fval;
+	this->v2.fval = v; this->v2.ival = (int)this->v2.fval;
 	if (!(this->base.flags & CON_NOPRINT)) {
 		char tmp[32];
-		snprintf(tmp, sizeof(tmp), "%f", this->fval);
+		snprintf(tmp, sizeof(tmp), "%f", this->v2.fval);
 		ChangeStringValue(this, tmp, old);
 	}
 }
 
 static void VCALLCONV InternalSetIntValue(struct con_var *this, int v) {
-	if (v == this->ival) return;
+	if (v == this->v2.ival) return;
 	float f = (float)v;
 	if (ClampValue(this, &f)) v = (int)f;
-	float old = this->fval;
-	this->fval = f; this->ival = v;
+	float old = this->v2.fval;
+	this->v2.fval = f; this->v2.ival = v;
 	if (!(this->base.flags & CON_NOPRINT)) {
 		char tmp[32];
-		snprintf(tmp, sizeof(tmp), "%f", this->fval);
+		snprintf(tmp, sizeof(tmp), "%f", this->v2.fval);
 		ChangeStringValue(this, tmp, old);
 	}
 }
@@ -465,7 +469,10 @@ struct con_cmd *con_findcmd(const char *name) {
 // NOTE: getters here still go through the parent pointer although we stopped
 // doing that internally, just in case we run into parented cvars in the actual
 // engine. a little less efficient, but safest and simplest for now.
-#define GETTER(T, N, M) T N(const struct con_var *v) { return v->parent->M; }
+#define GETTER(T, N, M) \
+	T N(const struct con_var *v) { \
+		return v->v2.parent->v2.M; \
+	}
 GETTER(const char *, con_getvarstr, strval)
 GETTER(float, con_getvarf, fval)
 GETTER(int, con_getvari, ival)

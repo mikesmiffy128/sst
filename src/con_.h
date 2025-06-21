@@ -117,9 +117,7 @@ struct con_cmd { // ConCommand in engine
 	bool has_complcb : 1, use_newcb : 1, use_newcmdiface : 1;
 };
 
-struct con_var { // ConVar in engine
-	struct con_cmdbase base;
-	void **vtable_iconvar; // IConVar in engine (pure virtual)
+struct con_var_common {
 	struct con_var *parent;
 	const char *defaultval;
 	char *strval;
@@ -131,8 +129,19 @@ struct con_var { // ConVar in engine
 	float minval;
 	bool hasmax; // just sticking to sdk position
 	float maxval;
+};
+
+struct con_var { // ConVar in engine
+	struct con_cmdbase base;
+	union {
+		struct con_var_common v1;
+		struct {
+			void **vtable_iconvar; // IConVar in engine (pure virtual)
+			struct con_var_common v2;
+		};
+	};
 	/*
-	 * Our quickly-chucked-in optional callback - doesn't match the engine!!
+	 * Our quickly-chucked-in optional callback - doesn't match the engine ABI!
 	 * Also has to be manually set in code, although that's probably fine anyway
 	 * as it's common to only want a cvar to do something if the feature
 	 * succesfully init-ed.
@@ -143,13 +152,27 @@ struct con_var { // ConVar in engine
 /* The change callback used in most branches of Source. Takes an IConVar :) */
 typedef void (*con_varcb)(void *v, const char *, float);
 
+
+/* Returns a registered variable with the given name, or null if not found. */
+struct con_var *con_findvar(const char *name);
+
+/* Returns a registered command with the given name, or null if not found. */
+struct con_cmd *con_findcmd(const char *name);
+
+/*
+ * Returns a pointer to the common (i.e. middle) part of a ConVar struct, the
+ * offset of which varies by engine version. This sub-struct contains
+ * essentially all the actual cvar-specific data.
+ */
+static inline struct con_var_common *con_getvarcommon(struct con_var *v) {
+	return &v->v2;
+}
+
 /*
  * These functions get and set the values of console variables in a
  * neatly-abstracted manner. Note: cvar values are always strings internally -
  * numerical values are just interpretations of the underlying value.
  */
-struct con_var *con_findvar(const char *name);
-struct con_cmd *con_findcmd(const char *name);
 const char *con_getvarstr(const struct con_var *v);
 float con_getvarf(const struct con_var *v);
 int con_getvari(const struct con_var *v);
@@ -236,13 +259,16 @@ extern struct _con_vtab_iconvar_wrap {
 			.name = "" #name_, .help = "" desc, .flags = (flags_) \
 		}, \
 		.vtable_iconvar = _con_vtab_iconvar, \
-		.parent = &_cvar_##name_, /* bizarre, but how the engine does it */ \
-		.defaultval = _Generic(value, char *: value, int: #value, \
-				double: #value), \
-		.strlen = sizeof(_Generic(value, char *: value, default: #value)), \
-		.fval = _Generic(value, char *: 0, int: value, double: value), \
-		.ival = _Generic(value, char *: 0, int: value, double: (int)value), \
-		.hasmin = hasmin_, .minval = (min), .hasmax = hasmax_, .maxval = (max) \
+		.v2 = { \
+			.parent = &_cvar_##name_, /* bizarre, but how the engine does it */ \
+			.defaultval = _Generic(value, char *: value, int: #value, \
+					double: #value), \
+			.strlen = sizeof(_Generic(value, char *: value, default: #value)), \
+			.fval = _Generic(value, char *: 0, int: value, double: value), \
+			.ival = _Generic(value, char *: 0, int: value, double: (int)value), \
+			.hasmin = hasmin_, .minval = (min), \
+			.hasmax = hasmax_, .maxval = (max) \
+		} \
 	}; \
 	struct con_var *name_ = &_cvar_##name_;
 

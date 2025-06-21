@@ -869,7 +869,8 @@ _( "}")
 _( "")
 _( "static inline void freevars() {")
 	for (int i = 1; i < ncvars; ++i) {
-F( "	extfree(%.*s->strval);", cvar_names[i].len, cvar_names[i].s)
+F( "	extfree(con_getvarcommon(%.*s)->strval);",
+		cvar_names[i].len, cvar_names[i].s)
 	}
 _( "}")
 	for (int i = 1; i < nevents; ++i) {
