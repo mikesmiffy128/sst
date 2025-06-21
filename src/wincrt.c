@@ -48,6 +48,23 @@ void *memcpy(void *restrict x, const void *restrict y, unsigned int sz) {
 #endif
 }
 
+void *memset(void *x, int c, unsigned int sz) {
+#if defined(__GNUC__) || defined(__clang__)
+    void *r = x;
+    __asm__ volatile (
+        "rep stosb\n"
+        : "+D" (x), "+c" (sz)
+        : "a"(c)
+        : "memory"
+    );
+    return r;
+#else
+	const unsigned char *xb = x;
+	for (unsigned int i = 0; i < len; ++i) xb[i] = (unsigned char)c;
+	return x;
+#endif
+}
+
 int __stdcall _DllMainCRTStartup(void *inst, unsigned int reason,
 		void *reserved) {
 	return 1;
