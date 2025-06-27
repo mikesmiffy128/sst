@@ -270,8 +270,7 @@ static bool already_loaded = false, skip_unload = false;
 
 // auto-update message. see below in do_featureinit()
 static const char *updatenotes = "\
-* Fixed yet another feature initialisation bug, hopefully the last for now\n\
-* Improved messages from hooked plugin_load/plugin_unload commands\n\
+* Added sst_portal_resetisg as as stopgap solution for Portal runners\n\
 ";
 
 enum { // used in generated code, must line up with featmsgs arrays below
