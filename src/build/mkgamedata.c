@@ -169,7 +169,9 @@ static inline void knowngames(FILE *out) {
 		while (exprs[i]) { // if there's a default value, we don't need this
 			// skip to next unindented thing, return if there isn't one with at
 			// least one indented thing under it.
-			for (++i; indents[i] != 0; ++i) if (i == nents - 1) return;
+			do {
+				if (++i == nents - 1) return;
+			} while (indents[i] != 0);
 		}
 F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
 		if_cold (fprintf(out, "#define _GAMES_WITH_%s (", sbase + tags[i]) < 0) {
