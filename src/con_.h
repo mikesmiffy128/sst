@@ -361,6 +361,66 @@ extern struct _con_vtab_iconvar_wrap {
 #define DEF_CCMD_PLUSMINUS_UNREG DEF_CCMD_PLUSMINUS
 
 /*
+ * Defines a hook function in-place to hook a command callback, factoring in
+ * different callback ABIs used by different commands and/or different engine
+ * branches. Defines a hook_##name##_cb function to install the hook and an
+ * unhook_##name##_cb function to remove it.
+ *
+ * The hook function has the implicit arguments argc and argv, just like a
+ * command handler defined with DEF_CCMD_HERE. Calling the original command
+ * handler can be done using orig_##name##_cb, passing through argc and argv.
+ *
+ * Note that argc and argv MUST remain unmodified, as not all callback
+ * interfaces pass arguments through the callback and so attempting to change
+ * these parameters could cause unexpected or inconsistent behaviour across
+ * engine versions.
+ *
+ * In some cases, a command will be defined to take no arguments, in which case
+ * argc will be zero and argv will be null. In these cases, the parameters
+ * should still be passed through to the orig_ function, as this ensures
+ * compatibility with other game/engine versions.
+ */
+#define DEF_CCMD_COMPAT_HOOK(name) \
+	static union { \
+		con_cmdcbv1 v1; \
+		con_cmdcbv2 v2; \
+	} _orig_##name##_cb; \
+	static void _orig_##name##_cbv1(int argc, const char *const *argv) { \
+		_orig_##name##_cb.v1(); \
+	} \
+	static void _orig_##name##_cbv2(int argc, const char *const *argv) { \
+		struct con_cmdargs args; \
+		args.argc = argc; \
+		/* XXX: having to copy argv sucks, but can't see how to avoid without
+		   ruining the interface? */ \
+		for (int i = 0; i < argc; ++i) args.argv[i] = argv[i]; \
+		_orig_##name##_cb.v2(&args); \
+	} \
+	static void (*orig_##name##_cb)(int argc, const char *const *argv); \
+	static void _hook_##name##_cb(int argc, const char *const *argv); \
+	static void _hook_##name##_cbv1() { \
+		_hook_##name##_cb(0, 0); /* XXX: ??? */ \
+	} \
+	static void _hook_##name##_cbv2(const struct con_cmdargs *args) { \
+		_hook_##name##_cb(args->argc, args->argv); \
+	} \
+	static void hook_##name##_cb(struct con_cmd *cmd) { \
+		_orig_##name##_cb.v1 = cmd->cb_v1; \
+		if (cmd->use_newcb) { \
+			cmd->cb_v2 = &_hook_##name##_cbv2; \
+			orig_##name##_cb = &_orig_##name##_cbv2; \
+		} \
+		else { \
+			cmd->cb_v1 = _hook_##name##_cbv1; \
+			orig_##name##_cb = &_orig_##name##_cbv1; \
+		} \
+	} \
+	static void unhook_##name##_cb(struct con_cmd *cmd) { \
+		cmd->cb_v1 = _orig_##name##_cb.v1; \
+	} \
+	static void _hook_##name##_cb(int argc, const char *const *argv) /* ... */
+
+/*
  * These functions register a command or variable, respectively, defined with
  * the _UNREG variants of the above macros. These can be used to conditionally
  * register things. Wherever possible, it is advised to use the DEF_FEAT_*

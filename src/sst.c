@@ -418,7 +418,6 @@ DEF_EVENT(PluginLoaded)
 DEF_EVENT(PluginUnloaded)
 
 static struct con_cmd *cmd_plugin_load, *cmd_plugin_unload;
-static con_cmdcbv2 orig_plugin_load_cb, orig_plugin_unload_cb;
 
 static int ownidx; // XXX: super hacky way of getting this to do_unload()
 
@@ -431,36 +430,50 @@ static bool ispluginv1(const struct CPlugin *plugin) {
 			plugin->v1.ifacever;
 }
 
-static void hook_plugin_load_cb(const struct con_cmdargs *args) {
-	if (args->argc > 1 && !CHECK_AllowPluginLoading(true)) return;
+DEF_CCMD_COMPAT_HOOK(plugin_load) {
+	if (argc > 1 && !CHECK_AllowPluginLoading(true)) return;
 	int prevnplugins = pluginhandler->plugins.sz;
-	orig_plugin_load_cb(args);
+	orig_plugin_load_cb(argc, argv);
 	// note: if loading fails, we won't see an increase in the plugin count.
 	// we of course only want to raise the PluginLoaded event on success
 	if (pluginhandler->plugins.sz != prevnplugins) EMIT_PluginLoaded();
 }
-static void hook_plugin_unload_cb(const struct con_cmdargs *args) {
-	if (args->argc > 1) {
-		if (!CHECK_AllowPluginLoading(false)) return;
-		if (!*args->argv[1]) {
+
+// plugin_unload hook is kind of special. We have to force a tail call when
+// unloading SST itself, so we can't use the regular hook wrappers. Instead we
+// need to specifically and directly hook the two callback interfaces.
+static union {
+	con_cmdcbv1 v1;
+	con_cmdcbv2 v2;
+} orig_plugin_unload_cb;
+
+enum unload_action {
+	UNLOAD_SKIP,
+	UNLOAD_SELF,
+	UNLOAD_OTHER
+};
+static int hook_plugin_unload_common(int argc, const char *const *argv) {
+	if (argc > 1) {
+		if (!CHECK_AllowPluginLoading(false)) return UNLOAD_SKIP;
+		if (!*argv[1]) {
 			errmsg_errorx("plugin_unload expects a number, got an empty string");
-			return;
+			return UNLOAD_SKIP;
 		}
 		// catch the very common user error of plugin_unload <name> and try to
 		// hint people in the right direction. otherwise strings get atoi()d
 		// silently into zero, which is confusing and unhelpful. don't worry
 		// about numeric range/overflow, worst case scenario it's a sev 9.8 CVE.
 		char *end;
-		int idx = strtol(args->argv[1], &end, 10);
-		if (end == args->argv[1]) {
+		int idx = strtol(argv[1], &end, 10);
+		if (end == argv[1]) {
 			errmsg_errorx("plugin_unload takes a number, not a name");
 			errmsg_note("use plugin_print to get a list of plugin indices");
-			return;
+			return UNLOAD_SKIP;
 		}
 		if (*end) {
 			errmsg_errorx("unexpected trailing characters "
 					"(plugin_unload takes a number)");
-			return;
+			return UNLOAD_SKIP;
 		}
 		struct CPlugin **plugins = pluginhandler->plugins.m.mem;
 		if_hot (idx >= 0 && idx < pluginhandler->plugins.sz) {
@@ -471,26 +484,39 @@ static void hook_plugin_unload_cb(const struct con_cmdargs *args) {
 			if (common->theplugin == &plugin_obj) {
 				sst_userunloaded = true;
 				ownidx = idx;
+				return UNLOAD_SELF;
+			}
+			// if it's some other plugin being unloaded, we can keep doing stuff
+			// after, so we raise the event.
+			return UNLOAD_OTHER;
+		}
+	}
+	// error case, pass through to original to log the appropriate message
+	return UNLOAD_OTHER;
+}
+
+// TODO(compat): we'd have cbv1 here for OE. but we don't yet have the global
+// argc/argv access so there's no way to implement that.
+
+static void hook_plugin_unload_cbv2(const struct con_cmdargs *args) {
+	int action = hook_plugin_unload_common(args->argc, args->argv);
+	switch_exhaust_enum(unload_action, action) {
+		case UNLOAD_SKIP:
+			return;
+		case UNLOAD_SELF:
 #ifdef __clang__
 			// thanks clang for forcing use of return here and ALSO warning!
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpedantic"
-			__attribute__((musttail)) return orig_plugin_unload_cb(args);
+			__attribute__((musttail)) return orig_plugin_unload_cb.v2(args);
 #pragma clang diagnostic pop
 #else
 #error We are tied to clang without an assembly solution for this!
 #endif
-			}
-			// if it's some other plugin being unloaded, we can keep doing stuff
-			// after, so we raise the event.
-			orig_plugin_unload_cb(args);
+		case UNLOAD_OTHER:
+			orig_plugin_unload_cb.v2(args);
 			EMIT_PluginUnloaded();
-			return;
-		}
 	}
-	// if the index is either unspecified or out-of-range, let the original
-	// handler produce an appropriate error message
-	orig_plugin_unload_cb(args);
 }
 
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
@@ -517,11 +543,11 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	if (!deferinit()) { do_featureinit(); fixes_apply(); }
 	if_hot (pluginhandler) {
 		cmd_plugin_load = con_findcmd("plugin_load");
-		orig_plugin_load_cb = cmd_plugin_load->cb_v2;
-		cmd_plugin_load->cb_v2 = &hook_plugin_load_cb;
+		hook_plugin_load_cb(cmd_plugin_load);
 		cmd_plugin_unload = con_findcmd("plugin_unload");
-		orig_plugin_unload_cb = cmd_plugin_unload->cb_v2;
-		cmd_plugin_unload->cb_v2 = &hook_plugin_unload_cb;
+		orig_plugin_unload_cb.v1 = cmd_plugin_unload->cb_v1; // n.b.: union!
+		// TODO(compat): detect OE/v1 and use that hook here when required
+		cmd_plugin_unload->cb_v2 = &hook_plugin_unload_cbv2;
 	}
 	return true;
 }
@@ -529,8 +555,8 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 static void do_unload() {
 	// slow path: reloading shouldn't happen all the time, prioritise fast exit
 	if_cold (sst_userunloaded) { // note: if we're here, pluginhandler is set
-		cmd_plugin_load->cb_v2 = orig_plugin_load_cb;
-		cmd_plugin_unload->cb_v2 = orig_plugin_unload_cb;
+		unhook_plugin_load_cb(cmd_plugin_load);
+		cmd_plugin_unload->cb_v1 = orig_plugin_unload_cb.v1;
 #ifdef _WIN32 // this bit is only relevant in builds that predate linux support
 		struct CPlugin **plugins = pluginhandler->plugins.m.mem;
 		// see comment in CPlugin struct. setting this to the real handle right

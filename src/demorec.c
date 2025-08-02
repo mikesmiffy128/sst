@@ -101,16 +101,15 @@ static void VCALLCONV hook_StopRecording(struct CDemoRecorder *this) {
 DECL_VFUNC_DYN(struct CDemoRecorder, void, StartRecording)
 
 static struct con_cmd *cmd_record, *cmd_stop;
-static con_cmdcbv2 orig_record_cb, orig_stop_cb;
 
-static void hook_record_cb(const struct con_cmdargs *args) {
+DEF_CCMD_COMPAT_HOOK(record) {
 	if_cold (!CHECK_DemoControlAllowed()) return;
 	bool was = *recording;
-	if (!was && args->argc == 2 || args->argc == 3) {
+	if (!was && argc == 2 || argc == 3) {
 		// safety check: make sure a directory exists, otherwise recording
 		// silently fails. this is necessarily TOCTOU, but in practice it's
 		// way better than not doing it - just to have a sanity check.
-		const char *arg = args->argv[1];
+		const char *arg = argv[1];
 		const char *lastslash = 0;
 		for (const char *p = arg; *p; ++p) {
 #ifdef _WIN32
@@ -155,7 +154,7 @@ static void hook_record_cb(const struct con_cmdargs *args) {
 			}
 		}
 	}
-	orig_record_cb(args);
+	orig_record_cb(argc, argv);
 	if (!was && *recording) {
 		*demonum = 0; // see SetSignonState comment above
 		// For UX, make it more obvious we're recording, in particular when not
@@ -166,16 +165,15 @@ static void hook_record_cb(const struct con_cmdargs *args) {
 	EMIT_DemoRecordStarting();
 }
 
-static void hook_stop_cb(const struct con_cmdargs *args) {
+DEF_CCMD_COMPAT_HOOK(stop) {
 	if_cold (!CHECK_DemoControlAllowed()) return;
 	wantstop = true;
-	orig_stop_cb(args);
+	orig_stop_cb(argc, argv);
 	wantstop = false;
 }
 
-static inline bool find_demorecorder() {
+static inline bool find_demorecorder(const uchar *insns) {
 #ifdef _WIN32
-	const uchar *insns = (const uchar *)orig_stop_cb;
 	// The stop command loads `demorecorder` into ECX to call IsRecording()
 	for (const uchar *p = insns; p - insns < 32;) {
 		if (p[0] == X86_MOVRMW && p[1] == X86_MODRM(0, 1, 5)) {
@@ -238,8 +236,8 @@ bool demorec_start(const char *name) {
 	if (was) return false;
 	// dumb but easy way to do this: call the record command callback. note:
 	// this args object is very incomplete by enough to make the command work
-	struct con_cmdargs args = {.argc = 2, .argv = {0, name, 0}};
-	orig_record_cb(&args);
+	// TODO(compat): will this be a problem for OE with the global argc/argv?
+	orig_record_cb(2, (const char *[]){0, name});
 	if (!was && *recording) *demonum = 0; // same logic as in the hook
 	EMIT_DemoRecordStarting();
 	return *recording;
@@ -260,10 +258,8 @@ int demorec_demonum() {
 
 INIT {
 	cmd_record = con_findcmd("record");
-	orig_record_cb = con_getcmdcbv2(cmd_record);
 	cmd_stop = con_findcmd("stop");
-	orig_stop_cb = con_getcmdcbv2(cmd_stop);
-	if_cold (!find_demorecorder()) {
+	if_cold (!find_demorecorder(cmd_stop->cb_insns)) {
 		errmsg_errorx("couldn't find demo recorder instance");
 		return FEAT_INCOMPAT;
 	}
@@ -281,15 +277,12 @@ INIT {
 		errmsg_errorx("couldn't find demo basename variable");
 		return FEAT_INCOMPAT;
 	}
-
 	orig_SetSignonState = (SetSignonState_func)hook_vtable(vtable,
 			vtidx_SetSignonState, (void *)&hook_SetSignonState);
 	orig_StopRecording = (StopRecording_func)hook_vtable(vtable,
 			vtidx_StopRecording, (void *)&hook_StopRecording);
-
-	cmd_record->cb_v2 = &hook_record_cb;
-	cmd_stop->cb_v2 = &hook_stop_cb;
-
+	hook_record_cb(cmd_record);
+	hook_stop_cb(cmd_stop);
 	return FEAT_OK;
 }
 
@@ -300,8 +293,8 @@ END {
 	void **vtable = demorecorder->vtable;
 	unhook_vtable(vtable, vtidx_SetSignonState, (void *)orig_SetSignonState);
 	unhook_vtable(vtable, vtidx_StopRecording, (void *)orig_StopRecording);
-	cmd_record->cb_v2 = orig_record_cb;
-	cmd_stop->cb_v2 = orig_stop_cb;
+	unhook_record_cb(cmd_record);
+	unhook_stop_cb(cmd_stop);
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

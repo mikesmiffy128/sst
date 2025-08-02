@@ -36,6 +36,7 @@ static con_cmdcbv2 disconnect_cb;
 
 DEF_FEAT_CCMD_HERE(sst_portal_resetisg,
 		"Remove \"ISG\" state and disconnect from the server", 0) {
+	// TODO(compat): OE? guess it might work by accident due to cdecl, find out
 	disconnect_cb(&(struct con_cmdargs){0});
 	*isg_flag = false;
 }
