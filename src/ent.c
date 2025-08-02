@@ -71,8 +71,7 @@ struct CEntityFactoryDictionary {
 
 #ifdef _WIN32 // TODO(linux): this'll be different too, leaving out for now
 static struct CEntityFactoryDictionary *entfactorydict = 0;
-static inline bool find_entfactorydict(con_cmdcb dumpentityfactories_cb) {
-	const uchar *insns = (const uchar *)dumpentityfactories_cb;
+static inline bool find_entfactorydict(const uchar *insns) {
 	for (const uchar *p = insns; p - insns < 64;) {
 		// EntityFactoryDictionary() is inlined, and returns a static, which is
 		// lazy-inited (trivia: this was old MSVC, so it's not thread-safe like
@@ -172,7 +171,7 @@ INIT {
 #ifdef _WIN32 // TODO(linux): above
 	struct con_cmd *dumpentityfactories = con_findcmd("dumpentityfactories");
 	if_cold (!dumpentityfactories ||
-			!find_entfactorydict(dumpentityfactories->cb)) {
+			!find_entfactorydict(dumpentityfactories->cb_insns)) {
 		errmsg_warnx("server entity factories unavailable");
 	}
 #endif

@@ -35,13 +35,12 @@ static struct CGameServer *sv;
 
 int gameserver_spawncount() { return GetSpawnCount(sv); }
 
-static bool find_sv(con_cmdcb pause_cb) {
+static bool find_sv(const uchar *insns) {
 #ifdef _WIN32
 	// The last thing pause does is call BroadcastPrintf with 4 args including
 	// `this`, all on the stack since it's varargs. 2 of the args are pushed
 	// immediately before `this`, so we can just look for 3 back-to-back pushes
 	// and a call.
-	const uchar *insns = (const uchar *)pause_cb;
 	int pushes = 0;
 	for (const uchar *p = insns; p - insns < 256;) {
 		if (*p == X86_PUSHIW || *p >= X86_PUSHEAX && *p <= X86_PUSHEDI) {
@@ -68,7 +67,7 @@ static bool find_sv(con_cmdcb pause_cb) {
 
 INIT {
 	struct con_cmd *pause = con_findcmd("pause");
-	if_cold (!find_sv(pause->cb)) {
+	if_cold (!find_sv(pause->cb_insns)) {
 		errmsg_errorx("couldn't find game server object");
 		return FEAT_INCOMPAT;
 	}

@@ -32,18 +32,16 @@ static uchar *patchedbyte;
 // So, instead of adding 0.66 to the current time, we subtract it, and that
 // means we can always chat immediately.
 
-static inline bool find_ratelimit_insn(con_cmdcb say_cb) {
-	// Find the add instruction
-	uchar *insns = (uchar *)say_cb;
-	for (uchar *p = insns; p - insns < 128;) {
+static inline bool find_ratelimit_insn(const uchar *insns) {
+	for (const uchar *p = insns; p - insns < 128;) {
 		// find FADD
 		if (p[0] == X86_FLTBLK5 && p[1] == X86_MODRM(0, 0, 5)) {
-			patchedbyte = p + 1;
+			patchedbyte = (uchar *)p + 1;
 			return true;
 		}
 		// Portal 2, L4D2 2125-2134, L4D:S all use SSE2, so try finding ADDSD
 		if (p[0] == X86_PFX_REPN && p[1] == X86_2BYTE & p[2] == X86_2B_ADD) {
-			patchedbyte = p + 2;
+			patchedbyte = (uchar *)p + 2;
 			return true;
 		}
 		NEXT_INSN(p, "chat rate limit");
@@ -72,7 +70,7 @@ static inline void unpatch_ratelimit_insn() {
 INIT {
 	struct con_cmd *cmd_say = con_findcmd("say");
 	if_cold (!cmd_say) return FEAT_INCOMPAT; // should never happen!
-	if (!find_ratelimit_insn(cmd_say->cb)) {
+	if (!find_ratelimit_insn(cmd_say->cb_insns)) {
 		errmsg_errorx("couldn't find chat rate limit instruction");
 		return FEAT_INCOMPAT;
 	}

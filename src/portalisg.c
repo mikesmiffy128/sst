@@ -36,8 +36,7 @@ static con_cmdcbv2 disconnect_cb;
 
 DEF_FEAT_CCMD_HERE(sst_portal_resetisg,
 		"Remove \"ISG\" state and disconnect from the server", 0) {
-	struct con_cmdargs disconnect_args = {0};
-	disconnect_cb(&disconnect_args);
+	disconnect_cb(&(struct con_cmdargs){0});
 	*isg_flag = false;
 }
 

@@ -26,7 +26,6 @@
 #include "ent.h"
 #include "feature.h"
 #include "gamedata.h"
-#include "gametype.h"
 #include "intdefs.h"
 #include "langext.h"
 #include "mem.h"
@@ -268,9 +267,8 @@ DEF_CCMD_HERE_UNREG(sst_l4d_previewwarp, "Visualise bot warp unstuck logic "
 	}
 }
 
-static bool find_EntityPlacementTest(con_cmdcb z_add_cb) {
+static bool find_EntityPlacementTest(const uchar *insns) {
 #ifdef _WIN32
-	const uchar *insns = (const uchar *)z_add_cb;
 	for (const uchar *p = insns; p - insns < 0x300;) {
 		// Find 0, 0x200400B and 1 being pushed to the stack
 		if (p[0] == X86_PUSHI8 && p[1] == 0 &&
@@ -314,7 +312,7 @@ static bool init_filter() {
 
 INIT {
 	struct con_cmd *z_add = con_findcmd("z_add");
-	if (!z_add || !find_EntityPlacementTest(z_add->cb)) {
+	if (!z_add || !find_EntityPlacementTest(z_add->cb_insns)) {
 		errmsg_errorx("couldn't find EntityPlacementTest function");
 		return FEAT_INCOMPAT;
 	}

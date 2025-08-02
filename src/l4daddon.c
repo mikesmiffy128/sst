@@ -156,9 +156,8 @@ static inline bool find_FS_MAFAS() {
 	return false;
 }
 
-static inline bool find_addonvecsz(con_cmdcb show_addon_metadata_cb) {
+static inline bool find_addonvecsz(const uchar *insns) {
 #ifdef _WIN32
-	const uchar *insns = (const uchar*)show_addon_metadata_cb;
 	// show_addon_metadata immediately checks if s_vecAddonMetadata.m_Size is 0,
 	// so we can just grab it from the CMP instruction
 	for (const uchar *p = insns; p - insns < 32;) {
@@ -224,7 +223,7 @@ static inline void try_fix_broken_addon_check() {
 INIT {
 	struct con_cmd *show_addon_metadata = con_findcmd("show_addon_metadata");
 	if_cold (!show_addon_metadata) return FEAT_INCOMPAT; // shouldn't happen!
-	if_cold (!find_addonvecsz(show_addon_metadata->cb)) {
+	if_cold (!find_addonvecsz(show_addon_metadata->cb_insns)) {
 		errmsg_errorx("couldn't find pointer to addon list");
 		return FEAT_INCOMPAT;
 	}

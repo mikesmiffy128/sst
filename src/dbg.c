@@ -93,9 +93,9 @@ DEF_CCMD_HERE(sst_dbg_getcmdcb, "Get the address of a command callback", 0) {
 	}
 #ifdef _WIN32
 	con_msg("addr: %p\nghidra: %p\n", (void *)thecmd->cb_insns,
-			(void *)dbg_toghidra((void *)thecmd->cb_insns)); // ugh
+			(void *)dbg_toghidra(thecmd->cb_insns)); // ugh
 #else
-	con_msg("addr: %p\n", (void *)thecmd->cb);
+	con_msg("addr: %p\n", (void *)thecmd->cb_insns);
 #endif
 }
 
