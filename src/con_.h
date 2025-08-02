@@ -210,16 +210,24 @@ void con_warn(const char *fmt, ...) _CON_PRINTF(1, 2) __asm("Warning");
 struct rgba; // in engineapi.h - forward declare here to avoid warnings
 struct ICvar; // "
 
-extern struct ICvar *_con_iface;
-extern void (*_con_colourmsgf)(struct ICvar *this, const struct rgba *c,
-		const char *fmt, ...) _CON_PRINTF(3, 4);
+void _con_colourmsg(void *dummy, const struct rgba *c, const char *fmt, ...)
+		_CON_PRINTF(3, 4);
 /*
  * This provides the same functionality as ConColorMsg which was removed from
  * tier0 in the L4D engine branch - specifically, it allows printing a message
  * with an arbitrary RGBA colour. It must only be used after a successful
  * con_init() call.
  */
-#define con_colourmsg(c, ...) _con_colourmsgf(_con_iface, c, __VA_ARGS__)
+#define con_colourmsg(...) do { \
+	_Pragma("GCC diagnostic push") \
+	_Pragma("GCC diagnostic ignored \"-Wuninitialized\"") \
+	/* intentionally uninitialised value allows the compiler to just create a
+	 * hole in the stack without actually writing anything. this has been
+	 * confirmed by looking at the asm, because I'm that type of weirdo :^) */ \
+	void *_dummy; \
+	_con_colourmsg(_dummy, __VA_ARGS__); \
+	_Pragma("GCC diagnostic pop") \
+} while (0)
 
 /*
  * The index of the client responsible for the currently executing command,

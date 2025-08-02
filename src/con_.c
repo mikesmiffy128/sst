@@ -25,6 +25,7 @@
 #include "extmalloc.h"
 #include "gamedata.h"
 #include "gametype.h"
+#include "langext.h"
 #include "mem.h"
 #include "os.h"
 #include "vcall.h"
@@ -53,16 +54,27 @@ DECL_VFUNC_DYN(struct ICvar, struct con_var *, FindVar, const char *)
 DECL_VFUNC_DYN(struct ICvar, struct con_cmd *, FindCommand, const char *)
 DECL_VFUNC_DYN(struct ICvar, void, CallGlobalChangeCallbacks, struct con_var *,
 		const char *, float)
-// sad: since adding the cool abstraction, we can't do varargs (because you
-// can't pass varargs to other varargs of course). we only get a pointer to it
-// via VFUNC so just declare the typedef here - I don't wanna write any more
-// macros today.
-typedef void (*ConsoleColorPrintf_func)(struct ICvar *, const struct rgba *,
-		const char *, ...);
 
-// these have to be extern for con_colourmsg(), due to varargs nonsense
-struct ICvar *_con_iface;
-ConsoleColorPrintf_func _con_colourmsgf;
+static struct ICvar *coniface;
+static void *colourmsgf;
+
+asm_only void _con_colourmsg(void *dummy, const struct rgba *c, const char *fmt, ...) {
+	// NE: ConsoleColorPrintf is virtual, so the dummy param is a carve-out for
+	// `this` (which is coniface).
+	// OE: it's a global function, with no this param, so we'd simply fix up the
+	// stack (pop return address, put it in the dummy slot).
+	// TODO(compat): actually implementing the OE case might be a bit tricky. it
+	// seems the most efficient thing would be self-modifying code (i.e. replace
+	// this function's asm with different asm). that'll be interesting...
+	__asm volatile (
+		"mov eax, %0\n"
+		"mov [esp + 4], eax\n" // put coniface in the empty stack slot
+		"jmp dword ptr %1\n" // jump to the real function
+		:
+		: "m" (coniface), "m" (colourmsgf)
+		: "eax", "edi", "memory"
+	);
+}
 
 static inline void initval(struct con_var *v) {
 	v->v2.strval = extmalloc(v->v2.strlen); // note: _DEF_CVAR() sets strlen
@@ -160,7 +172,7 @@ static void VCALLCONV ChangeStringValue(struct con_var *this, const char *s,
 	// do need callbacks for at least one feature, so do our own minimal thing
 	if (this->cb) this->cb(this);
 	// also call global callbacks, as is polite.
-	CallGlobalChangeCallbacks(_con_iface, this, old, oldf);
+	CallGlobalChangeCallbacks(coniface, this, old, oldf);
 }
 
 // NOTE: these Internal* functions are virtual in the engine, but nowadays we
@@ -299,11 +311,11 @@ struct _con_vtab_iconvar_wrap _con_vtab_iconvar_wrap = {
 
 void con_regvar(struct con_var *v) {
 	initval(v);
-	RegisterConCommand(_con_iface, v);
+	RegisterConCommand(coniface, v);
 }
 
 void con_regcmd(struct con_cmd *c) {
-	RegisterConCommand(_con_iface, c);
+	RegisterConCommand(coniface, c);
 }
 
 // XXX: these should use vcall/gamedata stuff as they're only used for the
@@ -317,8 +329,8 @@ enum { vtidx_SetValue_str = 0, vtidx_SetValue_f = 1, vtidx_SetValue_i = 2 };
 #endif
 
 void con_init() {
-	_con_colourmsgf = VFUNC(_con_iface, ConsoleColorPrintf);
-	dllid = AllocateDLLIdentifier(_con_iface);
+	colourmsgf = coniface->vtable[vtidx_ConsoleColorPrintf];
+	dllid = AllocateDLLIdentifier(coniface);
 
 	void **pc = _con_vtab_cmd + 3 + NVDTOR, **pv = _con_vtab_var + 3 + NVDTOR,
 			**pi = _con_vtab_iconvar
@@ -400,22 +412,22 @@ static void warnoe() {
 }
 
 bool con_detect(int pluginver) {
-	if (_con_iface = factory_engine("VEngineCvar007", 0)) {
+	if (coniface = factory_engine("VEngineCvar007", 0)) {
 		// GENIUS HACK (BUT STILL BAD): Portal 2 has everything in ICvar shifted
 		// down 3 places due to the extra stuff in IAppSystem. This means that
 		// if we look up the Portal 2-specific cvar using FindCommandBase, it
 		// *actually* calls the const-overloaded FindVar on other branches,
 		// which just happens to still work fine. From there, we can figure out
 		// the actual ABI to use to avoid spectacular crashes.
-		if (FindCommandBase_p2(_con_iface, "portal2_square_portals")) {
+		if (FindCommandBase_p2(coniface, "portal2_square_portals")) {
 			_gametype_tag |= _gametype_tag_Portal2;
 			return true;
 		}
-		if (FindCommand_nonp2(_con_iface, "l4d2_snd_adrenaline")) {
+		if (FindCommand_nonp2(coniface, "l4d2_snd_adrenaline")) {
 			// while we're here, also distinguish Survivors, the stupid Japanese
 			// arcade game a few people seem to care about for some reason
 			// (which for some other reason also has some vtable changes)
-			if (FindVar_nonp2(_con_iface, "avatarbasemodel")) {
+			if (FindVar_nonp2(coniface, "avatarbasemodel")) {
 				_gametype_tag |= _gametype_tag_L4DS;
 			}
 			else {
@@ -423,7 +435,7 @@ bool con_detect(int pluginver) {
 			}
 			return true;
 		}
-		if (FindVar_nonp2(_con_iface, "z_difficulty")) {
+		if (FindVar_nonp2(coniface, "z_difficulty")) {
 			_gametype_tag |= _gametype_tag_L4D1;
 			return true;
 		}
@@ -431,7 +443,7 @@ bool con_detect(int pluginver) {
 		helpuserhelpus(pluginver, '7');
 		return false;
 	}
-	if (_con_iface = factory_engine("VEngineCvar004", 0)) {
+	if (coniface = factory_engine("VEngineCvar004", 0)) {
 		// TODO(compat): are there any cases where 004 is incompatible? could
 		// this crash? find out!
 		if (pluginver == 3) _gametype_tag |= _gametype_tag_2013;
@@ -455,15 +467,15 @@ bool con_detect(int pluginver) {
 }
 
 void con_disconnect() {
-	UnregisterConCommands(_con_iface, dllid);
+	UnregisterConCommands(coniface, dllid);
 }
 
 struct con_var *con_findvar(const char *name) {
-	return FindVar(_con_iface, name);
+	return FindVar(coniface, name);
 }
 
 struct con_cmd *con_findcmd(const char *name) {
-	return FindCommand(_con_iface, name);
+	return FindCommand(coniface, name);
 }
 
 // NOTE: getters here still go through the parent pointer although we stopped
