@@ -49,11 +49,8 @@ static inline s64 mem_loads64(const void *p) {
 
 /* Retrieves a pointer from an unaligned pointer-to-pointer. */
 static inline void *mem_loadptr(const void *p) {
-#if defined(_WIN64) || defined(__x86_64__)
-	return (void *)mem_loadu64(p);
-#else
+	if (sizeof(void *) == 8) return (void *)mem_loadu64(p);
 	return (void *)mem_loadu32(p);
-#endif
 }
 
 /* Retrieves a signed size/offset value from an unaligned pointer. */

@@ -10,6 +10,10 @@
 //
 // Is it actually reasonable to have to do any of this? Of course not.
 
+// Note: these functions have ifdefs with non-asm fallbacks just in case this
+// file is ever useful somewhere else, but generally we assume this codebase
+// will be built with Clang.
+
 int memcmp(const void *restrict x, const void *restrict y, unsigned int sz) {
 #if defined(__GNUC__) || defined(__clang__)
 	int a, b;

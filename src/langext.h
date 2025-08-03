@@ -17,6 +17,7 @@
 #define unreachable __builtin_unreachable()
 #define assume(x) ((void)(!!(x) || (unreachable, 0)))
 #define cold __attribute((__cold__, __noinline__))
+#define asm_only __attribute((__naked__)) // N.B.: may not actually work in GCC?
 #else
 #define if_hot(x) if (x)
 #define if_cold(x) if (x)
@@ -25,11 +26,13 @@
 #define unreachable __assume(0)
 #define assume(x) ((void)(__assume(x), 0))
 #define cold __declspec(noinline)
+#define asm_only __declspec(naked)
 #else
 static inline _Noreturn void _invoke_ub() {}
 #define unreachable (_invoke_ub())
 #define assume(x) ((void)(!!(x) || (_invoke_ub(), 0)))
 #define cold
+//#define asm_only // Can't use this without Clang/GCC/MSVC. Too bad.
 #endif
 #endif
 
@@ -61,6 +64,17 @@ static inline _Noreturn void _invoke_ub() {}
 #else
 #define export int exp[-!!"compiler needs a way to export symbols!"];
 #endif
+#endif
+
+#ifdef __clang__
+#define tailcall \
+	/* Clang forces us to use void return and THEN warns about it ._. */ \
+	_Pragma("clang diagnostic push") \
+	_Pragma("clang diagnostic ignored \"-Wpedantic\"") \
+	__attribute((musttail)) return \
+	_Pragma("clang diagnostic pop")
+#else
+//#define tailcall // Can't use this without Clang.
 #endif
 
 #endif

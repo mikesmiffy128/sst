@@ -23,12 +23,7 @@
  */
 
 #ifdef _WIN32
-#if defined(__GNUC__) || defined(__clang__)
 #define VCALLCONV __thiscall
-#else
-// XXX: could support MSVC via __fastcall and dummy param, but is there a point?
-#error C __thiscall support requires Clang or GCC
-#endif
 #else
 #define VCALLCONV
 #endif

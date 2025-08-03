@@ -150,16 +150,12 @@ static inline int bsf(uint x) {
 	// doing a straight bsf (e.g. via BitScanForward or __builtin_ctz) creates
 	// a false dependency on many CPUs, which compilers don't understand somehow
 	int ret = 0;
-#if defined(__GNUC__) || defined(__clang__)
 	__asm volatile (
 		"bsf %0, %1\n"
 		: "+r" (ret)
 		: "r" (x)
 	);
 	return ret;
-#else
-#error need some sort of inline asm, or a non-broken(!) bitscan intrinsic
-#endif
 }
 
 // IMPORTANT: these things must all match the button order in engineapi.h

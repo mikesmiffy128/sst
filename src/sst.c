@@ -504,15 +504,7 @@ static void hook_plugin_unload_cbv2(const struct con_cmdargs *args) {
 		case UNLOAD_SKIP:
 			return;
 		case UNLOAD_SELF:
-#ifdef __clang__
-			// thanks clang for forcing use of return here and ALSO warning!
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpedantic"
-			__attribute((musttail)) return orig_plugin_unload_cb.v2(args);
-#pragma clang diagnostic pop
-#else
-#error We are tied to clang without an assembly solution for this!
-#endif
+			tailcall orig_plugin_unload_cb.v2(args);
 		case UNLOAD_OTHER:
 			orig_plugin_unload_cb.v2(args);
 			EMIT_PluginUnloaded();
