@@ -16,7 +16,7 @@
 #define if_random(x) if (__builtin_expect_with_probability(!!(x), 1, 0.5))
 #define unreachable __builtin_unreachable()
 #define assume(x) ((void)(!!(x) || (unreachable, 0)))
-#define cold __attribute__((__cold__, __noinline__))
+#define cold __attribute((__cold__, __noinline__))
 #else
 #define if_hot(x) if (x)
 #define if_cold(x) if (x)
@@ -57,7 +57,7 @@ static inline _Noreturn void _invoke_ub() {}
 #define import
 #ifdef __GNUC__
 // N.B. we assume -fvisibility=hidden
-#define export __attribute__((visibility("default"))
+#define export __attribute((visibility("default"))
 #else
 #define export int exp[-!!"compiler needs a way to export symbols!"];
 #endif

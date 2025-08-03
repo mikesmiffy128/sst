@@ -13,7 +13,7 @@
 int memcmp(const void *restrict x, const void *restrict y, unsigned int sz) {
 #if defined(__GNUC__) || defined(__clang__)
 	int a, b;
-	__asm__ volatile (
+	__asm volatile (
 		"xor eax, eax\n"
 		"repz cmpsb\n"
 		: "+D" (x), "+S" (y), "+c" (sz), "=@cca"(a), "=@ccb"(b)
@@ -34,7 +34,7 @@ int memcmp(const void *restrict x, const void *restrict y, unsigned int sz) {
 void *memcpy(void *restrict x, const void *restrict y, unsigned int sz) {
 #if defined(__GNUC__) || defined(__clang__)
 	void *r = x;
-	__asm__ volatile (
+	__asm volatile (
 		"rep movsb\n"
 		: "+D" (x), "+S" (y), "+c" (sz)
 		:
@@ -51,7 +51,7 @@ void *memcpy(void *restrict x, const void *restrict y, unsigned int sz) {
 void *memset(void *x, int c, unsigned int sz) {
 #if defined(__GNUC__) || defined(__clang__)
     void *r = x;
-    __asm__ volatile (
+    __asm volatile (
         "rep stosb\n"
         : "+D" (x), "+c" (sz)
         : "a"(c)
@@ -71,7 +71,7 @@ int __stdcall _DllMainCRTStartup(void *inst, unsigned int reason,
 }
 
 #ifdef __clang__
-__attribute__((used))
+__attribute((used))
 #endif
 int _fltused = 1;
 

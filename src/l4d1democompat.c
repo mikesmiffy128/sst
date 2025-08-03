@@ -115,14 +115,14 @@ static void VCALLCONV hook_ReadDemoHeader(struct CDemoFile *this) {
 }
 
 #if defined(__clang__)
-__attribute__((naked))
+__attribute((naked))
 #elif defined(_MSC_VER)
 #error Inadequate inline assembly syntax, use Clang instead.
 #else
 #error No way to do naked functions! We only support Clang at the moment.
 #endif
 static int hook_midpoint() {
-	__asm__ volatile (
+	__asm volatile (
 		"push eax\n"
 		"mov eax, %1\n"
 		"mov eax, [eax]\n" // dereference this_protocol

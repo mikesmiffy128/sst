@@ -21,7 +21,7 @@
 #include "mem.h"
 
 #if defined(__GNUC__) || defined(__clang__)
-#define _ACCESSOR_UNUSED __attribute__((unused))
+#define _ACCESSOR_UNUSED __attribute((unused))
 #else
 #define _ACCESSOR_UNUSED
 #endif

@@ -104,7 +104,7 @@
 
 // I thought static inline was supposed to prevent unused warnings???
 #if defined(__GNUC__) || defined(__clang__)
-#define _VCALL_UNUSED __attribute__((unused))
+#define _VCALL_UNUSED __attribute((unused))
 #else
 #define _VCALL_UNUSED
 #endif

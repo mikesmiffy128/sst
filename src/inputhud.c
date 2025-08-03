@@ -151,7 +151,7 @@ static inline int bsf(uint x) {
 	// a false dependency on many CPUs, which compilers don't understand somehow
 	int ret = 0;
 #if defined(__GNUC__) || defined(__clang__)
-	__asm__ volatile (
+	__asm volatile (
 		"bsf %0, %1\n"
 		: "+r" (ret)
 		: "r" (x)

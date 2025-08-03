@@ -29,12 +29,12 @@ _Static_assert(_Alignof(int) == _Alignof(_Atomic int),
 #if defined(__GNUC__) || defined(__clang__) || defined(__TINYC__)
 #if defined(__i386__) || defined(__x86_64__) || defined(_WIN32) || \
 		defined(__mips__) // same asm syntax for pause
-#define RELAX() __asm__ volatile ("pause" ::: "memory")
+#define RELAX() __asm volatile ("pause" ::: "memory")
 #elif defined(__arm__) || defined(__aarch64__)
-#define RELAX() __asm__ volatile ("yield" ::: "memory")
+#define RELAX() __asm volatile ("yield" ::: "memory")
 #elif defined(__powerpc__) || defined(__ppc64__)
 // POWER7 (2010) - older arches may be less efficient
-#define RELAX() __asm__ volatile ("or 27, 27, 27" ::: "memory")
+#define RELAX() __asm volatile ("or 27, 27, 27" ::: "memory")
 #endif
 #elif defined(_MSC_VER)
 #if defined(_M_ARM) || defined(_M_ARM64)

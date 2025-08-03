@@ -21,7 +21,7 @@
 #include "intdefs.h"
 
 #if defined(__GNUC__) || defined(__clang__)
-#define _CON_PRINTF(x, y) __attribute__((format(printf, (x), (y))))
+#define _CON_PRINTF(x, y) __attribute((format(printf, (x), (y))))
 #else
 #define _CON_PRINTF(x, y)
 #endif
@@ -198,11 +198,11 @@ con_cmdcbv1 con_getcmdcbv1(const struct con_cmd *cmd);
  */
 #if defined(__GNUC__) || defined(__clang__)
 #ifdef _WIN32
-#define __asm__(x) __asm__("_" x) // stupid mangling meme, only on windows!
+#define __asm(x) __asm("_" x) // stupid mangling meme, only on windows!
 #endif
-void con_msg(const char *fmt, ...) _CON_PRINTF(1, 2) __asm__("Msg");
-void con_warn(const char *fmt, ...) _CON_PRINTF(1, 2) __asm__("Warning");
-#undef __asm__
+void con_msg(const char *fmt, ...) _CON_PRINTF(1, 2) __asm("Msg");
+void con_warn(const char *fmt, ...) _CON_PRINTF(1, 2) __asm("Warning");
+#undef __asm
 #else
 #error Need an equivalent of asm names for your compiler!
 #endif
