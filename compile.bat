@@ -26,10 +26,10 @@ set dbg=0
 :: XXX: -Og would be nice but apparently a bunch of stuff still gets inlined
 :: which can be somewhat annoying so -O0 it is.
 if "%dbg%"=="1" (
-	set cflags=-O0 -g3 -fsanitize-trap=undefined -DSST_DBG
+	set cflags=-O0 -g3 -masm=intel -fsanitize-trap=undefined -DSST_DBG
 	set ldflags=-O0 -g3
 ) else (
-	set cflags=-O2
+	set cflags=-O2 -masm=intel
 	set ldflags=-O2
 )
 

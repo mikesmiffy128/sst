@@ -25,10 +25,10 @@ stdflags="-std=c2x -D_DEFAULT_SOURCE -D_FILE_OFFSET_BITS=64 -D_TIME_BITS=64"
 
 dbg=0
 if [ "$dbg" = 1 ]; then
-	cflags="-O0 -g3 -fsanitize-trap=undefined -DSST_DBG"
+	cflags="-O0 -g3 -masm=intel -fsanitize-trap=undefined -DSST_DBG"
 	ldflags="-O0 -g3"
 else
-	cflags="-O2 -fvisibility=hidden"
+	cflags="-O2 -fvisibility=hidden -masm=intel"
 	ldflags="-O2 -s"
 fi
 

@@ -123,12 +123,12 @@ __attribute__((naked))
 #endif
 static int hook_midpoint() {
 	__asm__ volatile (
-		"pushl %%eax\n"
-		"movl %1, %%eax\n"
-		"movl (%%eax), %%eax\n" // dereference this_protocol
-		"movl %%eax, %0\n" // store in demoversion
-		"popl %%eax\n"
-		"jmpl *%2\n"
+		"push eax\n"
+		"mov eax, %1\n"
+		"mov eax, [eax]\n" // dereference this_protocol
+		"mov %0, eax\n" // store in demoversion
+		"pop eax\n"
+		"jmp dword ptr %2\n"
 		: "=m" (demoversion)
 		: "m" (this_protocol), "m" (ReadDemoHeader_midpoint)
 	);

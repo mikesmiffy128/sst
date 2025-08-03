@@ -14,7 +14,7 @@ int memcmp(const void *restrict x, const void *restrict y, unsigned int sz) {
 #if defined(__GNUC__) || defined(__clang__)
 	int a, b;
 	__asm__ volatile (
-		"xor %%eax, %%eax\n"
+		"xor eax, eax\n"
 		"repz cmpsb\n"
 		: "+D" (x), "+S" (y), "+c" (sz), "=@cca"(a), "=@ccb"(b)
 		:
