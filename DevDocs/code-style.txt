@@ -129,13 +129,13 @@ In no particular order:
   child and now my editor still does it by default in C so it’s just kind of
   what I do. I think it looks fine and at least one other option is worse.
 
-  "Bad" example:
+  “Bad” example:
     if (cond1 &&
       cond2) {
         do_thing();
     }
 
-  "Good" example:
+  “Good” example:
     if (cond1 &&
             cond2) {
         do_thing();
@@ -292,7 +292,7 @@ In no particular order:
   Rationale:
   Having the if and else line up in the same column looks better to me when
   scanning vertically through the file. It also makes it easier to edit and move
-  things aruond when selection can be done linewise, and easier to comment stuff
+  things around when selection can be done linewise, and easier to comment stuff
   out temporarily for debugging and such.
 
   Bad example:
@@ -530,7 +530,7 @@ In no particular order:
                                                       // to that thing I
                                                       // mentioned.
   Good example:
-    // either condition cam trigger this here due to that thing I mentioned.
+    // either condition can trigger this here due to that thing I mentioned.
     if (cond1 || cond2) reasonably_long_call(param1);
 
   Pro tip: if you use Vim or Neovim as I do, consider doing set fo-=oc in your
@@ -542,14 +542,6 @@ In no particular order:
 
 Firstly we have some rules about interfacing with Valve’s code, since that’s
 kind of a core thing we have to do in this project:
-
-• Use British English in all code and documentation.
-
-  Rationale:
-  I am from Scotland.
-
-  Bad example: void analyze();
-  Good example: void analyse();
 
 • Use exact SDK names (where known) for Source engine types (structs/classes).
 
@@ -602,6 +594,14 @@ kind of a core thing we have to do in this project:
 
 The rest of these points apply to first-party code, i.e., SST itself:
 
+• Use British English in all first-party code and documentation.
+
+  Rationale:
+  I am from Scotland.
+
+  Bad example: static void analyze();
+  Good example: static void analyse();
+
 • Functions, variable names and struct/enum tags should all be lowercase.
 
   Rationale:
@@ -646,7 +646,7 @@ The rest of these points apply to first-party code, i.e., SST itself:
   Caveat:
   I feel like I might have unthinkingly broken this rule myself at some point,
   and at the time of writing I’m not intent on doing a full cleanup pass to find
-  out. Said cleanup pass is bound happen at some point though, don’t worry.
+  out. Said cleanup pass is bound to happen at some point though, don’t worry.
 
 • The case of macros… kind of depends. If your macro is a constant, or a
   function-like macro that expands to a blob of context-dependent syntax, then
