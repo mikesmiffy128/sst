@@ -8,7 +8,7 @@ if exist tools\windbg\bin\DbgX.Shell.exe goto :ok
 powershell tools\windbg\install.ps1 || goto :end
 
 :ok
-%WINDBG_BIN%\DbgX.Shell.exe /g /c $^<tools\windbg\initcmds
+%WINDBG_BIN%\DbgX.Shell.exe /c $^<tools\windbg\initcmds
 
 :end
 exit /b %errorlevel%

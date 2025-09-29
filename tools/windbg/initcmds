@@ -2,5 +2,8 @@
 
 $$ Emulate Source Thread Fix for high-core-count systems by breaking on
 $$ GetSystemInfo, grabbing the struct pointer from the stack, then fiddling
-$$ with its contents upon returning to the caller.
+$$ with its contents upon returning.
 bp kernelbase!GetSystemInfo "dx @$t1 = *(void **)(@esp + 4); bp /1 @$ra \"dx @$t2 = ((_SYSTEM_INFO *)@$t1)->dwNumberOfProcessors; dx ((_SYSTEM_INFO *)@$t1)->dwNumberOfProcessors = @$t2 > 24 ? 24 : @$t2; g\"; g"
+
+$$ Initial breakpoint was used to run the above commands. Now we can go ahead.
+g
