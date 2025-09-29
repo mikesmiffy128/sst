@@ -88,7 +88,7 @@ DEF_CCMD_HERE(sst_dbg_getcmdcb, "Get the address of a command callback", 0) {
 	}
 	struct con_cmd *thecmd = con_findcmd(argv[1]);
 	if (!thecmd) {
-		errmsg_errorstd("couldn't find command %s\n", argv[1]);
+		errmsg_errorx("couldn't find command %s", argv[1]);
 		return;
 	}
 #ifdef _WIN32
