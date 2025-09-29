@@ -23,51 +23,66 @@
 
 extern u32 _gametype_tag;
 
-#define GAMETYPE_BASETAGS(X) \
+#define GAMETYPE_BASETAGS(ALL, WINDOWSONLY) \
 	/* general engine branches used in a bunch of stuff */ \
-	X(OE) \
-	X(OrangeBox) \
-	X(2013) \
+	WINDOWSONLY(OE) \
+	ALL(OrangeBox) \
+	ALL(2013) \
 \
 	/* specific games with dedicated branches / engine changes */ \
 	/* TODO(compat): detect dmomm, if only to fail (VEngineServer broke) */ \
-	X(DMoMM) \
-	X(L4D1) \
-	X(L4D2) \
-	X(L4DS) /* Survivors (weird arcade port) */ \
-	X(Portal2) \
+	WINDOWSONLY(DMoMM) \
+	WINDOWSONLY(L4D1) \
+	ALL(L4D2) \
+	WINDOWSONLY(L4DS) /* Survivors (weird arcade port) */ \
+	ALL(Portal2) \
 \
 	/* games needing game-specific stuff, but not tied to a singular branch */ \
-	X(Portal1) \
-	X(HL2series) /* HL2, episodes, mods */ \
+	ALL(Portal1) \
+	ALL(HL2series) /* HL2, episodes, mods */ \
 \
 	/* VEngineClient versions */ \
-	X(Client015) \
-	X(Client014) \
-	X(Client013) \
-	X(Client012) \
+	ALL(Client015) \
+	ALL(Client014) \
+	ALL(Client013) \
+	ALL(Client012) \
 \
 	/* VEngineServer versions */ \
-	X(Server021) \
+	ALL(Server021) \
 \
 	/* ServerGameDLL versions */ \
-	X(SrvDLL009) /* 2013-ish */ \
-	X(SrvDLL005) /* mostly everything else, it seems */ \
+	ALL(SrvDLL009) /* 2013-ish */ \
+	ALL(SrvDLL005) /* mostly everything else, it seems */ \
 \
 	/* games needing version-specific stuff */ \
-	X(Portal1_3420) \
-	X(L4D1_1015plus) /* Crash Course update */ \
-	X(L4D1_1022plus) /* Mac update, bunch of code reshuffling */ \
-	X(L4D2_2125plus) \
-	X(TheLastStand) /* The JAiZ update */ \
+	WINDOWSONLY(Portal1_3420) \
+	WINDOWSONLY(L4D1_1015plus) /* Crash Course update */ \
+	WINDOWSONLY(L4D1_1022plus) /* Mac update, bunch of code reshuffling */ \
+	ALL(L4D2_2125plus) \
+	ALL(TheLastStand) /* The JAiZ update */ \
 
 enum {
+	// here we define the enum values in such a way that on linux, the windows-
+	// only tags are still defined as zero. that way we can use GAMETYPE_MATCHES
+	// checks in some cases without needing #ifdef _WIN32 and the optimiser can
+	// throw it out.
 #define _GAMETYPE_ENUMBIT(x) _gametype_tagbit_##x,
-GAMETYPE_BASETAGS(_GAMETYPE_ENUMBIT)
-#undef _GAMETYPE_ENUMBIT
 #define _GAMETYPE_ENUMVAL(x) _gametype_tag_##x = 1 << _gametype_tagbit_##x,
-GAMETYPE_BASETAGS(_GAMETYPE_ENUMVAL)
+#define _GAMETYPE_DISCARD(x)
+#define _GAMETYPE_ZERO(x) _gametype_tag_##x = 0,
+#ifdef _WIN32
+GAMETYPE_BASETAGS(_GAMETYPE_ENUMBIT, _GAMETYPE_ENUMBIT)
+GAMETYPE_BASETAGS(_GAMETYPE_ENUMVAL, _GAMETYPE_ENUMVAL)
+#else
+GAMETYPE_BASETAGS(_GAMETYPE_ENUMBIT, _GAMETYPE_DISCARD)
+GAMETYPE_BASETAGS(_GAMETYPE_ENUMVAL, _GAMETYPE_DISCARD)
+GAMETYPE_BASETAGS(_GAMETYPE_DISCARD, _GAMETYPE_ZERO)
+#endif
+#define _GAMETYPE_ENUMVAL(x) _gametype_tag_##x = 1 << _gametype_tagbit_##x,
+#undef _GAMETYPE_ZERO
+#undef _GAMETYPE_DISCARD
 #undef _GAMETYPE_ENUMVAL
+#undef _GAMETYPE_ENUMBIT
 };
 
 /* Matches for any of multiple possible tags */
@@ -79,6 +94,12 @@ GAMETYPE_BASETAGS(_GAMETYPE_ENUMVAL)
 #define _gametype_tag_OrangeBoxbased \
 	(_gametype_tag_OrangeBox | _gametype_tag_2013)
 #define _gametype_tag_Portal (_gametype_tag_Portal1 | _gametype_tag_Portal2)
+
+/* Match for stuff that's specifically NOT OE. */
+// TODO(compat): maybe we should add a specific !Tag syntax to mkgamedata,
+// which would make this redundant. as of now this is just a low-effort way to
+// keep some cvar things undefined under OE to avoid confusion
+#define _gametype_tag_NE (~_gametype_tag_OE)
 
 #define GAMETYPE_MATCHES(x) !!(_gametype_tag & (_gametype_tag_##x))
 

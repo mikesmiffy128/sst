@@ -37,6 +37,7 @@
 #include "hook.h"
 #include "intdefs.h"
 #include "langext.h"
+#include "mem.h" // for shuntvars() in generated code
 #include "os.h"
 #include "sst.h"
 #include "vcall.h"
@@ -322,16 +323,15 @@ static void do_featureinit() {
 	}
 	void *inputsystemlib = os_dlhandle(OS_LIT("bin/") OS_LIT("inputsystem")
 			OS_LIT(OS_DLSUFFIX));
-	if_cold (!inputsystemlib) {
-		errmsg_warndl("couldn't get the input system library");
-	}
-	else if_cold (!(factory_inputsystem = (ifacefactory)os_dlsym(inputsystemlib,
-			"CreateInterface"))) {
-		errmsg_warndl("couldn't get input system's CreateInterface");
-	}
-	else if_cold (!(inputsystem = factory_inputsystem(
-			"InputSystemVersion001", 0))) {
-		errmsg_warnx("missing input system interface");
+	if (inputsystemlib) { // might not have this, e.g. in OE. no point warning
+		if_cold (!(factory_inputsystem = (ifacefactory)os_dlsym(inputsystemlib,
+				"CreateInterface"))) {
+			errmsg_warndl("couldn't get input system's CreateInterface");
+		}
+		else if_cold (!(inputsystem = factory_inputsystem(
+				"InputSystemVersion001", 0))) {
+			errmsg_warnx("missing input system interface");
+		}
 	}
 	// ... and now for the real magic! (n.b. this also registers feature cvars)
 	initfeatures();
@@ -344,7 +344,7 @@ if (GAMETYPE_MATCHES(x)) { \
 	con_colourmsg(&purple, "%s%s", first ? "" : ", ", #x); \
 	first = false; \
 }
-	GAMETYPE_BASETAGS(PRINTTAG)
+	GAMETYPE_BASETAGS(PRINTTAG, PRINTTAG)
 #undef PRINTTAG
 	con_colourmsg(&purple, "\n"); // xkcd 2109-compliant whitespace
 #endif
@@ -421,13 +421,17 @@ static struct con_cmd *cmd_plugin_load, *cmd_plugin_unload;
 
 static int ownidx; // XXX: super hacky way of getting this to do_unload()
 
-static bool ispluginv1(const struct CPlugin *plugin) {
-	// basename string is set with strncpy(), so if there's null bytes with more
-	// stuff after, we can't be looking at a v2 struct. and we expect null bytes
-	// in ifacever, since it's a small int value
-	return (plugin->basename[0] == 0 || plugin->basename[0] == 1) &&
-			plugin->v1.theplugin && plugin->v1.ifacever < 256 &&
-			plugin->v1.ifacever;
+static int detectpluginver(const struct CPlugin *plugin) {
+	// if the first byte of basename is not 0 or 1, it can't be a bool value for
+	// paused, so this must be v3. XXX: there's an edge case where a string
+	// that starts with a 1 byte could be miscategorised but that should never
+	// happen in practice. still if we can think of a cleverer way around that
+	// it might be nice for the sake of absolute robustness.
+	if ((uchar)plugin->basename[0] > 1) return 3;
+	// if ifacever is not a small nonzero integer, it's not a version. treat it
+	// as the (possibly null) plugin pointer - meaning this is v1.
+	if (!plugin->v2.ifacever || (uint)plugin->v2.ifacever > 255) return 1;
+	return 2; // otherwise we just assume it must be v2!
 }
 
 DEF_CCMD_COMPAT_HOOK(plugin_load) {
@@ -478,10 +482,14 @@ static int hook_plugin_unload_common(int argc, const char *const *argv) {
 		struct CPlugin **plugins = pluginhandler->plugins.m.mem;
 		if_hot (idx >= 0 && idx < pluginhandler->plugins.sz) {
 			const struct CPlugin *plugin = plugins[idx];
-			// XXX: *could* memoise the ispluginv1 call, but... meh. effort.
-			const struct CPlugin_common *common = ispluginv1(plugin) ?
-					&plugin->v1 : &plugin->v2;
-			if (common->theplugin == &plugin_obj) {
+			// XXX: *could* memoise the detect call somehow, but... meh. effort.
+			const void *theplugin;
+			switch_exhaust (detectpluginver(plugin)) {
+				case 1: theplugin = plugin->v1.theplugin; break;
+				case 2: theplugin = plugin->v2.theplugin; break;
+				case 3: theplugin = plugin->v3.theplugin;
+			}
+			if (theplugin == &plugin_obj) {
 				sst_userunloaded = true;
 				ownidx = idx;
 				return UNLOAD_SELF;
@@ -495,9 +503,20 @@ static int hook_plugin_unload_common(int argc, const char *const *argv) {
 	return UNLOAD_OTHER;
 }
 
-// TODO(compat): we'd have cbv1 here for OE. but we don't yet have the global
-// argc/argv access so there's no way to implement that.
-
+static void hook_plugin_unload_cbv1() {
+	extern int *_con_argc;
+	extern const char *(*_con_argv)[80];
+	int action = hook_plugin_unload_common(*_con_argc, *_con_argv);
+	switch_exhaust_enum(unload_action, action) {
+		case UNLOAD_SKIP:
+			return;
+		case UNLOAD_SELF:
+			tailcall orig_plugin_unload_cb.v1();
+		case UNLOAD_OTHER:
+			orig_plugin_unload_cb.v1();
+			EMIT_PluginUnloaded();
+	}
+}
 static void hook_plugin_unload_cbv2(const struct con_cmdargs *args) {
 	int action = hook_plugin_unload_common(args->argc, args->argv);
 	switch_exhaust_enum(unload_action, action) {
@@ -518,6 +537,7 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	}
 	factory_engine = enginef; factory_server = serverf;
 	if_cold (!engineapi_init(ifacever)) return false;
+	if (GAMETYPE_MATCHES(OE)) shuntvars(); // see also comment in con_detect()
 	const void **p = vtable_firstdiff;
 	if (GAMETYPE_MATCHES(Portal2)) *p++ = (void *)&nop_p_v; // ClientFullyConnect
 	*p++ = (void *)&nop_p_v;		  // ClientDisconnect
@@ -538,8 +558,12 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 		hook_plugin_load_cb(cmd_plugin_load);
 		cmd_plugin_unload = con_findcmd("plugin_unload");
 		orig_plugin_unload_cb.v1 = cmd_plugin_unload->cb_v1; // n.b.: union!
-		// TODO(compat): detect OE/v1 and use that hook here when required
-		cmd_plugin_unload->cb_v2 = &hook_plugin_unload_cbv2;
+		if (GAMETYPE_MATCHES(OE)) {
+			cmd_plugin_unload->cb_v1 = &hook_plugin_unload_cbv1;
+		}
+		else {
+			cmd_plugin_unload->cb_v2 = &hook_plugin_unload_cbv2;
+		}
 	}
 	return true;
 }
@@ -553,12 +577,17 @@ static void do_unload() {
 		struct CPlugin **plugins = pluginhandler->plugins.m.mem;
 		// see comment in CPlugin struct. setting this to the real handle right
 		// before the engine tries to unload us allows it to actually do so. in
-		// newer branches this is redundant but doesn't do any harm so it's just
-		// unconditional (for v1). NOTE: old engines ALSO just leak the handle
-		// and never call Unload() if Load() fails; can't really do anything
-		// about that.
+		// some newer branches still on v2 this is redundant but doesn't do any
+		// harm so it's just unconditional for simplicity. in v3 it's totally
+		// unnecessary so we skip it.. NOTE: older engines ALSO just leak the
+		// handle and never call Unload() if Load() fails; can't really do
+		// anything about that though.
 		struct CPlugin *plugin = plugins[ownidx];
-		if (ispluginv1(plugin)) plugins[ownidx]->v1.module = ownhandle();
+		switch_exhaust (detectpluginver(plugin)) {
+			case 1: plugin->v1.module = ownhandle(); break;
+			case 2: plugin->v2.module = ownhandle(); break;
+			case 3:;
+		}
 #endif
 	}
 	endfeatures();

@@ -873,6 +873,15 @@ F( "	extfree(con_getvarcommon(%.*s)->strval);",
 		cvar_names[i].len, cvar_names[i].s)
 	}
 _( "}")
+_( "")
+_( "static inline void shuntvars() {")
+_( "#ifdef _WIN32")
+	for (int i = 1; i < ncvars; ++i) {
+F( "	memmove(&%.*s->v1, &%.*s->v2, sizeof(struct con_var_common));",
+		cvar_names[i].len, cvar_names[i].s, cvar_names[i].len, cvar_names[i].s)
+	}
+_( "#endif")
+_( "}")
 	for (int i = 1; i < nevents; ++i) {
 		const char *prefix = event_predicateflags[i] ?
 				"bool CHECK_" : "void EMIT_";

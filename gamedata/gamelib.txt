@@ -1,11 +1,13 @@
 # CGameMovement
 vtidx_CheckJumpButton
+	OE				14 + NVDTOR
 	Portal1_3420	22 + NVDTOR
 	2013			28 + NVDTOR
 	L4D				32 + NVDTOR
 	L4DS			33 + NVDTOR
 	Portal2			35 + NVDTOR
 off_mv 8
+	OE 4
 	Portal1_3420 4
 
 # IServerGameDLL

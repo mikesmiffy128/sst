@@ -1,22 +1,28 @@
 # ICvar
 # XXX: const and non-const entries might be flipped here on Windows, not 100%
 # sure. kind of just choosing not to care thusfar, as it still works the same!
-vtidx_AllocateDLLIdentifier 5
-	Portal2 8
-vtidx_RegisterConCommand 6
-	Portal2 9
-vtidx_UnregisterConCommands 8
-	Portal2 11
-# unused:
-#vtidx_FindCommandBase 10
-#	Portal2 13
+vtidx_AllocateDLLIdentifier
+	NE 5
+		Portal2 8
+vtidx_RegisterConCommand
+	OE 5 # named RegisterConCommandBase here, but same thing
+	NE 6
+		Portal2 9
+vtidx_UnregisterConCommands
+	NE 8
+		Portal2 11
 vtidx_FindVar 12
+	OE 7
 	Portal2 15
-vtidx_FindCommand 14
-	Portal2 17
-vtidx_CallGlobalChangeCallbacks 20
-	L4Dx 18
-	Portal2 21
+vtidx_FindCommand
+	NE 14
+		Portal2 17
+vtidx_CallGlobalChangeCallbacks
+	NE 20
+		L4Dx 18
+		Portal2 21
+vtidx_CallGlobalChangeCallbacks_OE # different function signature, no float arg
+	OE 12
 vtidx_ConsoleColorPrintf
 	OrangeBoxbased 23
 	L4Dx 21
@@ -148,6 +154,8 @@ vtidx_VGuiConnect 3 + NVDTOR
 vtidx_VGuiIsInitialized 6 + NVDTOR # this is also just called IsInitialized()
 	L4Dbased 7 + NVDTOR
 		L4DS 8 + NVDTOR
+	OE 5 + NVDTOR
+	#DMoMM 10 + NVDTOR # untested, can't remember where I got this...
 
 # CDedicatedServerAPI
 vtidx_RunFrame 7

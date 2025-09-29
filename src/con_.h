@@ -134,7 +134,7 @@ struct con_var_common {
 struct con_var { // ConVar in engine
 	struct con_cmdbase base;
 	union {
-		struct con_var_common v1;
+		struct con_var_common v1; // OE
 		struct {
 			void **vtable_iconvar; // IConVar in engine (pure virtual)
 			struct con_var_common v2;
@@ -152,7 +152,6 @@ struct con_var { // ConVar in engine
 /* The change callback used in most branches of Source. Takes an IConVar :) */
 typedef void (*con_varcb)(void *v, const char *, float);
 
-
 /* Returns a registered variable with the given name, or null if not found. */
 struct con_var *con_findvar(const char *name);
 
@@ -164,9 +163,7 @@ struct con_cmd *con_findcmd(const char *name);
  * offset of which varies by engine version. This sub-struct contains
  * essentially all the actual cvar-specific data.
  */
-static inline struct con_var_common *con_getvarcommon(struct con_var *v) {
-	return &v->v2;
-}
+struct con_var_common *con_getvarcommon(const struct con_var *v);
 
 /*
  * These functions get and set the values of console variables in a
@@ -196,36 +193,45 @@ con_cmdcbv1 con_getcmdcbv1(const struct con_cmd *cmd);
  * respectively. They are aliases to direct tier0 calls, so they work early on
  * even before anything else is initialised.
  */
-#if defined(__GNUC__) || defined(__clang__)
 #ifdef _WIN32
-#define __asm(x) __asm("_" x) // stupid mangling meme, only on windows!
-#endif
+void con_msg(const char *fmt, ...) _CON_PRINTF(1, 2) __asm("_Msg");
+void con_warn(const char *fmt, ...) _CON_PRINTF(1, 2) __asm("_Warning");
+#else
 void con_msg(const char *fmt, ...) _CON_PRINTF(1, 2) __asm("Msg");
 void con_warn(const char *fmt, ...) _CON_PRINTF(1, 2) __asm("Warning");
-#undef __asm
-#else
-#error Need an equivalent of asm names for your compiler!
 #endif
 
 struct rgba; // in engineapi.h - forward declare here to avoid warnings
 struct ICvar; // "
 
+// DO NOT CALL THIS DIRECTLY UNDER ANY CIRCUMSTANCES.
 void _con_colourmsg(void *dummy, const struct rgba *c, const char *fmt, ...)
 		_CON_PRINTF(3, 4);
+
 /*
  * This provides the same functionality as ConColorMsg which was removed from
  * tier0 in the L4D engine branch - specifically, it allows printing a message
  * with an arbitrary RGBA colour. It must only be used after a successful
  * con_init() call.
  */
-#define con_colourmsg(...) do { \
+#define con_colourmsg(/*c, fmt, */...) do { \
 	_Pragma("GCC diagnostic push") \
 	_Pragma("GCC diagnostic ignored \"-Wuninitialized\"") \
+	_Pragma("GCC diagnostic ignored \"-Wunused\"") \
 	/* intentionally uninitialised value allows the compiler to just create a
-	 * hole in the stack without actually writing anything. this has been
-	 * confirmed by looking at the asm, because I'm that type of weirdo :^) */ \
+	   hole in the stack without actually writing anything. this has been
+	   confirmed by looking at the asm, because I'm that type of weirdo :^) */ \
 	void *_dummy; \
+	/* we also have to reserve EBX as a register that our wrapper can clobber
+	   but the callee (engine function) won't (as it's normally callee-save).
+	   the way we do this is by marking the register as clobbered both before
+	   and after the call and tying both to the lifetime of a dummy variable.
+	   this ensures anything that'd otherwise get put in ebx is spilled
+	   elsewhere until after the call has returned. */ \
+	register uint _ebx __asm("ebx"); \
+	__asm volatile ("" : "=r" (_ebx)); \
 	_con_colourmsg(_dummy, __VA_ARGS__); \
+	__asm volatile ("" : "=r" (_ebx)); \
 	_Pragma("GCC diagnostic pop") \
 } while (0)
 
@@ -407,7 +413,9 @@ extern struct _con_vtab_iconvar_wrap {
 	static void (*orig_##name##_cb)(int argc, const char *const *argv); \
 	static void _hook_##name##_cb(int argc, const char *const *argv); \
 	static void _hook_##name##_cbv1() { \
-		_hook_##name##_cb(0, 0); /* XXX: ??? */ \
+		extern int *_con_argc; \
+		extern const char *(*_con_argv)[80]; \
+		_hook_##name##_cb(*_con_argc, *_con_argv); \
 	} \
 	static void _hook_##name##_cbv2(const struct con_cmdargs *args) { \
 		_hook_##name##_cb(args->argc, args->argv); \

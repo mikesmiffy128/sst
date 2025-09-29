@@ -128,9 +128,9 @@ extern struct IInputSystem *inputsystem;
 extern struct CEngineVGui *vgui;
 
 // XXX: not exactly engine *API* but not currently clear where else to put this
-struct CPlugin_common {
+struct CPlugin_common_v2v3 {
 	bool paused;
-	void *theplugin; // our own "this" pointer (or whichever other plugin it is)
+	void *theplugin; // plugin's own "this" pointer
 	int ifacever;
 	// should be the plugin library, but in old Source branches it's just null,
 	// because CServerPlugin::Load() erroneously shadows this field with a local
@@ -139,10 +139,16 @@ struct CPlugin_common {
 struct CPlugin {
 	char description[128];
 	union {
-		struct CPlugin_common v1;
+		struct {
+			// same again, but no ifacever member, for OE.
+			bool paused;
+			void *theplugin;
+			void *module;
+		} v1;
+		struct CPlugin_common_v2v3 v2;
 		struct {
 			char basename[128]; // WHY VALVE WHYYYYYYY!!!!
-			struct CPlugin_common v2;
+			struct CPlugin_common_v2v3 v3;
 		};
 	};
 };
