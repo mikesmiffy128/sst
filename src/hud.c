@@ -20,7 +20,6 @@
 #include "event.h"
 #include "feature.h"
 #include "gamedata.h"
-#include "gametype.h"
 #include "hook.h"
 #include "hud.h"
 #include "intdefs.h"
