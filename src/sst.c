@@ -395,8 +395,19 @@ static bool deferinit() {
 	// Arbitrary check to infer whether we've been early- or late-loaded.
 	// We used to just see whether gameui.dll/libgameui.so was loaded, but
 	// Portal 2 does away with the separate gameui library, so now we just call
-	// CEngineVGui::IsInitialized() which works everywhere.
-	if (VGuiIsInitialized(vgui)) return false;
+	// CEngineVGui::IsInitialized() which works everywhere on NE. On OE (Windows
+	// only), we still do the GameUI check, because I was struggling to get the
+	// vgui check to work consistently (maybe I just had the wrong vtable index
+	// for IsInitialized?). TODO(opt): I guess it would be faster to do the
+	// virtual call if we can figure out how to make it work...
+	if_hot (has_vtidx_VGuiIsInitialized) {
+		if (VGuiIsInitialized(vgui)) return false;
+	}
+#ifdef _WIN32
+	else {
+		if (GetModuleHandleW(L"GameUI.dll")) return false;
+	}
+#endif
 	sst_earlyloaded = true; // let other code know
 	if_cold (!os_mprot(vgui->vtable + vtidx_VGuiConnect, ssizeof(void *),
 			PAGE_READWRITE)) {

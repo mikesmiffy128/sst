@@ -151,11 +151,10 @@ vtidx_GetPanel NVDTOR
 vtidx_VGuiConnect 3 + NVDTOR
 	L4Dbased 4 + NVDTOR # ActivateGameUI added
 		L4DS 5 + NVDTOR # some other crap added, god knows
-vtidx_VGuiIsInitialized 6 + NVDTOR # this is also just called IsInitialized()
-	L4Dbased 7 + NVDTOR
-		L4DS 8 + NVDTOR
-	OE 5 + NVDTOR
-	#DMoMM 10 + NVDTOR # untested, can't remember where I got this...
+vtidx_VGuiIsInitialized # this is also just called IsInitialized()
+	NE 6 + NVDTOR
+		L4Dbased 7 + NVDTOR
+			L4DS 8 + NVDTOR
 
 # CDedicatedServerAPI
 vtidx_RunFrame 7
