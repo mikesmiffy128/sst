@@ -27,26 +27,44 @@ vtidx_DrawPrintText
 	OrangeBoxbased 22
 	L4D 22
 vtidx_GetScreenSize
-	OrangeBoxbased 37
+	Client013
+		OrangeBoxbased 37
+	Client014
+		2013 38
 	L4D 37
 		L4D2_2125plus 35
 # Unused: currently no good way to create custom fonts without leaking them
 #vtidx_CreateFont
-#	OrangeBoxbased 64
+#	Client013
+#		OrangeBoxbased 64
+#	Client014
+#		2013 66
 #	L4D 64
 #		L4D2_2125plus 63
 #vtidx_SetFontGlyphSet
-#	OrangeBoxbased 65
+#	Client013
+#		OrangeBoxbased 65
+#	Client014
+#		2013 67
 #	L4D 65
 #		L4D2_2125plus 64
 vtidx_GetFontTall
-	OrangeBoxbased 67
+	Client013
+		OrangeBoxbased 67
+	Client014
+		2013 69
+	OrangeBox 67
 	L4D 67
 vtidx_GetCharacterWidth
-	OrangeBoxbased 71
+	Client013
+		OrangeBoxbased 71
+	Client014
+		2013 74
 	L4D 71
 vtidx_GetTextSize
-	OrangeBoxbased 72
-	L4D 72
+	Client013
+		OrangeBoxbased 72
+	Client014
+		2013 75
 
 # vi: sw=4 ts=4 noet tw=80 cc=80

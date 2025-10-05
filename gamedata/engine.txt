@@ -94,9 +94,11 @@ vtidx_SetPaintEnabled 67
 			L4D2_2125plus 72
 	Client014
 		L4D2 70
+		2013 72
 vtidx_Paint 123
 	Client014
 		L4D2 126 # 2000
+		2013 127
 	Client013
 		L4D2 127 # 2045
 			L4D2_2125plus 128

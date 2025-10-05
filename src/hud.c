@@ -169,9 +169,9 @@ static bool find_toolspanel(struct CEngineVGui *enginevgui) {
 }
 
 INIT {
-	matsurf = factory_engine("MatSystemSurface006", 0);
-	if_cold (!matsurf) {
-		errmsg_errorx("couldn't get MatSystemSurface006 interface");
+	if (!(matsurf = factory_engine("MatSystemSurface006", 0)) &&
+			!(matsurf = factory_engine("MatSystemSurface008", 0))) {
+		errmsg_errorx("couldn't get MatSystemSurface interface");
 		return FEAT_INCOMPAT;
 	}
 	struct ISchemeManager *schememgr = factory_engine("VGUI_Scheme010", 0);
