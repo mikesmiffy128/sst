@@ -30,7 +30,7 @@ extern u32 _gametype_tag;
 	ALL(2013) \
 \
 	/* specific games with dedicated branches / engine changes */ \
-	/* TODO(compat): detect dmomm, if only to fail (VEngineServer broke) */ \
+	/* TODO(compat): dmomm seems to fail currently (VEngineServer broke?) */ \
 	WINDOWSONLY(DMoMM) \
 	WINDOWSONLY(L4D1) \
 	ALL(L4D2) \

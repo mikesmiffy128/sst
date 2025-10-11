@@ -17,6 +17,15 @@
 #ifndef INC_GAMEDATA_H
 #define INC_GAMEDATA_H
 
+#include "gametype.h"
+
+// this defaults to zero (tentative definition), but gets defined to a value by
+// GAMESPECIFIC() in feature.h. static const int variables get constant-folded
+// even in -O0. so, this lets us short-circuit has_ checks inside features.
+// we also check if a gamedata entry's
+__attribute((unused))
+static const int _gamedata_feattags;
+
 // STUPID HACK to avoid pollution if abi.h not already included (only because
 // generated gamedata stuff relies on this being defined)
 #ifndef NVDTOR

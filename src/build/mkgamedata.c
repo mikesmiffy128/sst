@@ -163,8 +163,7 @@ _( "")
 static inline void knowngames(FILE *out) {
 	// kind of tricky optimisation: if a gamedata entry has no default but
 	// does have game-specific values which match a feature's GAMESPECIFIC()
-	// macro, load-time conditional checks resulting from REQUIRE_GAMEDATA() can
-	// be elided at compile-time.
+	// macro, we can elide has_* and REQUIRE_GAMEDATA() checks at compile time.
 	for (int i = 0, j; i < nents - 1; i = j) {
 		while (exprs[i]) { // if there's a default value, we don't need this
 			// skip to next unindented thing, return if there isn't one with at
@@ -174,21 +173,19 @@ static inline void knowngames(FILE *out) {
 			} while (indents[i] != 0);
 		}
 F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
-		if_cold (fprintf(out, "#define _GAMES_WITH_%s (", sbase + tags[i]) < 0) {
+		if_cold (fprintf(out, "#define _GAMES_WITH_%s (0", sbase + tags[i]) < 0) {
 			diewrite();
 		}
-		const char *pipe = "";
 		for (j = i + 1; j < nents && indents[j] != 0; ++j) {
 			// don't attempt to optimise for nested conditionals because that's
 			// way more complicated and also basically defeats the purpose.
-			if (indents[j] != 1) continue;
+			if (indents[j] != 1 || !exprs[j]) continue;
 			bool neg = sbase[tags[j]] == '!';
 			const char *tilde = (const char *)"~" + !neg; // cast away warning
-			if_cold (fprintf(out, "%s \\\n\t %s_gametype_tag_%s", pipe, tilde,
+			if_cold (fprintf(out, " | \\\n\t%s_gametype_tag_%s", tilde,
 					sbase + tags[j] + neg) < 0) {
 				diewrite();
 			}
-			pipe = " |";
 		}
 		fputs(" \\\n)\n", out);
 	}
@@ -199,16 +196,21 @@ static inline void decls(FILE *out) {
 		if (indents[i] != 0) continue;
 F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
 		if (exprs[i]) { // default value is specified - entry always exists
-			// *technically* this case is redundant - the other has_ macro would
-			// still work. however, having a distinct case makes the generated
-			// header a little easier to read at a glance.
-F( "#define has_%s 1", sbase + tags[i])
+F( "#define _HAS_%s(feattags) 1", sbase + tags[i])
 		}
 		else { // entry is missing unless a tag is matched
 			// implementation detail: INT_MIN is reserved for missing gamedata!
 			// XXX: for max robustness, should probably check for this in input?
-F( "#define has_%s (%s != -2147483648)", sbase + tags[i], sbase + tags[i])
+F( "#define _HAS_%s(feattags) ( \\", sbase + tags[i])
+_( "	!!feattags && \\")
+F( "		(feattags & _GAMES_WITH_%s) == feattags || \\",
+		sbase + tags[i])
+F( "	%s != -2147483648 \\", sbase + tags[i])
+_(")")
 		}
+F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
+F( "#define has_%s _HAS_%s(_gamedata_feattags)",
+		sbase + tags[i], sbase + tags[i])
 F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
 		if_cold (i == nents - 1 || !indents[i + 1]) { // no tags - it's constant
 F( "enum { %s = (%s) };", sbase + tags[i], sbase + exprs[i])

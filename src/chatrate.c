@@ -17,6 +17,7 @@
 #include "con_.h"
 #include "errmsg.h"
 #include "feature.h"
+#include "gametype.h"
 #include "intdefs.h"
 #include "langext.h"
 #include "os.h"

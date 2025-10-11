@@ -350,6 +350,7 @@ static inline void dodecls(FILE *out) {
 		const char *s = sbase + decls[i];
 F( "extern int %s;", s);
 F( "#define has_%s (!!%s)", s, s); // offsets will NEVER be 0, due to vtable!
+F( "#define _HAS_%s(x) has_%s", s, s); // HACK: stupid dupe for gluegen
 	}
 }
 

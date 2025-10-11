@@ -767,48 +767,41 @@ F( "	%sif (!GAMETYPE_MATCHES(%.*s)) status_%.*s = FEAT_SKIP;", else_,
 			else_ = "else ";
 		}
 		list_foreach (struct cmeta_slice, gamedata, mod_gamedata + mod) {
-			// this is not a *totally* ideal way of doing this, but it's easy.
-			// if we had some info about what gamedata was doing, we could avoid
-			// having to ifdef these cases and could just directly generate the
-			// right thing. but that'd be quite a bit of work, so... we don't!
 			if (mod_gamespecific[mod].s) {
-F( "#ifdef _GAMES_WITH_%.*s", gamedata.len, gamedata.s)
-F( "	%sif (!(_gametype_tag_%.*s & _GAMES_WITH_%.*s) && !has_%.*s) {", else_,
-				mod_gamespecific[mod].len, mod_gamespecific[mod].s,
-				gamedata.len, gamedata.s, gamedata.len, gamedata.s)
+F( "	%sif (!_HAS_%.*s(_gametype_tag_%.*s)) {", else_,
+		gamedata.len, gamedata.s,
+		mod_gamespecific[mod].len, mod_gamespecific[mod].s)
 F( "		status_%.*s = NOGD;", mod_names[mod].len, mod_names[mod].s)
 _( "	}")
-_( "#else")
 			}
-F( "	%sif (!has_%.*s) status_%.*s = NOGD;", else_,
-			gamedata.len, gamedata.s, mod_names[mod].len, mod_names[mod].s)
-			if (mod_gamespecific[mod].s) {
-_( "#endif")
+			else {
+F( "	%sif (!_HAS_%.*s(0)) status_%.*s = NOGD;", else_,
+		gamedata.len, gamedata.s, mod_names[mod].len, mod_names[mod].s)
 			}
 			else_ = "else ";
 		}
 		list_foreach (struct cmeta_slice, global, mod_globals + mod) {
 F( "	%sif (!(%.*s)) status_%.*s = NOGLOBAL;", else_,
-				global.len, global.s, mod_names[mod].len, mod_names[mod].s)
+		global.len, global.s, mod_names[mod].len, mod_names[mod].s)
 			else_ = "else ";
 		}
 		list_foreach (s16, dep, mod_needs + mod) {
 F( "	%sif (status_%.*s != FEAT_OK) status_%.*s = REQFAIL;", else_,
-				mod_names[dep].len, mod_names[dep].s,
-				mod_names[mod].len, mod_names[mod].s)
+		mod_names[dep].len, mod_names[dep].s,
+		mod_names[mod].len, mod_names[mod].s)
 			else_ = "else ";
 		}
 		if (mod_flags[mod] & (HAS_END | HAS_EVENTS | HAS_OPTDEPS)) {
 F( "	%sif ((status_%.*s = _feat_init_%.*s()) == FEAT_OK) has_%.*s = true;",
-			else_,
-			mod_names[mod].len, mod_names[mod].s,
-			mod_names[mod].len, mod_names[mod].s,
-			mod_names[mod].len, mod_names[mod].s)
+		else_,
+		mod_names[mod].len, mod_names[mod].s,
+		mod_names[mod].len, mod_names[mod].s,
+		mod_names[mod].len, mod_names[mod].s)
 		}
 		else {
 F( "	%sstatus_%.*s = _feat_init_%.*s();", else_,
-			mod_names[mod].len, mod_names[mod].s,
-			mod_names[mod].len, mod_names[mod].s)
+		mod_names[mod].len, mod_names[mod].s,
+		mod_names[mod].len, mod_names[mod].s)
 		}
 	}
 _( "")

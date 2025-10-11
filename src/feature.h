@@ -39,15 +39,19 @@
 
 /*
  * Declares that this feature should only be loaded for games matching the given
- * gametype tag (see gametype.h). Console variables and commands created using
- * DEF_FEAT_* macros will not be registered if SST is loaded by some other game.
+ * gametype tag. gametype.h must be included to use this as it defines the tag
+ * values. Console variables and commands created using DEF_FEAT_* macros will
+ * not be registered if SST is loaded by some other game.
  *
- * As an optimisation, REQUIRE_GAMEDATA() checks (see below) can also be elided
- * in cases where gamedata is always present for this particular game. As such,
- * it is wise to still specify gamedata dependencies correctly, so that the
- * definitions can be changed in the data files without breaking code.
+ * This also enables a build-time optimisation to elide REQUIRE_GAMEDATA()
+ * checks as well as has_* conditionals. As such, it is wise to still specify
+ * gamedata dependencies correctly, so that the definitions can be changed in
+ * the data files without breaking code.
  */
-#define GAMESPECIFIC(tag)
+#define GAMESPECIFIC(tag) \
+	/* impl note: see comment in gamedata.h */ \
+	__attribute((unused)) \
+	static const int _gamedata_feattags = _gametype_tag_##tag;
 
 /*
  * Indicates that the specified feature is required for this feature to

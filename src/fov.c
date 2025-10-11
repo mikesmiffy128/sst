@@ -24,6 +24,7 @@
 #include "ent.h"
 #include "event.h"
 #include "feature.h"
+#include "gametype.h"
 #include "hook.h"
 #include "intdefs.h"
 #include "langext.h"
