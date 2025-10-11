@@ -182,8 +182,10 @@ F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
 			// don't attempt to optimise for nested conditionals because that's
 			// way more complicated and also basically defeats the purpose.
 			if (indents[j] != 1) continue;
-			if_cold (fprintf(out, "%s \\\n\t _gametype_tag_%s", pipe,
-					sbase + tags[j]) < 0) {
+			bool neg = sbase[tags[j]] == '!';
+			const char *tilde = (const char *)"~" + !neg; // cast away warning
+			if_cold (fprintf(out, "%s \\\n\t %s_gametype_tag_%s", pipe, tilde,
+					sbase + tags[j] + neg) < 0) {
 				diewrite();
 			}
 			pipe = " |";
@@ -247,14 +249,16 @@ _i("}")
 			continue;
 		}
 F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
+		bool neg = sbase[tags[i]] == '!';
+		const char *excl = (const char *)"!" + !neg; // cast away warning
 		if (indents[i] > indents[i - 1]) {
-Fi("	if (GAMETYPE_MATCHES(%s)) {", sbase + tags[i])
+Fi("	if (%sGAMETYPE_MATCHES(%s)) {", excl, sbase + tags[i] + neg);
 			++indent;
 		}
 		else {
 _i("}")
 F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
-Fi("else if (GAMETYPE_MATCHES(%s)) {", sbase + tags[i])
+Fi("else if (%sGAMETYPE_MATCHES(%s)) {", excl, sbase + tags[i] + neg);
 		}
 		if (exprs[i]) {
 F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])

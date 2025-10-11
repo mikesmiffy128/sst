@@ -2,23 +2,22 @@
 # XXX: const and non-const entries might be flipped here on Windows, not 100%
 # sure. kind of just choosing not to care thusfar, as it still works the same!
 vtidx_AllocateDLLIdentifier
-	NE 5
+	!OE 5
 		Portal2 8
-vtidx_RegisterConCommand
+vtidx_RegisterConCommand 6
 	OE 5 # named RegisterConCommandBase here, but same thing
-	NE 6
-		Portal2 9
+	Portal2 9
 vtidx_UnregisterConCommands
-	NE 8
+	!OE 8
 		Portal2 11
 vtidx_FindVar 12
 	OE 7
 	Portal2 15
 vtidx_FindCommand
-	NE 14
+	!OE 14
 		Portal2 17
 vtidx_CallGlobalChangeCallbacks
-	NE 20
+	!OE 20
 		L4Dx 18
 		Portal2 21
 vtidx_CallGlobalChangeCallbacks_OE # different function signature, no float arg
@@ -154,7 +153,7 @@ vtidx_VGuiConnect 3 + NVDTOR
 	L4Dbased 4 + NVDTOR # ActivateGameUI added
 		L4DS 5 + NVDTOR # some other crap added, god knows
 vtidx_VGuiIsInitialized # this is also just called IsInitialized()
-	NE 6 + NVDTOR
+	!OE 6 + NVDTOR
 		L4Dbased 7 + NVDTOR
 			L4DS 8 + NVDTOR
 

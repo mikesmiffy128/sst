@@ -95,12 +95,6 @@ GAMETYPE_BASETAGS(_GAMETYPE_DISCARD, _GAMETYPE_ZERO)
 	(_gametype_tag_OrangeBox | _gametype_tag_2013)
 #define _gametype_tag_Portal (_gametype_tag_Portal1 | _gametype_tag_Portal2)
 
-/* Match for stuff that's specifically NOT OE. */
-// TODO(compat): maybe we should add a specific !Tag syntax to mkgamedata,
-// which would make this redundant. as of now this is just a low-effort way to
-// keep some cvar things undefined under OE to avoid confusion
-#define _gametype_tag_NE (~_gametype_tag_OE)
-
 #define GAMETYPE_MATCHES(x) !!(_gametype_tag & (_gametype_tag_##x))
 
 #endif

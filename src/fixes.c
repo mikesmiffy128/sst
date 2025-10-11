@@ -91,8 +91,8 @@ static void generalfixes() {
 	// fps_max policy varies a bit between speedgames and their communities!
 	// in theory we might wanna remove CON_NOTCONN on Portal 1 in a future
 	// release, but for now people haven't fully talked themselves into it.
-	struct con_var *v = con_findvar("fps_max");
 	if (GAMETYPE_MATCHES(L4Dx)) {
+		struct con_var *v = con_findvar("fps_max");
 		// for L4D games, generally changing anything above normal limits is
 		// disallowed, but externally capping FPS will always be possible so we
 		// might as well allow lowering it ingame for convenience.
