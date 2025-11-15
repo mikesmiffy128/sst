@@ -260,7 +260,7 @@ Fi("	if (%sGAMETYPE_MATCHES(%s)) {", excl, sbase + tags[i] + neg);
 		else {
 _i("}")
 F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
-Fi("else if (%sGAMETYPE_MATCHES(%s)) {", excl, sbase + tags[i] + neg);
+Fi("if (%sGAMETYPE_MATCHES(%s)) {", excl, sbase + tags[i] + neg);
 		}
 		if (exprs[i]) {
 F( "#line %d \"%" fS "\"", srclines[i], srcnames[srcfiles[i]])
