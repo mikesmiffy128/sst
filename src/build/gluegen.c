@@ -749,6 +749,7 @@ F( "	feats.preinit_%.*s = _feat_preinit_%.*s();",
 _( "}")
 _( "")
 _( "static inline void initfeatures() {")
+_( "	int _hiddenflag = GAMETYPE_MATCHES(OE) ? 0 : _CON_NE_HIDDEN;")
 	for (int i = 0; i < nfeatures; ++i) { // N.B.: this *should* be 0-indexed!
 		const char *else_ = "";
 		s16 mod = feat_initorder[i];
@@ -813,7 +814,7 @@ F( "	if (status_%.*s != FEAT_SKIP) {",
 		modname.len, modname.s)
 F( "		con_regvar(%.*s);",
 		cvar_names[i].len, cvar_names[i].s)
-F( "		if (status_%.*s != FEAT_OK) %.*s->base.flags |= CON_HIDDEN;",
+F( "		if (status_%.*s != FEAT_OK) %.*s->base.flags |= _hiddenflag;",
 		modname.len, modname.s, cvar_names[i].len, cvar_names[i].s)
 _( "	}")
 			}

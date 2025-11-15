@@ -31,7 +31,7 @@ REQUIRE_GLOBAL(inputsystem)
 
 DEF_CVAR_UNREG(engine_no_focus_sleep,
 		"Delay while tabbed out (SST reimplementation)", 50,
-		CON_ARCHIVE | CON_HIDDEN)
+		CON_ARCHIVE | CON_INIT_HIDDEN)
 
 static void **vtable;
 
@@ -56,7 +56,7 @@ INIT {
 	}
 	orig_SleepUntilInput = (SleepUntilInput_func)hook_vtable(vtable,
 			vtidx_SleepUntilInput, (void *)&hook_SleepUntilInput);
-	engine_no_focus_sleep->base.flags &= ~CON_HIDDEN;
+	con_unhide(&engine_no_focus_sleep->base);
 	return FEAT_OK;
 }
 

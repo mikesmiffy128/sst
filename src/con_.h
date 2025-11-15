@@ -41,29 +41,35 @@ struct con_cmdargs {
 #define CON_CMD_MAXCOMPLETE 64
 #define CON_CMD_MAXCOMPLLEN 64
 
-/* ConVar/ConCommand flag bits - undocumented ones are probably not useful... */
+/* ConVar/ConCommand flag bits stable across engines */
 enum {
-	CON_UNREG = 1,
-	CON_DEVONLY = 1 << 1,		/* hide unless developer 1 is set */
+	_CON_NE_DEVONLY = 1 << 1,	/* hide entirely and disallow usage. NE only. */
 	CON_SERVERSIDE = 1 << 2,	/* set con_cmdclient and run on server side */
-	CON_CLIENTDLL = 1 << 3,
-	CON_HIDDEN = 1 << 4,		/* hide completely, often useful to remove! */
+	_CON_NE_HIDDEN = 1 << 4,	/* don't autocomplete. NE only; use con_hide() */
 	CON_PROTECTED = 1 << 5,		/* don't send to clients (example: password) */
-	CON_SPONLY = 1 << 6,
-	CON_ARCHIVE = 1 << 7,		/* save in config - plugin would need a VDF! */
+	CON_ARCHIVE = 1 << 7,		/* save in config.cfg. needs VDF autoload. */
 	CON_NOTIFY = 1 << 8,		/* announce changes in game chat */
-	CON_USERINFO = 1 << 9,
-	CON_PRINTABLE = 1 << 10,	/* do not allow non-printable values */
-	CON_UNLOGGED = 1 << 11,
-	CON_NOPRINT = 1 << 12,		/* do not attempt to print, contains junk! */
-	CON_REPLICATE = 1 << 13,	/* client will use server's value */
-	CON_CHEAT = 1 << 14,		/* require sv_cheats 1 to change from default */
-	CON_DEMO = 1 << 16,			/* record value at the start of a demo */
+	CON_PRINTABLE = 1 << 10,	/* do not allow non-printable characters */
+	CON_NOPRINT = 1 << 12,		/* contains junk; do not attempt to print */
+	CON_REPLICATE = 1 << 13,	/* client will value from server */
+	CON_CHEAT = 1 << 14,		/* require sv_cheats 1 to change (or run) */
+	CON_DEMO = 1 << 16,			/* record cvar value at the start of a demo */
 	CON_NORECORD = 1 << 17,		/* don't record the command to a demo, ever */
-	CON_NOTCONN = 1 << 22,		/* cannot be changed while in-game */
-	CON_SRVEXEC = 1 << 28,		/* server can make clients run the command */
-	CON_NOSRVQUERY = 1 << 29,	/* server cannot query the clientside value */
-	CON_CCMDEXEC = 1 << 30		/* ClientCmd() function may run the command */
+	CON_NOTCONN = 1 << 22,		/* cannot be changed while in a server */
+	_CON_NE_CCMDEXEC = 1 << 30	/* ClientCmd() can run on client. NE only. */
+};
+
+/*
+ * Placeholder flags for DEF_* usage. Mapped to correct runtime flags at
+ * registration time (see con_regvar(), con_regcmd()).
+ */
+enum {
+	/*
+	 * Causes a command or variable to be registered as hidden on NE. Currently
+	 * does nothing on OE. Cannot be used to hide/unhide something after
+	 * registration. Use con_hide() or con_unhide() for that.
+	 */
+	CON_INIT_HIDDEN = 1 << 29
 };
 
 /* A callback function invoked by SST to execute its own commands. */
@@ -445,6 +451,16 @@ extern struct _con_vtab_iconvar_wrap {
  */
 void con_regvar(struct con_var *v);
 void con_regcmd(struct con_cmd *c);
+
+/*
+ * These functions cause a command or variable to be hidden or unhidden from
+ * autocompletion and command listing results, on engine branches which support
+ * doing so. In practice this means anything that's not OE. On OE, these
+ * functions currently just do nothing, although it would be possible in theory
+ * to patch in command-hiding support if deemed important enough.
+ */
+void con_hide(struct con_cmdbase *b);
+void con_unhide(struct con_cmdbase *b);
 
 #endif
 

@@ -34,7 +34,7 @@ FEATURE("inactive window audio control")
 
 DEF_CVAR_UNREG(snd_mute_losefocus,
 		"Keep playing audio while tabbed out (SST reimplementation)", 1,
-		CON_ARCHIVE | CON_HIDDEN)
+		CON_ARCHIVE | CON_INIT_HIDDEN)
 
 static IDirectSoundVtbl *ds_vt = 0;
 static typeof(ds_vt->CreateSoundBuffer) orig_CreateSoundBuffer;
@@ -81,7 +81,7 @@ INIT {
 	orig_CreateSoundBuffer = ds_vt->CreateSoundBuffer;
 	ds_vt->CreateSoundBuffer = &hook_CreateSoundBuffer;
 
-	snd_mute_losefocus->base.flags &= ~CON_HIDDEN;
+	con_unhide(&snd_mute_losefocus->base);
 	struct con_cmd *snd_restart = con_findcmd("snd_restart");
 	if_hot (snd_restart) {
 		snd_restart_cb = con_getcmdcbv1(snd_restart);

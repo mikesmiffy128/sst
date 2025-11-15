@@ -432,7 +432,14 @@ struct con_var_common *con_getvarcommon(const struct con_var *v) {
 	return mem_offset(v, off_cvar_common);
 }
 
+static inline void fudgeflags(struct con_cmdbase *b) {
+	if_hot (!GAMETYPE_MATCHES(OE)) if (b->flags & CON_INIT_HIDDEN) {
+		b->flags = (b->flags & ~CON_INIT_HIDDEN) | _CON_NE_HIDDEN;
+	}
+}
+
 void con_regvar(struct con_var *v) {
+	fudgeflags(&v->base);
 	struct con_var_common *c = con_getvarcommon(v);
 	c->strval = extmalloc(c->strlen); // note: _DEF_CVAR() sets strlen member
 	memcpy(c->strval, c->defaultval, c->strlen);
@@ -440,7 +447,18 @@ void con_regvar(struct con_var *v) {
 }
 
 void con_regcmd(struct con_cmd *c) {
+	fudgeflags(&c->base);
+	if_hot (!GAMETYPE_MATCHES(OE)) if (c->base.flags & CON_INIT_HIDDEN) {
+		c->base.flags = (c->base.flags & ~CON_INIT_HIDDEN) | _CON_NE_HIDDEN;
+	}
 	RegisterConCommand(coniface, c);
+}
+
+void con_hide(struct con_cmdbase *b) {
+	if_hot (!GAMETYPE_MATCHES(OE)) b->flags |= _CON_NE_HIDDEN;
+}
+void con_unhide(struct con_cmdbase *b) {
+	if_hot (!GAMETYPE_MATCHES(OE)) b->flags &= ~_CON_NE_HIDDEN;
 }
 
 // XXX: these should use vcall/gamedata stuff as they're only used for the

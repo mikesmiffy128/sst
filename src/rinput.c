@@ -61,10 +61,10 @@ static union { // space saving
 #define vtable_insys U.vtable_insys
 
 DEF_CVAR_UNREG(m_rawinput, "Use Raw Input for mouse input (SST reimplementation)",
-		0, CON_ARCHIVE | CON_HIDDEN)
+		0, CON_ARCHIVE | CON_INIT_HIDDEN)
 
 DEF_CVAR_MINMAX(sst_mouse_factor, "Number of hardware mouse counts per step",
-		1, 1, 100, /*CON_ARCHIVE |*/ CON_HIDDEN)
+		1, 1, 100, /*CON_ARCHIVE |*/ CON_INIT_HIDDEN)
 
 static ssize __stdcall inproc(void *wnd, uint msg, usize wp, ssize lp) {
 	switch (msg) {
@@ -205,8 +205,8 @@ INIT {
 	hook_inline_commit(h1.prologue, (void *)&hook_GetCursorPos);
 	hook_inline_commit(h2.prologue, (void *)&hook_SetCursorPos);
 
-ok:	m_rawinput->base.flags &= ~CON_HIDDEN;
-	sst_mouse_factor->base.flags &= ~CON_HIDDEN;
+ok:	con_unhide(&m_rawinput->base);
+	con_unhide(&sst_mouse_factor->base);
 	return FEAT_OK;
 
 e1:	DestroyWindow(inwin);

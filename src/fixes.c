@@ -30,8 +30,11 @@
 #include "ppmagic.h"
 #include "sst.h"
 
-static void chflags(const char *name, int unset, int set) {
+static inline void chflags(const char *name, int unset, int unset_ne, int set) {
 	struct con_var *v = con_findvar(name);
+	if_hot (!GAMETYPE_MATCHES(OE)) {
+		unset |= unset_ne;
+	}
 	if (v) {
 		struct con_var *p = con_getvarcommon(v)->parent;
 		p->base.flags = p->base.flags & ~unset | set;
@@ -39,17 +42,20 @@ static void chflags(const char *name, int unset, int set) {
 }
 
 static inline void unhide(const char *name) {
-	chflags(name, CON_HIDDEN | CON_DEVONLY, 0);
+	chflags(name, 0, _CON_NE_HIDDEN | _CON_NE_DEVONLY, 0);
 }
 
-static void chcmdflags(const char *name, int unset, int set) {
+static inline void chcmdflags(const char *name, int unset, int unset_ne,
+		int set) {
 	struct con_cmd *v = con_findcmd(name);
 	if (v) v->base.flags = v->base.flags & ~unset | set;
 }
 
 static inline void unhidecmd(const char *name) {
-	chcmdflags(name, CON_HIDDEN | CON_DEVONLY, 0);
+	chcmdflags(name, 0, _CON_NE_HIDDEN | _CON_NE_DEVONLY, 0);
 }
+
+// TOOD(opt): had to hack this up badly for OE compat. think of a nicer way?
 
 static void generalfixes() {
 	// Expose all the demo stuff, for games like L4D that hide it for some
@@ -75,47 +81,74 @@ static void generalfixes() {
 	// things that could conceivably cause issues with speedrun verification
 	// and/or pedantic following of rules; throw on cheat flag. this could be
 	// relaxed with the Eventual Fancy Demo Verification Stuff.
-	chflags("director_afk_timeout", CON_HIDDEN | CON_DEVONLY, CON_CHEAT);
-	chflags("mp_restartgame", CON_HIDDEN | CON_DEVONLY, CON_CHEAT);
+	chflags("mp_restartgame", 0, _CON_NE_HIDDEN | _CON_NE_DEVONLY, CON_CHEAT);
 
 	// also, ensure the initial state of sv_cheats goes into demos so you can't
 	// start a demo with cheats already on and then do something subtle
-	chflags("sv_cheats", 0, CON_DEMO);
+	chflags("sv_cheats", 0, 0, CON_DEMO);
 
 	// also, let people use developer, it's pretty handy. ensure it goes in the
 	// demo though. even though it's obvious looking at a video, maybe some day
 	// a game will want to require demos only (probably not till demos are more
 	// robust anyway... whatever)
-	chflags("developer", CON_HIDDEN | CON_DEVONLY, CON_DEMO);
+	chflags("developer", 0, _CON_NE_HIDDEN | _CON_NE_DEVONLY, CON_DEMO);
+}
+
+static void l4dspecific() {
+	// NOTE: using unconditional dev-only flags here since we know it's NE.
+	chflags("director_afk_timeout", _CON_NE_HIDDEN | _CON_NE_DEVONLY, 0,
+			CON_CHEAT);
 
 	// fps_max policy varies a bit between speedgames and their communities!
 	// in theory we might wanna remove CON_NOTCONN on Portal 1 in a future
 	// release, but for now people haven't fully talked themselves into it.
-	if (GAMETYPE_MATCHES(L4Dx)) {
-		struct con_var *v = con_findvar("fps_max");
-		// for L4D games, generally changing anything above normal limits is
-		// disallowed, but externally capping FPS will always be possible so we
-		// might as well allow lowering it ingame for convenience.
-		struct con_var *p = con_getvarcommon(v)->parent;
-		struct con_var_common *c = con_getvarcommon(p);
-		if (p->base.flags & (CON_HIDDEN | CON_DEVONLY)) {
-			p->base.flags &= ~(CON_HIDDEN | CON_DEVONLY);
-			c->hasmax = true; c->maxval = 300;
-		}
-		else if (!c->hasmax) {
-			// in TLS, this was made changeable, but still limit to 1000 to
-			// prevent breaking the engine
-			c->hasmax = true; c->maxval = 1000;
-		}
-		// also show the lower limit in help, and prevent 0 (which is unlimited)
-		c->hasmin = true; c->minval = 30;
-		con_setvarf(v, con_getvarf(v)); // hack: reapply limit if we loaded late
+	struct con_var *v = con_findvar("fps_max");
+	// for L4D games, generally changing anything above normal limits is
+	// disallowed, but externally capping FPS will always be possible so we
+	// might as well allow lowering it in-game for convenience.
+	struct con_var *p = con_getvarcommon(v)->parent;
+	struct con_var_common *c = con_getvarcommon(p);
+	if (p->base.flags & (_CON_NE_HIDDEN | _CON_NE_DEVONLY)) {
+		p->base.flags &= ~(_CON_NE_HIDDEN | _CON_NE_DEVONLY);
+		c->hasmax = true; c->maxval = 300;
 	}
+	else if (!c->hasmax) {
+		// in TLS, this was made changeable, but still limit to 1000 to
+		// prevent breaking the engine
+		c->hasmax = true; c->maxval = 1000;
+	}
+	// also show the lower limit in help, and prevent 0 (which is unlimited)
+	c->hasmin = true; c->minval = 30;
+	con_setvarf(v, con_getvarf(v)); // hack: reapply limit if we loaded late
+}
+
+static void l4d1specific() {
+	// For some reason, L4D1 hides mat_monitorgamma and doesn't archive it.
+	// This means on every startup it's necessary to manually set non-default
+	// values via the menu. This change here brings it in line with pretty much
+	// all other Source games for convenience.
+	chflags("mat_monitorgamma", _CON_NE_HIDDEN | _CON_NE_DEVONLY, 0,
+			CON_ARCHIVE);
+
+	// Very early versions of L4D1 have a bunch of useless console spam. Setting
+	// these hidden variables to 0 gets rid of it.
+	struct con_var *v = con_findvar("ui_l4d_debug");
+	if (v) con_setvari(v, 0);
+	v = con_findvar("mm_l4d_debug");
+	if (v) con_setvari(v, 0);
+
+	// same thing as above, seemed easier to just dupe :)
+	chcmdflags("cl_fullupdate", CON_CHEAT, 0, 0);
+
+	// These commands lack CLIENTCMD_CAN_EXECUTE, so enabling/disabling addons
+	// doesn't work without manually running these in the console afterwards.
+	chcmdflags("mission_reload", 0, 0, _CON_NE_CCMDEXEC);
+	chcmdflags("update_addon_paths", 0, 0, _CON_NE_CCMDEXEC);
 }
 
 static void l4d2specific() {
 	// L4D2 doesn't let you set sv_cheats in lobbies, but turns out it skips all
-	// the lobby checks if this random command is developer-only, presumably
+	// the lobby checks if this random command is not developer-only, presumably
 	// because that flag is compiled out in debug builds and devs want to be
 	// able to use cheats. Took literally hours of staring at Ghidra to find
 	// this out. Good meme 8/10.
@@ -137,13 +170,13 @@ static void l4d2specific() {
 	if_hot (v && !(p->base.flags & CON_ARCHIVE)) { // not already fixed
 		struct con_var_common *c = con_getvarcommon(p);
 		p->base.flags = p->base.flags &
-				~(CON_HIDDEN | CON_DEVONLY) | CON_ARCHIVE;
+				~(_CON_NE_HIDDEN | _CON_NE_DEVONLY) | CON_ARCHIVE;
 		c->hasmin = true; c->minval = -1;
 		c->hasmax = true; c->maxval = 0;
 	}
 
 #ifdef _WIN32
-	// L4D2 has broken (dark) rendering on Intel iGPUs unless
+	// L4D2 has broken (overly dark) rendering on Intel iGPUs unless
 	// mat_tonemapping_occlusion_use_stencil is enabled. Supposedly Valve used
 	// to detect device IDs to enable it on, but new devices are still broken,
 	// so just blanket enable it if the primary adapter is Intel, since it
@@ -171,30 +204,7 @@ e:
 	// We're preemptively removing its cheat flag here, so if it turns out to be
 	// absolutely necessary, people can use it. If it doesn't work, or some
 	// other workaround is found, this might get reverted.
-	chcmdflags("cl_fullupdate", CON_CHEAT, 0);
-}
-
-static void l4d1specific() {
-	// For some reason, L4D1 hides mat_monitorgamma and doesn't archive it.
-	// This means on every startup it's necessary to manually set non-default
-	// values via the menu. This change here brings it in line with pretty much
-	// all other Source games for convenience.
-	chflags("mat_monitorgamma", CON_HIDDEN | CON_DEVONLY, CON_ARCHIVE);
-
-	// Very early versions of L4D1 have a bunch of useless console spam. Setting
-	// these hidden variables to 0 gets rid of it.
-	struct con_var *v = con_findvar("ui_l4d_debug");
-	if (v) con_setvari(v, 0);
-	v = con_findvar("mm_l4d_debug");
-	if (v) con_setvari(v, 0);
-
-	// same thing as above, seemed easier to just dupe :)
-	chcmdflags("cl_fullupdate", CON_CHEAT, 0);
-
-	// These commands lack CLIENTCMD_CAN_EXECUTE, so enabling/disabling addons
-	// doesn't work without manually running these in the console afterwards.
-	chcmdflags("mission_reload", 0, CON_CCMDEXEC);
-	chcmdflags("update_addon_paths", 0, CON_CCMDEXEC);
+	chcmdflags("cl_fullupdate", CON_CHEAT, 0, 0);
 }
 
 static void portal1specific() {
@@ -223,9 +233,14 @@ static void portal1specific() {
 
 void fixes_apply() {
 	generalfixes();
-	if (GAMETYPE_MATCHES(L4D1)) l4d1specific();
-	else if (GAMETYPE_MATCHES(L4D2x)) l4d2specific();
-	else if (GAMETYPE_MATCHES(Portal1)) portal1specific();
+	if (GAMETYPE_MATCHES(L4Dx)) {
+		l4dspecific();
+		if (GAMETYPE_MATCHES(L4D1)) l4d1specific();
+		else if (GAMETYPE_MATCHES(L4D2x)) l4d2specific();
+	}
+	else if (GAMETYPE_MATCHES(Portal1)) {
+		portal1specific();
+	}
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

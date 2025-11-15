@@ -42,7 +42,7 @@ REQUEST(ent)
 
 DEF_CVAR_MINMAX_UNREG(fov_desired,
 		"Set the base field of view (SST reimplementation)", 75, 75, 120,
-		CON_HIDDEN | CON_ARCHIVE)
+		CON_INIT_HIDDEN | CON_ARCHIVE)
 static struct con_var *real_fov_desired; // engine's if it has it, or ours
 
 typedef void (*VCALLCONV SetDefaultFOV_func)(void *, int);
@@ -111,9 +111,10 @@ INIT {
 
 	// we might not be using our cvar but simpler to do this unconditionally
 	fov_desired->cb = &fovcb;
-	fov_desired->base.flags &= ~CON_HIDDEN;
+	con_unhide(&fov_desired->base);
 	// hide the original fov command since we've effectively broken it anyway :)
-	cmd_fov->base.flags |= CON_DEVONLY;
+	// NOTE: assumes NE. fine for now because we're GAMESPECIFIC.
+	cmd_fov->base.flags |= _CON_NE_DEVONLY;
 	return FEAT_OK;
 }
 
@@ -130,7 +131,7 @@ END {
 		if (player) orig_SetDefaultFOV(player, 75);
 	}
 	unhook_inline((void *)orig_SetDefaultFOV);
-	cmd_fov->base.flags &= ~CON_DEVONLY;
+	cmd_fov->base.flags &= ~_CON_NE_DEVONLY;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

@@ -245,7 +245,7 @@ DEF_CCMD_HERE(sst_printversion, "Display plugin version information", 0) {
 #error Need to change this manually, since gluegen requires it to be spelled \
 out in DEF_CVAR - better yet, can we get rid of this yet?
 #endif
-DEF_CVAR(__sst_0_15_beta, "", 0, CON_HIDDEN | CON_DEMO)
+DEF_CVAR(__sst_0_15_beta, "", 0, CON_INIT_HIDDEN | CON_DEMO)
 
 // most plugin callbacks are unused - define dummy functions for each signature
 static void VCALLCONV nop_v_v(void *this) {}
