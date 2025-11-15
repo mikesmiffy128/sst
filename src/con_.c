@@ -154,6 +154,9 @@ static const char *VCALLCONV GetName(struct con_cmdbase *this) {
 	return this->name;
 }
 static const char *VCALLCONV GetHelpText(struct con_cmdbase *this) {
+	if_cold (this->flags & (CON_INIT_HIDDEN | _CON_NE_HIDDEN)) {
+		return this->help - 18; // see _DEF_* macros in con_.h
+	}
 	return this->help;
 }
 static bool VCALLCONV IsRegistered(struct con_cmdbase *this) {

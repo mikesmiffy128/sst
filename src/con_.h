@@ -276,7 +276,10 @@ extern struct _con_vtab_iconvar_wrap {
 	static struct con_var _cvar_##name_ = { \
 		.base = { \
 			.vtable = _con_vtab_var, \
-			.name = "" #name_, .help = "" desc, .flags = (flags_) \
+			.name = "" #name_, \
+			/* n.b. redundant cast to avoid warnings */ \
+			.help = (const char *)("** unsupported ** " desc) + 18, \
+			.flags = (flags_) \
 		}, \
 		.vtable_iconvar = _con_vtab_iconvar, \
 		.v2 = { \
@@ -312,7 +315,10 @@ extern struct _con_vtab_iconvar_wrap {
 	static struct con_cmd _ccmd_##varname = { \
 		.base = { \
 			.vtable = _con_vtab_cmd, \
-			.name = "" #name_, .help = "" desc, .flags = (flags_) \
+			.name = "" #name_, \
+			/* n.b. redundant cast to avoid warnings */ \
+			.help = (const char *)("** unsupported ** " desc) + 18, \
+			.flags = (flags_) \
 		}, \
 		.cb = &func, \
 	}; \

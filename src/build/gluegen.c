@@ -749,7 +749,13 @@ F( "	feats.preinit_%.*s = _feat_preinit_%.*s();",
 _( "}")
 _( "")
 _( "static inline void initfeatures() {")
-_( "	int _hiddenflag = GAMETYPE_MATCHES(OE) ? 0 : _CON_NE_HIDDEN;")
+	// note: hidden flag could be 0 on OE but it's useful to know which things
+	// *would* be hidden. in particular, GetHelpText currently checks for both
+	// CON_INIT_HIDDEN and _CON_NE_HIDDEN when deciding whether to prepend
+	// the unsupported marker to the help text. the value of CON_INIT_HIDDEN
+	// is otherwise unused in OE so won't do any harm being set all the time.
+_( "	int _hiddenflag = GAMETYPE_MATCHES(OE) ?")
+_( "			CON_INIT_HIDDEN : _CON_NE_HIDDEN;")
 	for (int i = 0; i < nfeatures; ++i) { // N.B.: this *should* be 0-indexed!
 		const char *else_ = "";
 		s16 mod = feat_initorder[i];
