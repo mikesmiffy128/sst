@@ -99,7 +99,7 @@ bool gameinfo_init() {
 			int casebit = 0;
 			for (char *p = title; *p; ++p) {
 				if (*p >= 'A' && *p <= 'Z') *p |= casebit;
-				casebit = (*p == ' ' || *p == '-') << 5; // ? 32 : 0
+				casebit = (*p != ' ' && *p != '-') << 5; // ? 32 : 0
 			}
 		}
 	}
