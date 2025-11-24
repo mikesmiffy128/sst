@@ -2,7 +2,10 @@
 
 {.desc = "x86 opcode parsing"};
 
-#include "../src/x86.c"
+// TODO: should chunklets tests be moved or something? guess if/when that stuff
+// gets its own repo it would just go in there, right?
+
+#include "../src/chunklets/x86.c"
 #include "../src/intdefs.h"
 
 #include "../src/ppmagic.h"

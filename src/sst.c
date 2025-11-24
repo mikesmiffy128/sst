@@ -37,7 +37,6 @@
 #include "hook.h"
 #include "intdefs.h"
 #include "langext.h"
-#include "mem.h" // for shuntvars() in generated code
 #include "os.h"
 #include "sst.h"
 #include "vcall.h"

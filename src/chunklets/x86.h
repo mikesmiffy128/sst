@@ -14,20 +14,22 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef INC_X86_H
-#define INC_X86_H
-
-/*
- * Opcode-based X86 instruction analysis. In other words, *NOT* a disassembler.
- * Only cares about the instructions we expect to see in basic 32-bit userspace
- * functions; there's no kernel-mode instructions, no SSE 3+, no AVX, no REX,
- * EVEX, yadda yadda.
- */
+#ifndef INC_CHUNKLETS_X86_H
+#define INC_CHUNKLETS_X86_H
 
 // XXX: no BOUND (0x62): ambiguous with EVEX prefix - can't be arsed!
 // XXX: no LES (0xC4) or DES (0xC5) either for similar reasons. better to report
 // an unknown instruction than to potentially misinterpret an AVX thing.
 // these are all legacy instructions that won't really be used much anyway.
+
+/*
+ * Below, we define groups of instruction opcode bytes based on their
+ * variable-length characteristics. This is used to drive the actual parsing of
+ * the instructions by x86_len(). The instructions are also put into a large
+ * enum defining their byte values. This allows pattern-matching on instruction
+ * bytes, useful for searching for certain instructions, or patterns thereof,
+ * for reverse-engineering or modding purposes.
+ */
 
 /* Instruction prefixes: segments */
 #define X86_SEG_PREFIXES(X) \
@@ -554,13 +556,21 @@ enum {
 };
 #undef _X86_ENUM
 
+#ifdef __cplusplus
+extern "C"
+#endif
 /*
  * Returns the length of an instruction, or -1 if it's a "known unknown" or
  * invalid instruction. Doesn't handle unknown unknowns: may explode or hang on
  * arbitrary untrusted data. Also doesn't handle, among other things, 3DNow!,
- * SSE3+, MMX, AVX, and such. Aims to be small and fast, not comprehensive.
+ * SSE3+, MMX, AVX, and such. Doesn't cover 64-bit nor kernel-only stuff either
+ * Aims to be small and fast, not comprehensive.
+ *
+ * The main purpose of this function to assist in hooking functions or searching
+ * for certain instruction patterns in existing known and trusted binaries. It
+ * is once again not suitable for use with arbitrary unknown data.
  */
-int x86_len(const void *insn);
+int x86_len(const unsigned char *insn);
 
 /* Constructs a ModRM byte, assuming the parameters are all in range. */
 #define X86_MODRM(mod, reg, rm) (unsigned char)((mod) << 6 | (reg) << 3 | rm)

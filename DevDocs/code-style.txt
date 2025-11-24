@@ -169,7 +169,7 @@ In no particular order:
 
   Bad example:
     call_function("parameter 1 takes up some space", param_2 + 5, another_var,
-          x);
+            x);
 
   Good example:
     call_function("parameter 1 takes up some space", param_2 + 5,

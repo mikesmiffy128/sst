@@ -18,6 +18,7 @@
 
 #include <string.h>
 
+#include "chunklets/x86.h"
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"
@@ -31,7 +32,6 @@
 #include "ppmagic.h"
 #include "sst.h"
 #include "vcall.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE("Left 4 Dead 2 addon bugfixes")

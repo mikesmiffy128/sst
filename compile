@@ -58,6 +58,7 @@ src="\
 	chatrate.c
 	chunklets/fastspin.c
 	chunklets/msg.c
+	chunklets/x86.c
 	clientcon.c
 	con_.c
 	crypto.c
@@ -86,7 +87,6 @@ src="\
 	portalcolours.c
 	sst.c
 	trace.c
-	x86.c
 	xhair.c"
 if [ "$dbg" = 1 ]; then src="$src \
 	dbg.c

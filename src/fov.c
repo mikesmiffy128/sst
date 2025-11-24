@@ -18,6 +18,7 @@
 // TODO(linux): theoretically, probably ifdef out the cvar-replacement stuff; we
 // expect any game that's been ported to linux to already have fov_desired
 
+#include "chunklets/x86.h"
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"
@@ -31,7 +32,6 @@
 #include "mem.h"
 #include "sst.h"
 #include "vcall.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE("extended FOV range")

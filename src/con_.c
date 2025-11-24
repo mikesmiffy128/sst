@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "abi.h"
+#include "chunklets/x86.h"
 #include "con_.h"
 #include "engineapi.h" // for factories and rgba - XXX: is this a bit circular?
 #include "errmsg.h"
@@ -33,7 +34,6 @@
 #include "os.h"
 #include "vcall.h"
 #include "version.h"
-#include "x86.h"
 #include "x86util.h"
 
 /******************************************************************************\

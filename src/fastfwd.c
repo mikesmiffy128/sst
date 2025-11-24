@@ -19,7 +19,7 @@
 
 #include <stdlib.h>
 
-#include "con_.h"
+#include "chunklets/x86.h"
 #include "engineapi.h"
 #include "errmsg.h"
 #include "gamedata.h"
@@ -29,10 +29,7 @@
 #include "intdefs.h"
 #include "langext.h"
 #include "mem.h"
-#include "os.h"
-#include "ppmagic.h"
 #include "sst.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE()

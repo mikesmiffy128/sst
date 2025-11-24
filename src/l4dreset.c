@@ -20,6 +20,7 @@
 
 #include "abi.h"
 #include "accessor.h"
+#include "chunklets/x86.h"
 #include "con_.h"
 #include "engineapi.h"
 #include "ent.h"
@@ -32,12 +33,11 @@
 #include "gametype.h"
 #include "hook.h"
 #include "intdefs.h"
-#include "langext.h"
 #include "l4dmm.h"
+#include "langext.h"
 #include "mem.h"
 #include "sst.h"
 #include "vcall.h"
-#include "x86.h"
 #include "x86util.h"
 
 #ifdef _WIN32

@@ -19,6 +19,7 @@
 #include <math.h>
 
 #include "accessor.h"
+#include "chunklets/x86.h"
 #include "clientcon.h"
 #include "con_.h"
 #include "engineapi.h"
@@ -31,7 +32,6 @@
 #include "mem.h"
 #include "trace.h"
 #include "vcall.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE("Left 4 Dead warp testing")

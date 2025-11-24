@@ -14,6 +14,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "chunklets/x86.h"
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"
@@ -22,7 +23,6 @@
 #include "intdefs.h"
 #include "langext.h"
 #include "mem.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE("Portal \"ISG\" state reset (experimental)")

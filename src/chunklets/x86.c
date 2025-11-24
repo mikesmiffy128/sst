@@ -14,39 +14,35 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "intdefs.h"
+// _Static_assert needs MSVC >= 2019, and this check is irrelevant on Windows
+#ifndef _MSC_VER
+_Static_assert((unsigned char)-1 == 255, "this code requires 8-bit chars");
+#endif
+
 #include "x86.h"
 
-static int mrmsib(const uchar *p, int addrlen) {
-	// I won't lie: I thought I almost understood this, but after bill walked me
-	// through correcting a bunch of wrong cases I now realise that I don't
-	// really understand it at all. If it helps, I used this as a reference:
-	// https://github.com/Nomade040/length-disassembler/blob/e8b34546/ldisasm.cpp#L14
-	// But it's confusingly-written enough that the code I wrote before didn't
-	// work, so with any luck nobody will need to refer to it again and this is
-	// actually correct now. Fingers crossed.
+static int mrmsib(const unsigned char *p, int addrlen) {
 	if (addrlen == 4 || *p & 0xC0) {
 		int sib = addrlen == 4 && *p < 0xC0 && (*p & 7) == 4;
 		switch (*p & 0xC0) {
-			// disp8
-			case 0x40: return 2 + sib;
-			// disp16/32
-			case 0:
+			case 0x40: // disp8
+				return 2 + sib;
+			case 0: // disp16/32
 				if ((*p & 7) != 5) {
 					// disp8/32 via SIB
 					if (sib && (p[1] & 7) == 5) return *p & 0x40 ? 3 : 6;
 					return 1 + sib;
 				}
-			case 0x80: return 1 + addrlen + sib;
+			case 0x80:
+				return 1 + addrlen + sib;
 		}
 	}
 	if (addrlen == 2 && (*p & 0xC7) == 0x06) return 3;
 	return 1; // note: include the mrm itself in the byte count
 }
 
-int x86_len(const void *insn_) {
+int x86_len(const unsigned char *insn) {
 #define CASES(name, _) case name:
-	const uchar *insn = insn_;
 	int pfxlen = 0, addrlen = 4, operandlen = 4;
 
 p:	switch (*insn) {

@@ -18,6 +18,7 @@
 
 #include <math.h>
 
+#include "chunklets/x86.h"
 #include "con_.h"
 #include "engineapi.h"
 #include "event.h"
@@ -32,7 +33,6 @@
 #include "langext.h"
 #include "mem.h"
 #include "vcall.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE("button input HUD")

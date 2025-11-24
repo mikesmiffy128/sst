@@ -17,13 +17,13 @@
 #include <string.h>
 
 #include "alias.h"
+#include "chunklets/x86.h"
 #include "con_.h"
 #include "errmsg.h"
 #include "extmalloc.h"
 #include "feature.h"
 #include "gametype.h"
 #include "mem.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE("alias management")

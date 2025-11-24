@@ -17,12 +17,12 @@
 
 #include <string.h>
 
+#include "chunklets/x86.h"
 #include "hook.h"
 #include "intdefs.h"
 #include "langext.h"
 #include "mem.h"
 #include "os.h"
-#include "x86.h"
 
 // Warning: half-arsed hacky implementation (because that's all we really need)
 // Almost certainly breaks in some weird cases. Oh well! Most of the time,

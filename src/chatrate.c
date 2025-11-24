@@ -14,6 +14,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "chunklets/x86.h"
 #include "con_.h"
 #include "errmsg.h"
 #include "feature.h"
@@ -21,7 +22,6 @@
 #include "intdefs.h"
 #include "langext.h"
 #include "os.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE("chat rate limit removal")

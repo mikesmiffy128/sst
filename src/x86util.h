@@ -17,9 +17,9 @@
 #ifndef INC_X86UTIL_H
 #define INC_X86UTIL_H
 
+#include "chunklets/x86.h"
 #include "errmsg.h"
 #include "langext.h"
-#include "x86.h"
 
 // XXX: don't know where else to put this, or how else to design this, so this
 // is very much a plonk-it-here-for-now scenario (and has been for years!)

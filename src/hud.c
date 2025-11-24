@@ -15,6 +15,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "chunklets/x86.h"
 #include "engineapi.h"
 #include "errmsg.h"
 #include "event.h"
@@ -28,7 +29,6 @@
 #include "os.h"
 #include "sst.h"
 #include "vcall.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE()

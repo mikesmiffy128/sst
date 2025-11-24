@@ -17,6 +17,7 @@
  */
 
 #include "accessor.h"
+#include "chunklets/x86.h"
 #include "con_.h"
 #include "errmsg.h"
 #include "feature.h"
@@ -26,7 +27,6 @@
 #include "mem.h"
 #include "sst.h"
 #include "vcall.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE("Left 4 Dead 1 demo file backwards compatibility")

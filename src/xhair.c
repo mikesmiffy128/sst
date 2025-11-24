@@ -20,7 +20,6 @@
 #include "gamedata.h"
 #include "hexcolour.h"
 #include "hud.h"
-#include "intdefs.h"
 #include "vcall.h"
 
 FEATURE("custom crosshair drawing")

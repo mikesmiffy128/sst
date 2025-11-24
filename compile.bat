@@ -68,6 +68,7 @@ setlocal DisableDelayedExpansion
 :+ chatrate.c
 :+ chunklets/fastspin.c
 :+ chunklets/msg.c
+:+ chunklets/x86.c
 :+ crypto.c
 :+ democustom.c
 :+ demorec.c
@@ -98,7 +99,6 @@ setlocal DisableDelayedExpansion
 :+ rinput.c
 :+ sst.c
 :+ trace.c
-:+ x86.c
 :+ xhair.c
 :: just tack these on, whatever (repeated condition because of expansion memes)
 if "%dbg%"=="1" set src=%src% src/dbg.c

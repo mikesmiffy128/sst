@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "bitbuf.h"
+#include "chunklets/x86.h"
 #include "demorec.h"
 #include "engineapi.h"
 #include "feature.h"
@@ -25,7 +26,6 @@
 #include "langext.h"
 #include "mem.h"
 #include "vcall.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE()

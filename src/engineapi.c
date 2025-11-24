@@ -28,9 +28,7 @@
 #include "intdefs.h"
 #include "langext.h"
 #include "mem.h" // "
-#include "os.h"
 #include "vcall.h"
-#include "x86.h"
 
 u32 _gametype_tag = 0; // declared in gametype.h but seems sensible enough here
 

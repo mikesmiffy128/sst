@@ -26,7 +26,6 @@
 #include "intdefs.h"
 #include "langext.h"
 #include "mem.h"
-#include "os.h"
 #include "ppmagic.h"
 #include "sst.h"
 #include "vcall.h"

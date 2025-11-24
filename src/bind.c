@@ -14,15 +14,13 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "chunklets/x86.h"
 #include "con_.h"
-#include "dbg.h"
 #include "errmsg.h"
 #include "feature.h"
-#include "hook.h"
 #include "intdefs.h"
 #include "langext.h"
 #include "mem.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE()

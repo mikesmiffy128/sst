@@ -16,6 +16,7 @@
  */
 
 #include "abi.h"
+#include "chunklets/x86.h"
 #include "extmalloc.h"
 #include "errmsg.h"
 #include "feature.h"
@@ -25,7 +26,6 @@
 #include "langext.h"
 #include "os.h"
 #include "vcall.h"
-#include "x86.h"
 
 FEATURE()
 

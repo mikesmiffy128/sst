@@ -15,6 +15,7 @@
  */
 
 #include "accessor.h"
+#include "chunklets/x86.h"
 #include "con_.h"
 #include "dictmaptree.h"
 #include "engineapi.h"
@@ -25,7 +26,6 @@
 #include "langext.h"
 #include "mem.h"
 #include "vcall.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE()

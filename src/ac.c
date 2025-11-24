@@ -27,6 +27,7 @@
 #include "bind.h"
 #include "chunklets/fastspin.h"
 #include "chunklets/msg.h"
+#include "chunklets/x86.h"
 #include "con_.h"
 #include "crypto.h"
 #include "democustom.h"
@@ -45,7 +46,6 @@
 #include "ppmagic.h"
 #include "sst.h"
 #include "vcall.h"
-#include "x86.h"
 #include "x86util.h"
 
 FEATURE()

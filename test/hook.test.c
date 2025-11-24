@@ -4,7 +4,7 @@
 
 #ifdef _WIN32
 
-#include "../src/x86.c"
+#include "../src/chunklets/x86.c"
 #include "../src/hook.c"
 #include "../src/os.c"
 

@@ -1,0 +1,56 @@
+x86.{c,h}: opcode-based x86 instruction analysis (NOT a disassembler)
+
+Currently only handles opcodes found in basic 32-bit userspace functions;
+there’s no kernel-mode instructions, no SSE 3+, no AVX, no REX (64-bit), no
+EVEX, yadda yadda.
+
+Subject to extension later if there’s ever a use for it.
+
+== Compiling ==
+
+  gcc -c -O2 [-flto] x86.c
+  clang -c -O2 [-flto] x86.c
+  tcc -c x86.c
+  cl.exe /c /O2 x86.c
+
+In most cases you can just drop the .c file straight into your codebase/build
+system. LTO is advised to avoid dead code and enable more efficient calls
+including potential inlining.
+
+== Compiler compatibility ==
+
+- Any reasonable GCC
+- Any reasonable Clang
+- Any reasonable MSVC
+- TinyCC
+- Probably almost all others; this is very portable code
+
+Note that GCC and Clang will generally give the best-performing output.
+
+Once the .c file is built, the public header can be consumed by virtually any C
+or C++ compiler, as well as probably most half-decent FFIs.
+
+Note that the .c source file is probably C++-compatible at the moment, but this
+is not guaranteed, so it's best to compile it as a C source. The header will
+work fine from either language.
+
+== API usage ==
+
+See documentation comments in x86.h for a basic idea. Some *pro tips*:
+
+== OS compatibility ==
+
+- All.
+- Seriously, this library doesn’t even use libc.
+
+== Architecture compatibility ==
+
+- All, so long as char is 8 bits.
+
+== Copyright ==
+
+The source file and header both fall under the ISC licence — read the notices in
+both of the files for specifics.
+
+Thanks, and have fun!
+- Michael Smith <mikesmiffy128@gmail.com>
