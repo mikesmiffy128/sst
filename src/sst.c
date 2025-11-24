@@ -240,11 +240,11 @@ DEF_CCMD_HERE(sst_printversion, "Display plugin version information", 0) {
 // interested parties identify the version of SST used by just writing a dummy
 // cvar to the top of the demo. this will be removed later, once there's a less
 // stupid way of achieving the same goal.
-#if VERSION_MAJOR != 0 || VERSION_MINOR != 15
+#if VERSION_MAJOR != 0 || VERSION_MINOR != 16
 #error Need to change this manually, since gluegen requires it to be spelled \
 out in DEF_CVAR - better yet, can we get rid of this yet?
 #endif
-DEF_CVAR(__sst_0_15_beta, "", 0, CON_INIT_HIDDEN | CON_DEMO)
+DEF_CVAR(__sst_0_16_beta, "", 0, CON_INIT_HIDDEN | CON_DEMO)
 
 // most plugin callbacks are unused - define dummy functions for each signature
 static void VCALLCONV nop_v_v(void *this) {}
@@ -270,10 +270,6 @@ static bool already_loaded = false, skip_unload = false;
 
 // auto-update message. see below in do_featureinit()
 static const char *updatenotes = "\
-* Initial work-in-progress support for pre-Orange Box games (a.k.a \"Old Engine\")\n\
-* Support for the sst_portal_colourN commands in Portal 4104\n\
-* Fixed case conversion when game name is all upper case (e.g. HALF-LIFE 2)\n\
-* Various internal tweaks and cleanup\n\
 ";
 
 enum { // used in generated code, must line up with featmsgs arrays below
