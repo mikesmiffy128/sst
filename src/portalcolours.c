@@ -82,13 +82,14 @@ static bool find_UTIL_Portal_Color(void *base) {
 	// 5135
 	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)mem_offset(base, 0x1BF090);
 	if (!memcmp((void *)orig_UTIL_Portal_Color, x, sizeof(x))) return true;
+	// 4104
+	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)mem_offset(base, 0x1ADC30);
+	if (!memcmp((void *)orig_UTIL_Portal_Color, x, sizeof(x))) return true;
 	// 3420
 	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)mem_offset(base, 0x1AA810);
 	if (!memcmp((void *)orig_UTIL_Portal_Color, x, sizeof(x))) return true;
 	// SteamPipe (7197370) - almost sure to break in a later update!
 	// TODO(compat): this has indeed been broken for ages.
-	// TODO(compat): we also still don't have 4104. really need to do this
-	// properly some time soon, it seems.
 	static const uchar y[] = HEXBYTES(55, 8B, EC, 8B, 45, 0C, 83, E8, 00, 74,
 			24, 48, 74, 16, 48, 8B, 45, 08, 74, 08, C7, 00, FF, FF);
 	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)mem_offset(base, 0x234C00);
