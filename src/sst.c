@@ -270,6 +270,9 @@ static bool already_loaded = false, skip_unload = false;
 
 // auto-update message. see below in do_featureinit()
 static const char *updatenotes = "\
+* Initial work-in-progress support for pre-Orange Box games (a.k.a \"Old Engine\")\n\
+* Support for the sst_portal_colourN commands in Portal 4104\n\
+* Fixed case conversion when game name is all upper case (e.g. HALF-LIFE 2)\n\
 * Various internal tweaks and cleanup\n\
 ";
 
