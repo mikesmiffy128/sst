@@ -66,5 +66,6 @@ vtidx_GetTextSize
 		OrangeBoxbased 72
 	Client014
 		2013 75
+	L4D 72
 
 # vi: sw=4 ts=4 noet tw=80 cc=80

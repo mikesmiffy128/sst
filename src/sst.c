@@ -270,6 +270,7 @@ static bool already_loaded = false, skip_unload = false;
 
 // auto-update message. see below in do_featureinit()
 static const char *updatenotes = "\
+* Fixed input HUD crash in L4D games introduced by previous release\n\
 ";
 
 enum { // used in generated code, must line up with featmsgs arrays below

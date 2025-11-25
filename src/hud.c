@@ -47,6 +47,7 @@ REQUIRE_GAMEDATA(vtidx_DrawPrintText)
 REQUIRE_GAMEDATA(vtidx_GetScreenSize)
 REQUIRE_GAMEDATA(vtidx_GetFontTall)
 REQUIRE_GAMEDATA(vtidx_GetCharacterWidth)
+REQUIRE_GAMEDATA(vtidx_GetTextSize)
 // CEngineVGui
 REQUIRE_GAMEDATA(vtidx_GetPanel)
 // vgui::Panel
