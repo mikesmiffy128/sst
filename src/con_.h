@@ -464,6 +464,12 @@ void con_regcmd(struct con_cmd *c);
  * doing so. In practice this means anything that's not OE. On OE, these
  * functions currently just do nothing, although it would be possible in theory
  * to patch in command-hiding support if deemed important enough.
+ *
+ * Note: con_hide() will not work on an unregistered command or variable with
+ * CON_INIT_HIDDEN; this includes any of a feature's commands/variables during
+ * feature initialisation, except those that are manually registered first.
+ * In cases where a variable/command is to be registered automatically, the
+ * CON_INIT_HIDDEN flag can be removed using bitwise ops.
  */
 void con_hide(struct con_cmdbase *b);
 void con_unhide(struct con_cmdbase *b);

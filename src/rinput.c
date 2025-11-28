@@ -205,8 +205,11 @@ INIT {
 	hook_inline_commit(h1.prologue, (void *)&hook_GetCursorPos);
 	hook_inline_commit(h2.prologue, (void *)&hook_SetCursorPos);
 
-ok:	con_unhide(&m_rawinput->base);
-	con_unhide(&sst_mouse_factor->base);
+ok:	// XXX: this is a little tricky and a little clunky. we have registered
+	// m_rawinput above but sst_mouse_factor will get auto-registered after init
+	// returns, so the flags are different.
+	con_unhide(&m_rawinput->base);
+	sst_mouse_factor->base.flags &= ~CON_INIT_HIDDEN;
 	return FEAT_OK;
 
 e1:	DestroyWindow(inwin);

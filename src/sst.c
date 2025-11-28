@@ -270,6 +270,7 @@ static bool already_loaded = false, skip_unload = false;
 
 // auto-update message. see below in do_featureinit()
 static const char *updatenotes = "\
+* Fix sst_mouse_factor being hidden, causing toggle binds to break\n\
 ";
 
 enum { // used in generated code, must line up with featmsgs arrays below
