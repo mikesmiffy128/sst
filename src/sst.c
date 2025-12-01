@@ -466,7 +466,7 @@ enum unload_action {
 	UNLOAD_SELF,
 	UNLOAD_OTHER
 };
-static int hook_plugin_unload_common(int argc, const char *const *argv) {
+static int hook_plugin_unload_common(int argc, const char **argv) {
 	if (argc > 1) {
 		if (!CHECK_AllowPluginLoading(false)) return UNLOAD_SKIP;
 		if (!*argv[1]) {
@@ -515,8 +515,8 @@ static int hook_plugin_unload_common(int argc, const char *const *argv) {
 
 static void hook_plugin_unload_cbv1() {
 	extern int *_con_argc;
-	extern const char *(*_con_argv)[80];
-	int action = hook_plugin_unload_common(*_con_argc, *_con_argv);
+	extern const char **_con_argv;
+	int action = hook_plugin_unload_common(*_con_argc, _con_argv);
 	switch_exhaust_enum(unload_action, action) {
 		case UNLOAD_SKIP:
 			return;
@@ -527,7 +527,7 @@ static void hook_plugin_unload_cbv1() {
 			EMIT_PluginUnloaded();
 	}
 }
-static void hook_plugin_unload_cbv2(const struct con_cmdargs *args) {
+static void hook_plugin_unload_cbv2(struct con_cmdargs *args) {
 	int action = hook_plugin_unload_common(args->argc, args->argv);
 	switch_exhaust_enum(unload_action, action) {
 		case UNLOAD_SKIP:

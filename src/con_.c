@@ -186,7 +186,7 @@ static bool VCALLCONV ClampValue_OE(struct con_var *this, float *f) {
 // global argc/argv. also OE only. extern for use in sst.c plugin_unload hook
 // as well as in DEF_CCMD_COMPAT_HOOK
 int *_con_argc;
-const char *(*_con_argv)[80];
+const char **_con_argv; // note: points to array of 80
 
 static bool find_argcargv() {
 	const uchar *insns = (const uchar *)VFUNC(engclient, Cmd_Argv);
@@ -217,12 +217,12 @@ int VCALLCONV AutoCompleteSuggest(struct con_cmd *this, const char *partial,
 bool VCALLCONV CanAutoComplete(struct con_cmd *this) {
 	return false;
 }
-void VCALLCONV Dispatch(struct con_cmd *this, const struct con_cmdargs *args) {
+void VCALLCONV Dispatch(struct con_cmd *this, struct con_cmdargs *args) {
 	this->cb(args->argc, args->argv);
 }
 #ifdef _WIN32
 void VCALLCONV Dispatch_OE(struct con_cmd *this) {
-	this->cb(*_con_argc, *_con_argv);
+	this->cb(*_con_argc, _con_argv);
 }
 #endif
 

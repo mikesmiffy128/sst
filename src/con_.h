@@ -73,10 +73,10 @@ enum {
 };
 
 /* A callback function invoked by SST to execute its own commands. */
-typedef void (*con_cmdcb)(int argc, const char *const *argv);
+typedef void (*con_cmdcb)(int argc, const char **argv);
 
 /* A callback function used by most commands in most versions of the engine. */
-typedef void (*con_cmdcbv2)(const struct con_cmdargs *cmd);
+typedef void (*con_cmdcbv2)(struct con_cmdargs *cmd);
 
 /* An older style of callback function used by some old commands, and in OE. */
 typedef void (*con_cmdcbv1)();
@@ -339,12 +339,12 @@ extern struct _con_vtab_iconvar_wrap {
 /*
  * Defines a console command with the handler function body immediately
  * following the macro (like in Source itself). The function takes the implicit
- * arguments `int argc` and `const char *const *argv` for command arguments.
+ * arguments `int argc` and `const char **argv` for command arguments.
  */
 #define DEF_CCMD_HERE(name, desc, flags) \
-	static void _cmdf_##name(int argc, const char *const *argv); \
+	static void _cmdf_##name(int argc, const char **argv); \
 	_DEF_CCMD(name, name, desc, _cmdf_##name, flags) \
-	static void _cmdf_##name(int argc, const char *const *argv) \
+	static void _cmdf_##name(int argc, const char **argv) \
 	/* { body here } */
 
 /*
@@ -396,11 +396,6 @@ extern struct _con_vtab_iconvar_wrap {
  * command handler defined with DEF_CCMD_HERE. Calling the original command
  * handler can be done using orig_##name##_cb, passing through argc and argv.
  *
- * Note that argc and argv MUST remain unmodified, as not all callback
- * interfaces pass arguments through the callback and so attempting to change
- * these parameters could cause unexpected or inconsistent behaviour across
- * engine versions.
- *
  * In some cases, a command will be defined to take no arguments, in which case
  * argc will be zero and argv will be null. In these cases, the parameters
  * should still be passed through to the orig_ function, as this ensures
@@ -411,10 +406,28 @@ extern struct _con_vtab_iconvar_wrap {
 		con_cmdcbv1 v1; \
 		con_cmdcbv2 v2; \
 	} _orig_##name##_cb; \
-	static void _orig_##name##_cbv1(int argc, const char *const *argv) { \
-		_orig_##name##_cb.v1(); \
+	static void _orig_##name##_cbv1(int argc, const char **argv) { \
+		extern int *_con_argc; \
+		extern const char **_con_argv; \
+		int _orig_argc = *_con_argc; \
+		*_con_argc = argc; \
+		if (argv != _con_argv) { \
+			/* args can be passed through as-is, or modified in place, however
+			   here we have a whole different array, so we have to copy it out
+			   and back to avoid confusing side effects for the caller. */ \
+			/* XXX: not bothering with the null term here; should we be? */ \
+			const char *_orig_argv[80]; \
+			memcpy(_orig_argv, _con_argv, _orig_argc * sizeof(*argv)); \
+			memcpy(_con_argv, argv, argc * sizeof(*argv)); \
+			_orig_##name##_cb.v1(); \
+			memcpy(_con_argv, _orig_argv, _orig_argc * sizeof(*argv)); \
+		} \
+		else { \
+			_orig_##name##_cb.v1(); \
+		} \
+		*_con_argc = _orig_argc; \
 	} \
-	static void _orig_##name##_cbv2(int argc, const char *const *argv) { \
+	static void _orig_##name##_cbv2(int argc, const char **argv) { \
 		struct con_cmdargs args; \
 		args.argc = argc; \
 		/* XXX: having to copy argv sucks, but can't see how to avoid without
@@ -422,14 +435,14 @@ extern struct _con_vtab_iconvar_wrap {
 		for (int i = 0; i < argc; ++i) args.argv[i] = argv[i]; \
 		_orig_##name##_cb.v2(&args); \
 	} \
-	static void (*orig_##name##_cb)(int argc, const char *const *argv); \
-	static void _hook_##name##_cb(int argc, const char *const *argv); \
+	static void (*orig_##name##_cb)(int argc, const char **argv); \
+	static void _hook_##name##_cb(int argc, const char **argv); \
 	static void _hook_##name##_cbv1() { \
 		extern int *_con_argc; \
-		extern const char *(*_con_argv)[80]; \
-		_hook_##name##_cb(*_con_argc, *_con_argv); \
+		extern const char **_con_argv; \
+		_hook_##name##_cb(*_con_argc, _con_argv); \
 	} \
-	static void _hook_##name##_cbv2(const struct con_cmdargs *args) { \
+	static void _hook_##name##_cbv2(struct con_cmdargs *args) { \
 		_hook_##name##_cb(args->argc, args->argv); \
 	} \
 	static void hook_##name##_cb(struct con_cmd *cmd) { \
@@ -446,7 +459,7 @@ extern struct _con_vtab_iconvar_wrap {
 	static void unhook_##name##_cb(struct con_cmd *cmd) { \
 		cmd->cb_v1 = _orig_##name##_cb.v1; \
 	} \
-	static void _hook_##name##_cb(int argc, const char *const *argv) /* ... */
+	static void _hook_##name##_cb(int argc, const char **argv) /* ... */
 
 /*
  * These functions register a command or variable, respectively, defined with
