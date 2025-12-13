@@ -324,21 +324,23 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 	struct list_chunkhdr *tail_gamedata = &mod_gamedata[mod].hdr;
 	struct list_chunkhdr *tail_globals = &mod_globals[mod].hdr;
 	for (u32 i = 0; i != cm->nitems; ++i) {
-		switch_exhaust_enum(cmeta_item, cm->itemtypes[i]) {
+		struct cmeta_item item = cm->items[i];
+		switch_exhaust_enum(cmeta_itemtype, item.type) {
 			case CMETA_ITEM_DEF_CVAR:
 				if_cold (!cmeta_nparams(cm, i)) {
 					diefile(2, file, cmeta_line(cm, i),
 							"cvar macro missing required parameter");
 				}
-				int flags = cmeta_flags_cvar(cm, i);
 				s16 idx = cvar_new();
-				cvar_flags[idx] = flags;
+				cvar_flags[idx] = item.flags;
 				// NOTE: always hooking cvar/ccmd up to a feat entry for
 				// GAMESPECIFIC checks, even if it's not a DEF_FEAT_*.
 				// If a module doesn't declare FEATURE, its cvars/ccmds will
 				// end up getting initialised/registered unconditionally.
 				cvar_feats[idx] = mod;
-				if (flags & CMETA_CVAR_FEAT) needfeat = "feature cvar defined";
+				if (item.flags & CMETA_CVAR_FEAT) {
+					needfeat = "feature cvar defined";
+				}
 				cmeta_param_foreach (name, cm, i) {
 					cvar_names[idx] = name;
 					break; // ignore subsequent args
@@ -349,15 +351,14 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 					diefile(2, file, cmeta_line(cm, i),
 							"ccmd macro missing required parameter");
 				}
-				flags = cmeta_flags_ccmd(cm, i);
-				if (flags & CMETA_CCMD_FEAT) {
+				if (item.flags & CMETA_CCMD_FEAT) {
 					needfeat = "feature ccmd defined";
 				}
-				if (flags & CMETA_CCMD_PLUSMINUS) {
+				if (item.flags & CMETA_CCMD_PLUSMINUS) {
 					// split PLUSMINUS entries in two; makes stuff easier later.
-					flags &= ~CMETA_CCMD_PLUSMINUS;
+					item.flags &= ~CMETA_CCMD_PLUSMINUS;
 					idx = ccmd_new();
-					ccmd_flags[idx] = flags;
+					ccmd_flags[idx] = item.flags;
 					ccmd_feats[idx] = mod;
 					cmeta_param_foreach (name, cm, i) {
 						char *s = arena + arena_new(5 + name.len);
@@ -367,7 +368,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 						break;
 					}
 					idx = ccmd_new();
-					ccmd_flags[idx] = flags;
+					ccmd_flags[idx] = item.flags;
 					ccmd_feats[idx] = mod;
 					cmeta_param_foreach (name, cm, i) {
 						char *s = arena + arena_new(6 + name.len);
@@ -379,7 +380,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 				}
 				else {
 					idx = ccmd_new();
-					ccmd_flags[idx] = flags;
+					ccmd_flags[idx] = item.flags;
 					ccmd_feats[idx] = mod;
 					cmeta_param_foreach (name, cm, i) {
 						ccmd_names[idx] = name;
@@ -392,9 +393,8 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 					diefile(2, file, cmeta_line(cm, i),
 							"event macro missing required parameter");
 				}
-				flags = cmeta_flags_event(cm, i);
 				struct cmeta_param_iter it = cmeta_param_iter_init(cm, i);
-				struct cmeta_slice evname = cmeta_param_iter(&it);
+				struct cmeta_slice evname = cmeta_param_iter(cm, &it);
 				struct radix_insert_ret r = radix_insert(events, event_names,
 						evname.s, evname.len, false);
 				int e;
@@ -412,10 +412,11 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 					}
 				}
 				event_owners[e] = mod;
-				event_predicateflags[e] = !!(flags & CMETA_EVENT_ISPREDICATE);
+				event_predicateflags[e] = !!(
+						item.flags & CMETA_EVENT_ISPREDICATE);
 				struct list_chunkhdr *tail = &event_params[e].hdr;
-				for (struct cmeta_slice param; param = cmeta_param_iter(&it),
-						param.s;) {
+				for (struct cmeta_slice param;
+						param = cmeta_param_iter(cm, &it), param.s;) {
 					list_append(&tail, param);
 				}
 				break;
@@ -426,7 +427,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 							"event handler macro missing required parameter");
 				}
 				it = cmeta_param_iter_init(cm, i);
-				evname = cmeta_param_iter(&it);
+				evname = cmeta_param_iter(cm, &it);
 				r = radix_insert(events, event_names, evname.s, evname.len,
 						false);
 				if (r.isnew) {
@@ -459,9 +460,8 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 					diefile(2, file, cmeta_line(cm, i),
 							"dependency macro missing required parameter");
 				}
-				flags = cmeta_flags_require(cm, i);
 				struct list_chunkhdr **tailp;
-				switch_exhaust(flags) {
+				switch_exhaust(item.flags) {
 					case 0: tailp = &tail_needs; break;
 					case CMETA_REQUIRE_OPTIONAL: tailp = &tail_wants; break;
 					case CMETA_REQUIRE_GAMEDATA: tailp = &tail_gamedata; break;
@@ -469,7 +469,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 				}
 				cmeta_param_foreach(param, cm, i) {
 					int modflags = 0;
-					switch_exhaust(flags) {
+					switch_exhaust(item.flags) {
 						case CMETA_REQUIRE_OPTIONAL:
 							modflags = HAS_OPTDEPS;
 						case 0:

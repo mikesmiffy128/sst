@@ -17,31 +17,21 @@
 #ifndef INC_CMETA_H
 #define INC_CMETA_H
 
+#include "../chunklets/clex.h" /* XXX: only need this for struct, kinda leaky */
 #include "../intdefs.h"
 #include "../os.h"
 
-// XXX: leaking chibicc internals. won't matter after we do away with that
-typedef struct Token Token;
-
-enum cmeta_item {
-	CMETA_ITEM_DEF_CVAR, // includes all min/max/unreg variants
-	CMETA_ITEM_DEF_CCMD, // includes plusminus/unreg variants
-	CMETA_ITEM_DEF_EVENT, // includes predicates
+enum cmeta_itemtype {
+	CMETA_ITEM_DEF_CVAR, /* includes all min/max/unreg variants */
+	CMETA_ITEM_DEF_CCMD, /* includes plusminus/unreg variants */
+	CMETA_ITEM_DEF_EVENT, /* includes predicates */
 	CMETA_ITEM_HANDLE_EVENT,
 	CMETA_ITEM_FEATURE,
-	CMETA_ITEM_REQUIRE, // includes all REQUIRE_*/REQUEST variants
+	CMETA_ITEM_REQUIRE, /* includes all REQUIRE_* and REQUEST variants */
 	CMETA_ITEM_GAMESPECIFIC,
 	CMETA_ITEM_PREINIT,
 	CMETA_ITEM_INIT,
 	CMETA_ITEM_END
-};
-
-struct cmeta {
-	char *sbase;
-	u32 nitems; // number of interesting macros
-	//u32 *itemoffs; // file offsets of interesting macros (ONE DAY!)
-	Token **itemtoks; // crappy linked token structures, for the time being
-	u8 *itemtypes; // CMETA_ITEM_* enum values
 };
 
 enum cmeta_flag_cvar {
@@ -57,28 +47,37 @@ enum cmeta_flag_event {
 	CMETA_EVENT_ISPREDICATE = 1
 };
 enum cmeta_flag_require {
-	CMETA_REQUIRE_OPTIONAL = 1, // i.e. REQUEST() macro, could be extended
+	CMETA_REQUIRE_OPTIONAL = 1, /* i.e. REQUEST() macro, could be extended */
 	CMETA_REQUIRE_GAMEDATA = 2,
 	CMETA_REQUIRE_GLOBAL = 4
+};
+
+struct cmeta {
+	char *sbase;
+	u32 nitems; /* number of interesting macros */
+	//char pad[4];
+	struct cmeta_item {
+		u8 type : 4; /* CMETA_ITEM_* enum value */
+		u8 flags : 4; /* relevant flags (see above) */
+	} *items;
+	u32 *itemtoks; /* internal */
+	struct clex lexer; /* internal */
 };
 
 struct cmeta_slice { const char *s; int len; };
 
 struct cmeta cmeta_loadfile(const os_char *path);
-int cmeta_flags_cvar(const struct cmeta *cm, u32 i);
-int cmeta_flags_ccmd(const struct cmeta *cm, u32 i);
-int cmeta_flags_event(const struct cmeta *cm, u32 i);
-int cmeta_flags_require(const struct cmeta *cm, u32 i);
 
 int cmeta_nparams(const struct cmeta *cm, u32 i);
-struct cmeta_param_iter { Token *cur; };
+struct cmeta_param_iter { u32 i; };
 struct cmeta_param_iter cmeta_param_iter_init(const struct cmeta *cm, u32 i);
-struct cmeta_slice cmeta_param_iter(struct cmeta_param_iter *it);
+struct cmeta_slice cmeta_param_iter(const struct cmeta *cm,
+		struct cmeta_param_iter *it);
 
-#define cmeta_param_foreach(varname, cm, u32) \
+#define cmeta_param_foreach(varname, cm, i) \
 	switch (0) for (struct cmeta_slice varname; 0;) default: \
 		for (struct cmeta_param_iter _it = cmeta_param_iter_init(cm, i); \
-				varname = cmeta_param_iter(&_it), varname.s;) \
+				varname = cmeta_param_iter(cm, &_it), varname.s;) \
 			/* {...} */
 
 u32 cmeta_line(const struct cmeta *cm, u32 i);

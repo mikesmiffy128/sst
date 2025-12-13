@@ -7,10 +7,6 @@ Used in SST itself:
 Used in debug builds, but not compiled into releases:
   - udis86
 
-Used at build time:
-  - chibicc (somewhat hacked up for use as a lexer)
-  - asprintf() from OpenBSD (for compatibility on Windows)
-
 Most of the C sources have wrappers in the parent directory to build proper
 objects for use in the project, and wrapper headers to get the full APIs as
 conveniently as possible. In other words, most of these files aren't built or
@@ -18,8 +14,10 @@ used directly.
 
 It is possible that these libraries may end up lightly modified; we err on the
 side of changing things to fit our use case rather than working around problems
-in outer layers. A couple of the libraries are pretty old and don't see much
-upstream change, but are small enough to be comfortably maintained as vendored.
+in outer layers. Sometimes libraries don't see updates for a while, other times
+we don't bother updating them even when they do. Generally all this stuff is
+stuff we're happy to maintain in-tree, and often stuff we don't need to update
+much either because it already works fine.
 
 IMPORTANT! Libraries are distributed subject to their copyright notices; please
 refer to those!

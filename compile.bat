@@ -124,7 +124,7 @@ if %host64%==1 (
 %CC% -fuse-ld=lld -shared -O0 -w -o .build/vstdlib.dll src/stubs/vstdlib.c
 
 %HOSTCC% -fuse-ld=lld -O2 %warnings% %stdflags% -include stdbool.h ^
--L.build %lbcryptprimitives_host% -o .build/gluegen.exe src/build/gluegen.c src/build/cmeta.c src/os.c || goto :end
+-L.build %lbcryptprimitives_host% -o .build/gluegen.exe src/build/gluegen.c src/build/cmeta.c src/os.c src/chunklets/clex.c || goto :end
 %HOSTCC% -fuse-ld=lld -O2 %warnings% %stdflags% -include stdbool.h ^
 -L.build %lbcryptprimitives_host% -o .build/mkgamedata.exe src/build/mkgamedata.c src/os.c || goto :end
 %HOSTCC% -fuse-ld=lld -O2 %warnings% %stdflags% -include stdbool.h ^
