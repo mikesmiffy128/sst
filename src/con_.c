@@ -99,7 +99,7 @@ asm_only void _con_colourmsg(void *dummy, const struct rgba *c,
 #ifdef _WIN32
 // this function is defined as data because we'll be using it to self-modify the
 // main _con_colourmsg function!
-__attribute((used, section("rdata")))
+__attribute((used, section(".rdata")))
 asm_only static void _con_colourmsg_OE(void *dummy, const struct rgba *c,
 		const char *fmt, ...) {
 	// OE: it's a global function, with no this param, so we have to fix up the
