@@ -65,8 +65,8 @@ void hud_drawline(int x0, int y0, int x1, int y1, struct rgba colour);
 void hud_drawpolyline(int *xs, int *ys, int npoints, struct rgba colour);
 
 /* Draws text using a given font handle. */
-void hud_drawtext(ulong font, int x, int y, struct rgba colour, hud_wchar *str,
-		int len);
+void hud_drawtext(ulong font, int x, int y, struct rgba colour,
+		const hud_wchar *str, int len);
 
 /* Gets the width and height of the game window in pixels. */
 void hud_screensize(int *width, int *height);

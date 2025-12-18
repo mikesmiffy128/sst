@@ -748,7 +748,7 @@ F( "	feats.preinit_%.*s = _feat_preinit_%.*s();",
 	}
 _( "}")
 _( "")
-_( "static inline void initfeatures() {")
+_( "static inline opt_small void initfeatures() {")
 	// note: hidden flag could be 0 on OE but it's useful to know which things
 	// *would* be hidden. in particular, GetHelpText currently checks for both
 	// CON_INIT_HIDDEN and _CON_NE_HIDDEN when deciding whether to prepend
@@ -856,7 +856,7 @@ _( "#else")
 _( "#endif")
 _( "}")
 _( "")
-_( "static inline void endfeatures() {")
+_( "static inline opt_small void endfeatures() {")
 	for (int i = nfeatures - 1; i >= 0; --i) {
 		s16 mod = feat_initorder[i];
 		if (mod_flags[mod] & HAS_END) {

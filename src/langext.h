@@ -77,6 +77,14 @@ static inline _Noreturn void _invoke_ub() {}
 //#define tailcall // Can't use this without Clang.
 #endif
 
+#if defined(__clang__)
+#define opt_small __attribute((minsize))
+#elif defined(__GNUC__)
+#define opt_small __attribute((optimize("Os")))
+#else
+#define opt_small
+#endif
+
 #endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

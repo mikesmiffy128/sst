@@ -41,6 +41,13 @@ static int mrmsib(const unsigned char *p, int addrlen) {
 	return 1; // note: include the mrm itself in the byte count
 }
 
+#ifndef X86_DISABLE_SIZE_OPT
+#if defined(__clang__)
+__attribute((minsize))
+#elif defined(__GNUC__)
+__attribute((optimize("Os")))
+#endif
+#endif
 int x86_len(const unsigned char *insn) {
 #define CASES(name, _) case name:
 	int pfxlen = 0, addrlen = 4, operandlen = 4;

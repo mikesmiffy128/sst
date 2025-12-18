@@ -57,7 +57,7 @@ static inline void unhidecmd(const char *name) {
 
 // TOOD(opt): had to hack this up badly for OE compat. think of a nicer way?
 
-static void generalfixes() {
+static inline void generalfixes() {
 	// Expose all the demo stuff, for games like L4D that hide it for some
 	// reason.
 	unhide("demo_debug");
@@ -94,7 +94,7 @@ static void generalfixes() {
 	chflags("developer", 0, _CON_NE_HIDDEN | _CON_NE_DEVONLY, CON_DEMO);
 }
 
-static void l4dspecific() {
+static inline void l4dspecific() {
 	// NOTE: using unconditional dev-only flags here since we know it's NE.
 	chflags("director_afk_timeout", _CON_NE_HIDDEN | _CON_NE_DEVONLY, 0,
 			CON_CHEAT);
@@ -122,7 +122,7 @@ static void l4dspecific() {
 	con_setvarf(v, con_getvarf(v)); // hack: reapply limit if we loaded late
 }
 
-static void l4d1specific() {
+static inline void l4d1specific() {
 	// For some reason, L4D1 hides mat_monitorgamma and doesn't archive it.
 	// This means on every startup it's necessary to manually set non-default
 	// values via the menu. This change here brings it in line with pretty much
@@ -146,7 +146,7 @@ static void l4d1specific() {
 	chcmdflags("update_addon_paths", 0, 0, _CON_NE_CCMDEXEC);
 }
 
-static void l4d2specific() {
+static inline void l4d2specific() {
 	// L4D2 doesn't let you set sv_cheats in lobbies, but turns out it skips all
 	// the lobby checks if this random command is not developer-only, presumably
 	// because that flag is compiled out in debug builds and devs want to be
@@ -207,7 +207,7 @@ e:
 	chcmdflags("cl_fullupdate", CON_CHEAT, 0, 0);
 }
 
-static void portal1specific() {
+static inline void portal1specific() {
 #ifdef _WIN32
 	// TODO(compat): this is an absolutely atrocious way to implement this. it
 	// should only be temporary in the interests of getting 4104 working right
@@ -231,7 +231,7 @@ static void portal1specific() {
 #endif
 }
 
-void fixes_apply() {
+opt_small void fixes_apply() {
 	generalfixes();
 	if (GAMETYPE_MATCHES(L4Dx)) {
 		l4dspecific();

@@ -81,7 +81,7 @@ DECL_VFUNC_DYN(struct ISurface, void, DrawPolyLine, int *, int *, int)
 DECL_VFUNC_DYN(struct ISurface, void, DrawSetTextFont, struct handlewrap)
 DECL_VFUNC_DYN(struct ISurface, void, DrawSetTextColor, struct rgba)
 DECL_VFUNC_DYN(struct ISurface, void, DrawSetTextPos, int, int)
-DECL_VFUNC_DYN(struct ISurface, void, DrawPrintText, hud_wchar *, int, int)
+DECL_VFUNC_DYN(struct ISurface, void, DrawPrintText, const hud_wchar *, int, int)
 DECL_VFUNC_DYN(struct ISurface, void, GetScreenSize, int *, int *)
 DECL_VFUNC_DYN(struct ISurface, int, GetFontTall, struct handlewrap)
 DECL_VFUNC_DYN(struct ISurface, int, GetCharacterWidth, struct handlewrap, int)
@@ -127,8 +127,8 @@ void hud_drawpolyline(int *x, int *y, int npoints, struct rgba colour) {
 	DrawPolyLine(matsurf, x, y, npoints);
 }
 
-void hud_drawtext(ulong font, int x, int y, struct rgba colour, hud_wchar *str,
-		int len) {
+void hud_drawtext(ulong font, int x, int y, struct rgba colour,
+		const hud_wchar *str, int len) {
 	DrawSetTextFont(matsurf, (struct handlewrap){font});
 	DrawSetTextPos(matsurf, x, y);
 	DrawSetTextColor(matsurf, colour);

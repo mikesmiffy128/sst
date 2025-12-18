@@ -160,42 +160,58 @@ static inline int bsf(uint x) {
 
 // IMPORTANT: these things must all match the button order in engineapi.h
 static const struct {
-	hud_wchar *s;
-	int len;
-} text[] = {
-	/* IN_ATTACK */		{L"Pri", 3},
-	/* IN_JUMP */		{L"Jump", 4},
-	/* IN_DUCK */		{L"Duck", 4},
-	/* IN_FORWARD */	{L"Fwd", 3},
-	/* IN_BACK */		{L"Back", 4},
-	/* IN_USE */		{L"Use", 3},
+	hud_wchar len;
+	hud_wchar s[6];
+} text[] = { // 7 * 20 = 140B
+	/* IN_ATTACK */		{3, L"Pri"},
+	/* IN_JUMP */		{4, L"Jump"},
+	/* IN_DUCK */		{4, L"Duck"},
+	/* IN_FORWARD */	{3, L"Fwd"},
+	/* IN_BACK */		{4, L"Back"},
+	/* IN_USE */		{3, L"Use"},
 	/* IN_CANCEL */		{0},
-	/* IN_LEFT */		{L"LTurn", 5},
-	/* IN_RIGHT */		{L"RTurn", 5},
-	/* IN_MOVELEFT */	{L"Left", 4},
-	/* IN_MOVERIGHT */	{L"Right", 5},
-	/* IN_ATTACK2 */	{L"Sec", 3},
+	/* IN_LEFT */		{5, L"LTurn"},
+	/* IN_RIGHT */		{5, L"RTurn"},
+	/* IN_MOVELEFT */	{4, L"Left"},
+	/* IN_MOVERIGHT */	{5, L"Right"},
+	/* IN_ATTACK2 */	{3, L"Sec"},
 	/* IN_RUN */		{0},
-	/* IN_RELOAD */		{L"Rld", 3},
+	/* IN_RELOAD */		{3, L"Rld"},
 	/* IN_ALT1 */		{0},
 	/* IN_ALT2 */		{0},
 	/* IN_SCORE */		{0},
-	/* IN_SPEED */		{L"Speed", 5},
-	/* IN_WALK */		{L"Walk", 4},
-	/* IN_ZOOM */		{L"Zoom", 4}
+	/* IN_SPEED */		{5, L"Speed"},
+	/* IN_WALK */		{4, L"Walk"},
+	/* IN_ZOOM */		{4, L"Zoom"}
 	// ignoring the rest
 };
 
-struct layout {
-	int mask;
-	schar w, h;
-	// TODO(opt): should make this flexible, but that's harder than it sounds
-	struct { schar x, y; } pos[20];
+struct layout_header {
+	// current IN_* things go up to 25 bits (1 << 24) however we don't use
+	// anything past IN_ZOOM here (1 << 19)
+	u32 mask : 24;
+	// our max width is currently 15; max height is 7 but allow some room here
+	u32 w : 4, h : 4;
 };
+struct layout_btn { u8 x : 4, y : 4; };
+struct layout {
+	struct layout_header hdr;
+	struct layout_btn btns[];
+};
+#define LAYOUT_FLEX(n) union { \
+	struct { \
+		struct layout_header hdr; \
+		struct layout_btn btns[n]; \
+	}; \
+	struct layout l; \
+}
 
 // input layouts (since some games don't use all input bits) {{{
 
-static const struct layout layout_hl2 = {
+// XXX: just manually sizing these unions for flexible arrays right now.
+// not ideal, but simple enough... I guess.
+
+static const LAYOUT_FLEX(20) layout_hl2 = {
 	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE |
 	IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2 | IN_RELOAD | IN_SPEED |
 	IN_WALK | IN_ZOOM,
@@ -221,7 +237,7 @@ static const struct layout layout_hl2 = {
 	}
 };
 
-static const struct layout layout_portal1 = {
+static const LAYOUT_FLEX(12) layout_portal1 = {
 	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE |
 	IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2,
 	11, 7,
@@ -243,7 +259,7 @@ static const struct layout layout_portal1 = {
 };
 
 // TODO(compat): add portal2 layout once there's hud gamedata for portal 2
-//static const struct layout layout_portal2 = {
+//static const LAYOUT_FLEX(20) layout_portal2 = {
 //	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE |
 //	IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2 | IN_ZOOM,
 //	11, 7,
@@ -268,7 +284,7 @@ static const struct layout layout_portal1 = {
 //	}
 //};
 
-static const struct layout layout_l4d = {
+static const LAYOUT_FLEX(20) layout_l4d = {
 	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE |
 	IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2 | IN_RELOAD | IN_SPEED | IN_ZOOM,
 	13, 7,
@@ -295,7 +311,7 @@ static const struct layout layout_l4d = {
 
 // }}}
 
-static const struct layout *layout = &layout_hl2;
+static const struct layout *layout = &layout_hl2.l;
 
 static const char *const fontnames[] = {
 	"DebugFixedSmall",
@@ -340,16 +356,16 @@ HANDLE_EVENT(HudPaint, int screenw, int screenh) {
 		//else break; // not sorted
 	}
 	int gap = (boxsz | 32) >> 5; // minimum 1 pixel gap
-	int w = (boxsz + gap) * layout->w / 2 - gap;
-	int h = (boxsz + gap) * layout->h / 2 - gap;
+	int w = (boxsz + gap) * layout->hdr.w / 2 - gap;
+	int h = (boxsz + gap) * layout->hdr.h / 2 - gap;
 	int basex = roundf(con_getvarf(sst_inputhud_x) * (screenw - w));
 	int basey = roundf(con_getvarf(sst_inputhud_y) * (screenh - h));
 	int buttons = heldbuttons | tappedbuttons;
-	for (int mask = layout->mask, bitidx, bit; mask; mask ^= bit) {
+	for (int mask = layout->hdr.mask, bitidx, bit; mask; mask ^= bit) {
 		bitidx = bsf(mask); bit = 1 << bitidx;
 		// divide sizes by 2 here to allow in-between positioning
-		int x = basex + layout->pos[bitidx].x * (boxsz + gap) / 2;
-		int y = basey + layout->pos[bitidx].y * (boxsz + gap) / 2;
+		int x = basex + layout->btns[bitidx].x * (boxsz + gap) / 2;
+		int y = basey + layout->btns[bitidx].y * (boxsz + gap) / 2;
 		hud_drawrect(x, y, x + boxsz, y + boxsz,
 				colours[!!(buttons & bit)], true);
 		if_hot (font) {
@@ -415,9 +431,9 @@ INIT {
 				(void *)&hook_DecodeUserCmdFromBuffer);
 	}
 
-	if (GAMETYPE_MATCHES(Portal1)) layout = &layout_portal1;
-	//else if (GAMETYPE_MATCHES(Portal2)) layout = &layout_portal2;
-	else if (GAMETYPE_MATCHES(L4D)) layout = &layout_l4d;
+	if (GAMETYPE_MATCHES(Portal1)) layout = &layout_portal1.l;
+	//else if (GAMETYPE_MATCHES(Portal2)) layout = &layout_portal2.l;
+	else if (GAMETYPE_MATCHES(L4D)) layout = &layout_l4d.l;
 	// TODO(compat): more game-specific layouts!
 
 	sst_inputhud_bgcolour_normal->cb = &colourcb;
