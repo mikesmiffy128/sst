@@ -28,14 +28,9 @@
 // Almost certainly breaks in some weird cases. Oh well! Most of the time,
 // vtable hooking is more reliable, this is only for, uh, emergencies.
 
-static _Alignas(4096) uchar trampolines[4096];
-static uchar *curtrampoline = trampolines;
-
-bool hook_init() {
-	// PE doesn't support rwx sections, not sure about ELF. Meh, just set it
-	// here instead.
-	return os_mprot(trampolines, 4096, PAGE_EXECUTE_READWRITE);
-}
+#define SPACE 2048 // NOTE: MUST match SPACE in hook.S!
+extern uchar _hook_trampolinespc[]; // defined in hook.S
+static uchar *curtrampoline = _hook_trampolinespc;
 
 struct hook_inline_prep_ret hook_inline_prep(void *func, void **trampoline) {
 	uchar *p = func;
@@ -61,7 +56,8 @@ struct hook_inline_prep_ret hook_inline_prep(void *func, void **trampoline) {
 		len += ilen;
 		if (len >= 5) {
 			// we should have statically made trampoline buffer size big enough
-			assume(curtrampoline - trampolines < sizeof(trampolines) - len - 6);
+			assume(curtrampoline - (uchar *)_hook_trampolinespc <
+					SPACE - len - 6);
 			*curtrampoline = len; // stuff length in there for quick unhooking
 			uchar *newtrampoline = curtrampoline + 1;
 			curtrampoline += len + 6;

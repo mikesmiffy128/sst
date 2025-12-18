@@ -540,10 +540,6 @@ static void hook_plugin_unload_cbv2(struct con_cmdargs *args) {
 }
 
 static bool do_load(ifacefactory enginef, ifacefactory serverf) {
-	if_cold (!hook_init()) {
-		errmsg_warnsys("couldn't set up memory for function hooking");
-		return false;
-	}
 	factory_engine = enginef; factory_server = serverf;
 	if_cold (!engineapi_init(ifacever)) return false;
 	if (GAMETYPE_MATCHES(OE)) shuntvars(); // see also comment in con_detect()

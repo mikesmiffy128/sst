@@ -75,26 +75,11 @@ DECL_VFUNC(struct ICvar, void *, FindVar_nonp2, 12, const char *)
 DECL_VFUNC(struct ICvar, void *, FindVar_OE, 7, const char *)
 #endif
 
-static struct ICvar *coniface;
-static void *colourmsgf;
+struct ICvar *_con_iface; // extern for con_.S
+void *_con_colourmsgf; // "
 
-#ifdef _WIN32
-#pragma section("selfmod", execute)
-__attribute((used, section("selfmod"), noinline))
-#endif
-asm_only void _con_colourmsg(void *dummy, const struct rgba *c,
-		const char *fmt, ...) {
-	// NE: ConsoleColorPrintf is virtual, so the dummy param is a carve-out for
-	// `this` (which is coniface).
-	__asm volatile (
-		"mov eax, %0\n"
-		"mov [esp + 4], eax\n" // put coniface in the empty stack slot
-		"jmp dword ptr %1\n" // jump to the real function
-		:
-		: "m" (coniface), "m" (colourmsgf)
-		: "eax", "memory"
-	);
-}
+// this is defined in con_.S, in order to set the proper section attributes.
+void _con_colourmsg(void *dummy, const struct rgba *c, const char *fmt, ...);
 
 #ifdef _WIN32
 // this function is defined as data because we'll be using it to self-modify the
@@ -114,23 +99,11 @@ asm_only static void _con_colourmsg_OE(void *dummy, const struct rgba *c,
 		"sub esp, 4\n" // pad the stack back out for the caller
 		"jmp ebx\n" // return to saved address
 		:
-		: "m" (coniface), "m" (colourmsgf)
+		: "m" (_con_iface), "m" (_con_colourmsgf)
 		: "eax", "ebx", "memory"
 	);
 }
 #define SELFMOD_LEN 15 // above instructions assemble to this many bytes!
-
-static bool selfmod() {
-	if (!os_mprot((void *)_con_colourmsg, SELFMOD_LEN, PAGE_EXECUTE_READWRITE)) {
-		errmsg_errorsys("couldn't make memory writable");
-		return false;
-	}
-	memcpy((void *)&_con_colourmsg, (void *)&_con_colourmsg_OE, SELFMOD_LEN);
-	if (!os_mprot((void *)_con_colourmsg, SELFMOD_LEN, PAGE_EXECUTE_READ)) {
-		errmsg_warnsys("couldn't restore self-modified page to read-only");
-	}
-	return true;
-}
 #endif
 
 static void VCALLCONV dtor(void *_) {} // we don't use constructors/destructors
@@ -244,13 +217,13 @@ static void VCALLCONV ChangeStringValue(struct con_var *this, const char *s,
 		float oldf) {
 	char *old = alloca(this->v2.strlen);
 	ChangeStringValue_common(this, &this->v2, old, s);
-	CallGlobalChangeCallbacks(coniface, this, old, oldf);
+	CallGlobalChangeCallbacks(_con_iface, this, old, oldf);
 }
 #ifdef _WIN32
 static void VCALLCONV ChangeStringValue_OE(struct con_var *this, const char *s) {
 	char *old = alloca(this->v1.strlen);
 	ChangeStringValue_common(this, &this->v1, old, s);
-	CallGlobalChangeCallbacks_OE(coniface, this, old);
+	CallGlobalChangeCallbacks_OE(_con_iface, this, old);
 }
 #endif
 
@@ -446,7 +419,7 @@ void con_regvar(struct con_var *v) {
 	struct con_var_common *c = con_getvarcommon(v);
 	c->strval = extmalloc(c->strlen); // note: _DEF_CVAR() sets strlen member
 	memcpy(c->strval, c->defaultval, c->strlen);
-	RegisterConCommand(coniface, v);
+	RegisterConCommand(_con_iface, v);
 }
 
 void con_regcmd(struct con_cmd *c) {
@@ -454,7 +427,7 @@ void con_regcmd(struct con_cmd *c) {
 	if_hot (!GAMETYPE_MATCHES(OE)) if (c->base.flags & CON_INIT_HIDDEN) {
 		c->base.flags = (c->base.flags & ~CON_INIT_HIDDEN) | _CON_NE_HIDDEN;
 	}
-	RegisterConCommand(coniface, c);
+	RegisterConCommand(_con_iface, c);
 }
 
 void con_hide(struct con_cmdbase *b) {
@@ -504,7 +477,7 @@ static bool find_Con_ColorPrintf() {
 	for (uchar *p = insns; p - insns < 320;) {
 		if (p[0] == X86_PUSHECX && p[1] == X86_PUSHIW && p[6] == X86_CALL &&
 				p[11] == X86_ALUMI8S && p[12] == X86_MODRM(3, 0, 4)) {
-			colourmsgf = p + 11 + mem_loads32(p + 7);
+			_con_colourmsgf = p + 11 + mem_loads32(p + 7);
 			return true;
 		}
 		NEXT_INSN(p, "Con_ColorPrintf function");
@@ -529,39 +502,39 @@ static void badver() {
 }
 
 bool con_detect(int pluginver) {
-	if (coniface = factory_engine("VEngineCvar007", 0)) {
+	if (_con_iface = factory_engine("VEngineCvar007", 0)) {
 		// GENIUS HACK (BUT STILL BAD): Portal 2 has everything in ICvar shifted
 		// down 3 places due to the extra stuff in IAppSystem. This means that
 		// if we look up the Portal 2-specific cvar using FindCommandBase, it
 		// *actually* calls the const-overloaded FindVar on other branches,
 		// which just happens to still work fine. From there, we can figure out
 		// the actual ABI to use to avoid spectacular crashes.
-		if (FindCommandBase_p2(coniface, "portal2_square_portals")) {
+		if (FindCommandBase_p2(_con_iface, "portal2_square_portals")) {
 			_gametype_tag |= _gametype_tag_Portal2;
 			return true;
 		}
-		if (FindCommand_nonp2(coniface, "l4d2_snd_adrenaline")) {
+		if (FindCommand_nonp2(_con_iface, "l4d2_snd_adrenaline")) {
 			// while we're here, also distinguish Survivors, the stupid Japanese
 			// arcade game a few people seem to care about for some reason
 			// (which for some other reason also has some vtable changes)
-			if (FindVar_nonp2(coniface, "avatarbasemodel")) {
+			if (FindVar_nonp2(_con_iface, "avatarbasemodel")) {
 				_gametype_tag |= _gametype_tag_L4DS;
 			}
 			else {
 				_gametype_tag |= _gametype_tag_L4D2;
 			}
-			if (FindVar_nonp2(coniface, "sv_zombie_touch_trigger_delay")) {
+			if (FindVar_nonp2(_con_iface, "sv_zombie_touch_trigger_delay")) {
 				_gametype_tag |= _gametype_tag_L4D2_2125plus;
 			}
-			if (FindVar_nonp2(coniface, "director_cs_weapon_spawn_chance")) {
+			if (FindVar_nonp2(_con_iface, "director_cs_weapon_spawn_chance")) {
 				_gametype_tag |= _gametype_tag_TheLastStand;
 			}
 			return true;
 		}
-		if (FindVar_nonp2(coniface, "z_difficulty")) {
+		if (FindVar_nonp2(_con_iface, "z_difficulty")) {
 			_gametype_tag |= _gametype_tag_L4D1;
 			// Crash Course update
-			if (FindCommand_nonp2(coniface, "director_log_scavenge_items")) {
+			if (FindCommand_nonp2(_con_iface, "director_log_scavenge_items")) {
 				_gametype_tag |= _gametype_tag_L4D1_1015plus;
 				// seems there was some code shuffling in the Mac update (1022).
 				// this update came out like 2-3 weeks after The Sacrifice
@@ -575,43 +548,45 @@ bool con_detect(int pluginver) {
 		helpuserhelpus(pluginver, '7');
 		return false;
 	}
-	if (coniface = factory_engine("VEngineCvar004", 0)) {
+	if (_con_iface = factory_engine("VEngineCvar004", 0)) {
 		// TODO(compat): are there any cases where 004 is incompatible? could
 		// this crash? find out!
 		if (pluginver == 3) _gametype_tag |= _gametype_tag_2013;
 		else _gametype_tag |= _gametype_tag_OrangeBox;
 		// detect Portal 1 versions while we're here...
-		if (FindCommand_nonp2(coniface, "upgrade_portalgun")) {
+		if (FindCommand_nonp2(_con_iface, "upgrade_portalgun")) {
 			_gametype_tag |= _gametype_tag_Portal1;
-			if (!FindVar_nonp2(coniface, "tf_escort_score_rate")) {
+			if (!FindVar_nonp2(_con_iface, "tf_escort_score_rate")) {
 				_gametype_tag |= _gametype_tag_Portal1_3420;
 			}
 		}
-		else if (FindCommand_nonp2(coniface, "phys_swap")) {
+		else if (FindCommand_nonp2(_con_iface, "phys_swap")) {
 			_gametype_tag |= _gametype_tag_HL2series;
 		}
 		return true;
 	}
-	if (coniface = factory_engine("VEngineCvar003", 0)) {
+	if (_con_iface = factory_engine("VEngineCvar003", 0)) {
 #ifdef _WIN32 // there's no OE on linux!
 		_gametype_tag |= _gametype_tag_OE;
 		// for deletion/unlinking on unload, we need an indirect linked list
 		// pointer. calling GetCommands gives us a direct pointer. so we have to
 		// actually pull out the indirect pointer from the actual asm lol.
-		if (!find_linkedlist((uchar *)VFUNC(coniface, GetCommands_OE))) {
+		if (!find_linkedlist((uchar *)VFUNC(_con_iface, GetCommands_OE))) {
 			errmsg_errorx("couldn't find command list pointer");
 			return false;
 		}
 		if (!find_argcargv()) return false;
 		if (!find_Con_ColorPrintf()) return false;
-		if (!selfmod()) return false;
+		// note: _con_colourmsg is already RWX, just overwrite it.
+		memcpy((void *)&_con_colourmsg, (void *)&_con_colourmsg_OE,
+				SELFMOD_LEN);
 		// NOTE: the default static struct layout is for NE; immediately after
 		// engineapi init finishes, the generated glue code will shunt
 		// everything along for OE if required, in shuntvars(). since all the
 		// gluegen code is currently hooked up in sst.c this is a little bit
 		// annoyingly removed from here. not sure how to do it better, sorry.
 		off_cvar_common = offsetof(struct con_var, v1);
-		if (FindVar_OE(coniface, "mm_ai_facehugger_enablehugeattack")) {
+		if (FindVar_OE(_con_iface, "mm_ai_facehugger_enablehugeattack")) {
 			_gametype_tag |= _gametype_tag_DMoMM;
 		}
 		return true;
@@ -632,7 +607,7 @@ bool con_detect(int pluginver) {
 }
 
 static int *find_host_initialized() {
-	const uchar *insns = colourmsgf;
+	const uchar *insns = _con_colourmsgf;
 	for (const uchar *p = insns; p - insns < 32;) {
 		// cmp byte ptr [<pointer>], <value>
 		if (p[0] == X86_ALUMI8 && p[1] == X86_MODRM(0, 7, 5)) {
@@ -653,8 +628,8 @@ void con_init() {
 		if (host_initialized && *host_initialized == 0) *host_initialized = 1;
 	}
 	else {
-		colourmsgf = coniface->vtable[vtidx_ConsoleColorPrintf];
-		dllid = AllocateDLLIdentifier(coniface);
+		_con_colourmsgf = _con_iface->vtable[vtidx_ConsoleColorPrintf];
+		dllid = AllocateDLLIdentifier(_con_iface);
 	}
 
 	void **pc = _con_vtab_cmd + 3 + NVDTOR, **pv = _con_vtab_var + 3 + NVDTOR,
@@ -770,11 +745,11 @@ void con_disconnect() {
 		return;
 	}
 #endif
-	UnregisterConCommands(coniface, dllid);
+	UnregisterConCommands(_con_iface, dllid);
 }
 
 struct con_var *con_findvar(const char *name) {
-	return FindVar(coniface, name);
+	return FindVar(_con_iface, name);
 }
 
 struct con_cmd *con_findcmd(const char *name) {
@@ -790,7 +765,7 @@ struct con_cmd *con_findcmd(const char *name) {
 		return 0;
 	}
 #endif
-	return FindCommand(coniface, name);
+	return FindCommand(_con_iface, name);
 }
 
 // NOTE: getters here still go through the parent pointer although we stopped

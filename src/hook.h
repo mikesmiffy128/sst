@@ -22,8 +22,6 @@
 #include "feature.h"
 #include "langext.h"
 
-bool hook_init();
-
 /*
  * Replaces a vtable entry with a target function and returns the original
  * function.

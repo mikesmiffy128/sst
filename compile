@@ -35,8 +35,8 @@ fi
 objs=
 cc() {
 	_bn="`basename "$1"`"
-	objs="$objs .build/${_bn%%.c}.o"
-	_mn=" -DMODULE_NAME=${_bn%%.c}"
+	objs="$objs .build/$_bn.o"
+	_mn=" -DMODULE_NAME=${_bn%%.*}"
 	# ugly annoying special case
 	if [ "$_mn" = " -DMODULE_NAME=con_" ]; then _mn=" -DMODULE_NAME=con"
 	elif [ "$_mn" = "-DMODULE_NAME=sst" ]; then _mn=; fi
@@ -61,6 +61,7 @@ src="\
 	chunklets/x86.c
 	clientcon.c
 	con_.c
+	con_.S
 	crypto.c
 	democustom.c
 	demorec.c
@@ -75,6 +76,7 @@ src="\
 	gameserver.c
 	hexcolour.c
 	hook.c
+	hook.S
 	hud.c
 	inputhud.c
 	kvsys.c
@@ -99,7 +101,8 @@ $HOSTCC -O2 -fuse-ld=lld $warnings $stdflags \
 		-o .build/mkgamedata src/build/mkgamedata.c src/os.c
 $HOSTCC -O2 -fuse-ld=lld $warnings $stdflags \
 		-o .build/mkentprops src/build/mkentprops.c src/os.c
-.build/gluegen `for s in $src; do echo "src/$s"; done`
+# pass only .c files to gluegen (ignore .S)
+.build/gluegen `for s in $src; do if [ "${s##*.}" = "c" ]; then echo "src/$s"; fi; done`
 .build/mkgamedata gamedata/engine.txt gamedata/gamelib.txt gamedata/inputsystem.txt \
 gamedata/matchmaking.txt gamedata/vgui2.txt gamedata/vguimatsurface.txt gamedata/vphysics.txt
 .build/mkentprops gamedata/entprops.txt
@@ -110,11 +113,6 @@ ld
 
 $HOSTCC -O2 -g3 $warnings $stdflags -include test/test.h -o .build/bitbuf.test test/bitbuf.test.c
 .build/bitbuf.test
-# XXX: skipping this test on linux for now but should enable when we can test it
-#$HOSTCC -m32 -O2 -g3 -include test/test.h -o .build/hook.test test/hook.test.c
-#.build/hook.test
-$HOSTCC -O2 -g3 $warnings $stdflags -include test/test.h -o .build/kv.test test/kv.test.c
-.build/kv.test
 $HOSTCC -O2 -g3 $warnings $stdflags -include test/test.h -o .build/x86.test test/x86.test.c
 .build/x86.test
 
