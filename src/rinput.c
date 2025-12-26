@@ -91,27 +91,24 @@ static ssize __stdcall inproc(void *wnd, uint msg, usize wp, ssize lp) {
 
 typedef int (*__stdcall GetCursorPos_func)(POINT *p);
 typedef uint (*VCALLCONV GetRawMouseAccumulators_func)(void *, int *, int *);
-static union { // more cheeky space saving
-	GetCursorPos_func orig_GetCursorPos;
-	GetRawMouseAccumulators_func orig_GetRawMouseAccumulators;
-} u2;
-#define orig_GetCursorPos u2.orig_GetCursorPos
-#define orig_GetRawMouseAccumulators u2.orig_GetRawMouseAccumulators
+DEF_INLINE_HOOK(GetCursorPos_func, GetCursorPos)
+DEF_VTABLE_HOOK(GetRawMouseAccumulators_func, GetRawMouseAccumulators)
 
-static int __stdcall hook_GetCursorPos(POINT *p) {
+static int __stdcall hookdest_GetCursorPos(POINT *p) {
 	if (!con_getvari(m_rawinput)) return orig_GetCursorPos(p);
 	p->x = cx; p->y = cy;
 	return 1;
 }
 
 typedef int (*__stdcall SetCursorPos_func)(int x, int y);
-static SetCursorPos_func orig_SetCursorPos = 0;
-static int __stdcall hook_SetCursorPos(int x, int y) {
+DEF_INLINE_HOOK(SetCursorPos_func, SetCursorPos)
+static int __stdcall hookdest_SetCursorPos(int x, int y) {
 	cx = x; cy = y;
 	return orig_SetCursorPos(x, y);
 }
 
-static uint VCALLCONV hook_GetRawMouseAccumulators(void *this, int *x, int *y) {
+static uint VCALLCONV hookdest_GetRawMouseAccumulators(void *this,
+		int *x, int *y) {
 	int dx, dy;
 	uint ret = orig_GetRawMouseAccumulators(this, &dx, &dy);
 	int d = con_getvari(sst_mouse_factor);
@@ -135,9 +132,8 @@ INIT {
 			errmsg_errorx("couldn't make virtual table writable");
 			return FEAT_FAIL;
 		}
-		orig_GetRawMouseAccumulators = (GetRawMouseAccumulators_func)hook_vtable(
-				vtable_insys, vtidx_GetRawMouseAccumulators,
-				(void *)&hook_GetRawMouseAccumulators);
+		hook_GetRawMouseAccumulators(vtable_insys, vtidx_GetRawMouseAccumulators,
+				&hookdest_GetRawMouseAccumulators);
 	}
 	else {
 		// create cvar hidden so config is still preserved if we fail to init
@@ -181,11 +177,11 @@ INIT {
 	}
 
 	int err;
-	struct hook_inline_featsetup_ret h1 = hook_inline_featsetup(
-			(void *)GetCursorPos, (void **)&orig_GetCursorPos, "GetCursorPos");
+	struct hook_featsetup_ret_GetCursorPos h1 =
+			hook_featsetup_GetCursorPos(&GetCursorPos);
 	if_cold (err = h1.err) goto e0;
-	struct hook_inline_featsetup_ret h2 = hook_inline_featsetup(
-			(void *)SetCursorPos, (void **)&orig_SetCursorPos, "SetCursorPos");
+	struct hook_featsetup_ret_SetCursorPos h2 =
+			hook_featsetup_SetCursorPos(&SetCursorPos);
 	if_cold (err = h2.err) goto e0;
 	inwin = CreateWindowExW(0, L"RInput", L"RInput", 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	if_cold (!inwin) {
@@ -202,8 +198,8 @@ INIT {
 		err = FEAT_FAIL;
 		goto e1;
 	}
-	hook_inline_commit(h1.prologue, (void *)&hook_GetCursorPos);
-	hook_inline_commit(h2.prologue, (void *)&hook_SetCursorPos);
+	hook_commit_GetCursorPos(h1.hookpos, &hookdest_GetCursorPos);
+	hook_commit_SetCursorPos(h2.hookpos, &hookdest_SetCursorPos);
 
 ok:	// XXX: this is a little tricky and a little clunky. we have registered
 	// m_rawinput above but sst_mouse_factor will get auto-registered after init
@@ -218,7 +214,7 @@ e0:	UnregisterClassW(L"RInput", 0);
 }
 
 END {
-	if_hot (orig_SetCursorPos) { // we inited our own implementation
+	if_hot (inwin) { // we inited our own implementation
 		RAWINPUTDEVICE rd = {
 			.dwFlags = RIDEV_REMOVE,
 			.hwndTarget = 0,
@@ -229,13 +225,13 @@ END {
 		DestroyWindow(inwin);
 		if_hot (!sst_userunloaded) return;
 		UnregisterClassW(L"RInput", 0);
-		unhook_inline((void *)orig_GetCursorPos);
-		unhook_inline((void *)orig_SetCursorPos);
+		unhook_SetCursorPos();
+		unhook_GetCursorPos();
 	}
 	else if_cold (sst_userunloaded) {
 		// we must have hooked the *existing* implementation
-		unhook_vtable(vtable_insys, vtidx_GetRawMouseAccumulators,
-				(void *)orig_GetRawMouseAccumulators);
+		unhook_GetRawMouseAccumulators(vtable_insys,
+				vtidx_GetRawMouseAccumulators);
 	}
 }
 

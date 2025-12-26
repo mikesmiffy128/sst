@@ -70,8 +70,9 @@ void kvsys_free(struct KeyValues *kv) {
 // We can suppress this by catching the message string that's passed from
 // engine.dll to gameui.dll through KeyValuesSystem in vstdlib.dll and just
 // replacing it with some other arbitrary string that gameui won't match.
-static GetStringForSymbol_func orig_GetStringForSymbol = 0;
-static const char *VCALLCONV hook_GetStringForSymbol(void *this, int s) {
+DEF_VTABLE_HOOK(GetStringForSymbol_func, GetStringForSymbol)
+static const char *VCALLCONV hookdest_GetStringForSymbol(
+		struct IKeyValuesSystem *this, int s) {
 	const char *ret = orig_GetStringForSymbol(this, s);
 	if (!strcmp(ret, "OnClientPluginWarning")) ret = "sstBlockedThisEvent";
 	return ret;
@@ -108,9 +109,8 @@ INIT {
 			errmsg_note("won't be able to prevent any nag messages");
 		}
 		else {
-			orig_GetStringForSymbol = (GetStringForSymbol_func)hook_vtable(
-					vtable, vtidx_GetStringForSymbol,
-					(void *)hook_GetStringForSymbol);
+			hook_GetStringForSymbol(vtable, vtidx_GetStringForSymbol,
+					&hookdest_GetStringForSymbol);
 		}
 	}
 	return FEAT_OK;
@@ -118,8 +118,7 @@ INIT {
 
 END {
 	if (orig_GetStringForSymbol) {
-		unhook_vtable(kvs->vtable, vtidx_GetStringForSymbol,
-				(void *)orig_GetStringForSymbol);
+		unhook_GetStringForSymbol(kvs->vtable, vtidx_GetStringForSymbol);
 	}
 }
 

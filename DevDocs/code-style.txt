@@ -785,8 +785,9 @@ Some other common prefixes and suffixes are just good for making the whole thing
 feel coherent to a human reader even if nothing really requires them:
 
 • *_func for function pointer typedefs.
-• orig_* for a function pointer used to call an original function from a hook.
-• hook_* for the hook function itself, which intercepts calls to the original.
+• orig_* for a pointer (or static trampoline) to a function that has been hooked
+  in some manner.
+• hookdest_* for the intercepting function called in place of a hooked function.
 • find_* for a function within a feature which attempts to find some variable or
   function buried within the engine, usually by chasing pointers through machine
   instructions or internal engine data structures or something.

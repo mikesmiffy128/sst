@@ -36,8 +36,8 @@ DEF_CVAR_UNREG(engine_no_focus_sleep,
 static void **vtable;
 
 typedef void (*VCALLCONV SleepUntilInput_func)(void *this, int timeout);
-static SleepUntilInput_func orig_SleepUntilInput;
-static void VCALLCONV hook_SleepUntilInput(void *this, int timeout) {
+DEF_VTABLE_HOOK(SleepUntilInput_func, SleepUntilInput)
+static void VCALLCONV hookdest_SleepUntilInput(void *this, int timeout) {
 	orig_SleepUntilInput(this, con_getvari(engine_no_focus_sleep));
 }
 
@@ -54,14 +54,14 @@ INIT {
 		errmsg_errorx("couldn't make virtual table writable");
 		return FEAT_FAIL;
 	}
-	orig_SleepUntilInput = (SleepUntilInput_func)hook_vtable(vtable,
-			vtidx_SleepUntilInput, (void *)&hook_SleepUntilInput);
+	hook_SleepUntilInput(vtable, vtidx_SleepUntilInput,
+			&hookdest_SleepUntilInput);
 	con_unhide(&engine_no_focus_sleep->base);
 	return FEAT_OK;
 }
 
 END {
-	unhook_vtable(vtable, vtidx_SleepUntilInput, (void *)orig_SleepUntilInput);
+	unhook_SleepUntilInput(vtable, vtidx_SleepUntilInput);
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

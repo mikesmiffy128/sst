@@ -17,137 +17,263 @@
 #ifndef INC_HOOK_H
 #define INC_HOOK_H
 
+#include "asm.h"
 #include "intdefs.h"
 #include "errmsg.h"
 #include "feature.h"
 #include "langext.h"
 
-/*
- * Replaces a vtable entry with a target function and returns the original
- * function.
- */
-static inline void *hook_vtable(void **vtable, usize off, void *target) {
-	void *orig = vtable[off];
-	vtable[off] = target;
-	return orig;
-}
+#define _HOOK_STR2(x) #x
+#define _HOOK_STR(x) _HOOK_STR2(x)
+#define _HOOK_CAT2(a, b, c, d) a##b##c##d
+#define _HOOK_CAT(a, b, c, d) _HOOK_CAT2(a, b, c, d)
+#ifdef MODULE_NAME
+#define _HOOK_MODNAME MODULE_NAME
+#else
+#define _HOOK_MODNAME G // kinda arbitrary thing for "global"
+#endif
 
-/*
- * Puts an original function back after hooking.
- */
-static inline void unhook_vtable(void **vtable, usize off, void *orig) {
-	vtable[off] = orig;
-}
+#if defined(__GNUC__) || defined(__clang__)
+#define _HOOK_UNUSED __attribute((unused))
+#else
+#define _HOOK_UNUSED
+#endif
 
-/*
- * Finds the correct function prologue location to install an inline hook, and
- * tries to initialise a trampoline with sufficient instructions and a jump back
- * to enable calling the original function.
- *
- * This is a low-level API and in most cases, if doing hooking from inside a
- * plugin feature, the hook_inline_featsetup() function should be used instead.
- * It automatically performs conventional error logging for both this step and
- * the hook_inline_mprot() call below, and returns error codes that are
- * convenient for use in a feature INIT function.
- *
- * When this function succeeds, the returned struct will have the prologue
- * member set to the prologue or starting point of the hooked function (which is
- * not always the same as the original function pointer). The trampoline
- * parameter, being a pointer-to-pointer, is an output parameter to which a
- * trampoline pointer will be written. The trampoline is a small run of
- * instructions from the original function, followed by a jump back to it,
- * allowing the original to be seamlessly called from a hook.
- *
- * In practically rare cases, this function will fail due to unsupported
- * instructions in the function prologue. In such instances, the returned struct
- * will have a null prologue, and the second member err, will point to a
- * null-terminated string for error logging. In this case, the trampoline
- * pointer will remain untouched.
- */
-struct hook_inline_prep_ret {
-	void *prologue;
+// internal helpers, do not call directly
+uchar *_hook_getpos(uchar *);
+struct _hook_prep_ret {
+	void *hookpos;
+	int inslen;
 	const char *err;
-} hook_inline_prep(void *func, void **trampoline);
+} _hook_prep(uchar *func, uchar *trampoline);
+void _hook_inline_commit(uchar *restrict hookpos, const uchar *restrict target);
+void _unhook_inline(uchar *trampoline, int len);
+
+#define _DEF_TRAMPOLINE_ASM(symb) \
+	__asm ( \
+		".pushsection " ASM_RWX_SECTION_STR ", \"" ASM_RWX_SECTION_FLAGS "\"\n" \
+		".globl " symb "\n" \
+		symb ":\n" \
+		".space 24\n" \
+		".popsection\n" \
+	);
+
+// internal macro detail, don't use
+#define _DEF_TRAMPOLINE(ftype, name, symb) \
+	_DEF_TRAMPOLINE_ASM(symb) \
+	typeof(*(typeof(ftype))0) name __asm(symb); /* this declares the function! */
 
 /*
- * This is a small helper function to make the memory page containing a
- * function's prologue writable, allowing an inline hook to be inserted with
- * hook_inline_commit().
+ * Creates a callable trampoline function backed by a chunk of uninitialised rwx
+ * memory. Calling this on its own will crash, but the inline hooking system
+ * can use it to create the wrapper/trampoline function used to call an original
+ * function from a hook.
+ *
+ * Note that it's usually unnecessary to create these manually. Most of the
+ * time this is handled by DEF_TRAMPOLINE().
+ */
+#define DEF_TRAMPOLINE(ftype, name) \
+	_DEF_TRAMPOLINE(ftype, name, ASM_MANGLE_STR( \
+			_HOOK_STR(_HOOK_CAT(_hook_t_, _HOOK_MODNAME, _, name))))
+
+/*
+ * Equivalent to DEF_INLINE_HOOK(), but with a manually-specified trampoline
+ * function (see DEF_TRAMPOLINE() for how to create one of those).
+ *
+ * It is typically unnecessary to use this and DEF_INLINE_HOOK() should be used
+ * instead.
+ */
+#define DEF_INLINE_HOOK_WITHTRAMPOLINE(ftype, name, trampoline) \
+	static schar _hook_inslen_##name; \
+	static inline struct hook_prep_ret_##name { \
+		void *hookpos; \
+		const char *err; \
+	} hook_prep_##name(typeof(ftype) func) { \
+		struct _hook_prep_ret r = _hook_prep((uchar *)func, \
+				(uchar *)&trampoline); \
+		_hook_inslen_##name = r.inslen; \
+		return (struct hook_prep_ret_##name){r.hookpos, r.err}; \
+	} \
+	static inline void hook_commit_##name(void *hookpos, \
+			typeof(ftype) target) { \
+		_hook_inline_commit((uchar *)hookpos, (const uchar *)target); \
+	} \
+	static inline _HOOK_UNUSED void unhook_##name() { \
+		_unhook_inline((void *)&trampoline, _hook_inslen_##name); \
+	} \
+	static inline _HOOK_UNUSED struct hook_featsetup_ret_##name { \
+		void *hookpos; \
+		int err; \
+	} hook_featsetup_##name(typeof(ftype) f) { \
+		struct hook_prep_ret_##name ret = hook_prep_##name(f); \
+		if_cold (ret.err) { \
+			errmsg_warnx("couldn't hook %s function: %s", #name, ret.err); \
+			return (struct hook_featsetup_ret_##name){0, FEAT_INCOMPAT}; \
+		} \
+		if_cold (!hook_inline_mprot(ret.hookpos)) { \
+			errmsg_errorsys("couldn't hook %s function: %s", #name, \
+					"couldn't make hook point writable"); \
+			return (struct hook_featsetup_ret_##name){0, FEAT_FAIL}; \
+		} \
+		return (struct hook_featsetup_ret_##name){ret.hookpos, 0}; \
+	}
+
+/*
+ * Creates a set of inline hooking functions for hooking a particular named
+ * function. ftype specifies a function pointer type, generally defined first as
+ * <name>_func as a matter of convention.
+ *
+ * Defines the following functions:
+ *
+ * static <rettype> orig_<name>(<args>);
+ *
+ *   This is the trampoline function, which is dynamically generated by
+ *   hook_prep_<name>() and allows wrapping the original function while it is
+ *   otherwise redirected to the hook target.
+ *
+ *   Calling this before the inline hook has been committed will likely crash
+ *   or otherwise result in undefined behaviour.
+ *
+ * static inline struct hook_featsetup_ret_<name> {
+ *     void *hookpos;
+ *     int err;
+ * } hook_featsetup_<name>(ftype f);
+ *
+ *   This is a higher-level helper function intended for use in plugin feature
+ *   initialisation (see INIT in feature.h). It combines the efforts of
+ *   hook_prep_<name>() and hook_inline_mprot() (see below), and also performs
+ *   appropriate error logging.
+ *
+ *   The err member of the returned struct is 0 on success, or a suitable
+ *   feature return code (see FEAT_* in feature.h) on failure, so the status can
+ *   just be returned directly from INIT if nonzero.
+ *
+ *   On success, the hookpos member of the struct is ready for passing to
+ *   hook_commit_<name>() to finish setting up the hook.
+ *
+ *   Generally, in feature code, there is no reason to call hook_prep_<name>()
+ *   directly, but it is documented below anyway.
+ *
+ * static struct hook_prep_ret_<name> {
+ *     void *hookpos;
+ *     const char *err;
+ * } hook_prep_<name>(ftype func);
+ *
+ *   This finds the correct jump point to pass to hook_inline_mprot() and then
+ *   hook_commit_<name>(), and sets up the trampoline (see orig_<name>() above).
+ *
+ *   The struct field hookpos, if not null, should be passed to
+ *   hook_commit_<name>() to finish installing the hook.
+ *
+ *   If hookpos is null, something went wrong, and the null-terminated string
+ *   err will provide a log message.
+ *
+ * static void hook_commit_<name>(void *hookpos, ftype target);
+ *
+ *   This finalises an inline hook to jump to the function pointed to by target.
+ *   hookpos should have been successfully passed to hook_inline_mprot() first,
+ *   otherwise the code will still be read only, likely causing a crash.
+ *
+ * static void unhook_<name>()
+ *
+ *   This undoes an inline hook, allowing the original code to function as it
+ *   did before without further interception.
+ */
+#define DEF_INLINE_HOOK(ftype, name) \
+	DEF_TRAMPOLINE(ftype, orig_##name) \
+	DEF_INLINE_HOOK_WITHTRAMPOLINE(ftype, name, orig_##name)
+
+/*
+ * Very similar to DEF_INLINE_HOOK, except does not allow calling into the
+ * original function while the hook is installed. The hook_prep_<name>() and
+ * hook_featsetup_<name>() functions have simpler return values as a result:
+ * hook_prep_<name>() cannot fail, stores the hook point internally and just
+ * returns it as a convenience for passing to hook_mprot(); and
+ * hook_featsetup_<name>() only returns an error code since the hook point is
+ * no longer required for hook_commit_<name>(). hook_commit_<name> also lacks
+ * the hookpos parameter as a result.
+ */
+#define DEF_INLINE_HOOK_NOTRAMPOLINE(ftype, name) \
+	static uchar *_hook_origpos_##name; \
+	static uchar _hook_origbytes_##name[5]; \
+	static inline void *hook_prep_##name(typeof(ftype) func) { \
+		_hook_origpos_##name = _hook_getpos((uchar *)func); \
+		*(int *)_hook_origbytes_##name = *(int *)_hook_origpos_##name; \
+		_hook_origbytes_##name[4] = ((uchar *)_hook_origpos_##name)[4]; \
+		return _hook_origpos_##name; \
+	} \
+	static inline void hook_commit_##name(typeof(ftype) target) { \
+		_hook_inline_commit(_hook_origpos_##name, (const uchar *)target); \
+	} \
+	static inline _HOOK_UNUSED void unhook_##name() { \
+		*(int *)_hook_origpos_##name = *(int *)_hook_origbytes_##name; \
+		_hook_origpos_##name[4] = _hook_origbytes_##name[4]; \
+	} \
+	static inline _HOOK_UNUSED int hook_featsetup_##name(typeof(ftype) f) { \
+		void *hookpos = hook_prep_##name(f); \
+		if_cold (!hook_inline_mprot(hookpos)) { \
+			errmsg_errorsys("couldn't hook %s function: %s", #name, \
+					"couldn't make hook point writable"); \
+			return FEAT_FAIL; \
+		} \
+		return 0; \
+	}
+
+/*
+ * Equivalent to DEF_VTABLE_HOOK(), but with a manually specified original
+ * function pointer which has to have been defined already.
+ *
+ * In most cases, DEF_VTABLE_HOOK() should be used instead. This exists mainly
+ * for space-saving union shenanigans which are done in a very small handful of
+ * places (and with highly dubious necessity).
+ */
+#define DEF_VTABLE_HOOK_WITHORIG(ftype, name, origp) \
+	static inline void hook_##name(void **vtable, ssize idx, \
+			typeof(ftype) target) { \
+		(origp) = (typeof(ftype))vtable[idx]; \
+		vtable[idx] = (void *)(target); \
+	} \
+	static inline void _HOOK_UNUSED unhook_##name(void **vtable, ssize idx) { \
+		vtable[idx] = (void *)(origp); \
+	}
+
+/*
+ * Creates a set of virtual table hooking functions for hooking a particular
+ * named function. ftype specifies a function pointer type, generally defined
+ * first as <name>_func as a matter of convention.
+ *
+ * Defines the following functions:
+ *
+ * static <rettype> orig_<name>(<args>);
+ *
+ *   As an implementation detail, this is really a function pointer, but exists
+ *   to allow calling the original function. It is also used to unhook the
+ *   function again later, so generally should not be modified/used to point to
+ *   something else.
+ *
+ * static void hook_<name>(void **vtable, ssize idx, ftype target);
+ *
+ *   Installs a virtual table hook by swapping the function at the given index.
+ *   The virtual table must have first been made writable with os_mprot().
+ *
+ * static void unhook_<name>(void **vtable, ssize idx);
+ *
+ *   Removes a virtual table hook by swapping back the original function
+ *   pointer. The index must be the same one that was used for hook_<name>().
+ */
+#define DEF_VTABLE_HOOK(ftype, name) \
+	static typeof(ftype) orig_##name; \
+	DEF_VTABLE_HOOK_WITHORIG(ftype, name, orig_##name)
+
+/*
+ * This is a small helper function to make a function's hook point - found by
+ * hook_prep_*() - writable, allowing an inline hook to be inserted with
+ * hook_commit_*().
  *
  * This is a low-level API and in most cases, if doing hooking from inside a
  * plugin feature, the hook_inline_featsetup() function should be used instead.
- * It automatically performs conventional error logging for both this step and
- * the prior hook_inline_prep() call documented above, and returns error codes
- * that are convenient for use in a feature INIT function.
- *
- * After using hook_inline_prep() to obtain the prologue and an appropriate
- * trampoline, call this to unlock the prologue, and then use
- * hook_inline_commit() to finalise the hook. In the event that multiple
- * functions need to be hooked at once, the commit calls can be batched up at
- * the end, removing the need for rollbacks since commitment is guaranteed to
- * succeed after all setup is complete.
- *
- * This function returns true on success, or false if a failure occurs at the
- * level of the OS memory protection API. os_lasterror() or errmsg_*sys() can be
- * used to report such an error.
  */
-bool hook_inline_mprot(void *func);
-
-/*
- * Finalises an inline hook set up using the hook_inline_prep() and
- * hook_inline_mprot() functions above (or the hook_inline_featsetup() helper
- * function below). prologue must be the prologue obtained via the
- * aforementioned functons and target must be the function that will be jumped
- * to in place of the original. It is very important that these functions are
- * ABI-compatible lest obvious bad things happen.
- *
- * The resulting hook can be removed later by calling unhook_inline().
- */
-void hook_inline_commit(void *restrict prologue, void *restrict target);
-
-/*
- * This is a helper specifically for use in feature INIT code. It doesn't make
- * much sense to call it elsewhere.
- *
- * Combines the functionality of the hook_inline_prep() and hook_inline_mprot()
- * functions above, logs to the console on error automatically in a conventional
- * format, and returns an error status that can be propagated straight from a
- * feature INIT function.
- *
- * func must point to the original function to be hooked, orig must point to
- * your trampoline pointer (which can in turn be used to call the original
- * function indirectly from within your hook or elsewhere), and fname should be
- * the name of the function for error logging purposes.
- *
- * If the err member of the returned struct is nonzero, simply return it as-is.
- * Otherwise, the prologue member will contain the prologue pointer to pass to
- * hook_inline_commit() to finalise the hook.
- */
-static inline struct hook_inline_featsetup_ret {
-	void *prologue;
-	int err;
-} hook_inline_featsetup(void *func, void **orig, const char *fname) {
-	void *trampoline;
-	struct hook_inline_prep_ret prep = hook_inline_prep(func, &trampoline);
-	if_cold (prep.err) {
-		errmsg_warnx("couldn't hook %s function: %s", fname, prep.err);
-		return (struct hook_inline_featsetup_ret){0, FEAT_INCOMPAT};
-	}
-	if_cold (!hook_inline_mprot(prep.prologue)) {
-		errmsg_errorsys("couldn't hook %s function: %s", fname,
-				"couldn't make prologue writable");
-		return (struct hook_inline_featsetup_ret){0, FEAT_FAIL};
-	}
-	*orig = trampoline;
-	return (struct hook_inline_featsetup_ret){prep.prologue, 0};
-}
-
-/*
- * Reverts a function to its original unhooked state. Takes the pointer to the
- * callable "original" function, i.e. the trampoline, NOT the initial function
- * pointer from before hooking.
- */
-void unhook_inline(void *orig);
+bool hook_inline_mprot(void *hookpos);
 
 #endif
 

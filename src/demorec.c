@@ -62,8 +62,9 @@ DEF_EVENT(DemoRecordStopped, int)
 struct CDemoRecorder;
 
 typedef void (*VCALLCONV SetSignonState_func)(struct CDemoRecorder *, int);
-static SetSignonState_func orig_SetSignonState;
-static void VCALLCONV hook_SetSignonState(struct CDemoRecorder *this, int state) {
+DEF_VTABLE_HOOK(SetSignonState_func, SetSignonState)
+static void VCALLCONV hookdest_SetSignonState(struct CDemoRecorder *this,
+		int state) {
 	// NEW fires once every map or save load, but only bumps number if demo file
 	// was left open (i.e. every transition). bump it unconditionally instead!
 	if (state == SIGNONSTATE_NEW) {
@@ -81,8 +82,8 @@ static void VCALLCONV hook_SetSignonState(struct CDemoRecorder *this, int state)
 }
 
 typedef void (*VCALLCONV StopRecording_func)(struct CDemoRecorder *);
-static StopRecording_func orig_StopRecording;
-static void VCALLCONV hook_StopRecording(struct CDemoRecorder *this) {
+DEF_VTABLE_HOOK(StopRecording_func, StopRecording)
+static void VCALLCONV hookdest_StopRecording(struct CDemoRecorder *this) {
 	bool wasrecording = *recording;
 	int lastnum = *demonum;
 	orig_StopRecording(this);
@@ -277,10 +278,8 @@ INIT {
 		errmsg_errorx("couldn't find demo basename variable");
 		return FEAT_INCOMPAT;
 	}
-	orig_SetSignonState = (SetSignonState_func)hook_vtable(vtable,
-			vtidx_SetSignonState, (void *)&hook_SetSignonState);
-	orig_StopRecording = (StopRecording_func)hook_vtable(vtable,
-			vtidx_StopRecording, (void *)&hook_StopRecording);
+	hook_SetSignonState(vtable, vtidx_SetSignonState, &hookdest_SetSignonState);
+	hook_StopRecording(vtable, vtidx_StopRecording, &hookdest_StopRecording);
 	hook_record_cb(cmd_record);
 	hook_stop_cb(cmd_stop);
 	return FEAT_OK;
@@ -291,8 +290,8 @@ END {
 	// avoid dumb edge case if someone somehow records and immediately unloads
 	if (*recording && *demonum == 0) *demonum = 1;
 	void **vtable = demorecorder->vtable;
-	unhook_vtable(vtable, vtidx_SetSignonState, (void *)orig_SetSignonState);
-	unhook_vtable(vtable, vtidx_StopRecording, (void *)orig_StopRecording);
+	unhook_SetSignonState(vtable, vtidx_SetSignonState);
+	unhook_StopRecording(vtable, vtidx_StopRecording);
 	unhook_record_cb(cmd_record);
 	unhook_stop_cb(cmd_stop);
 }

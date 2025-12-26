@@ -367,12 +367,12 @@ if (GAMETYPE_MATCHES(x)) { \
 }
 
 typedef void (*VCALLCONV VGuiConnect_func)(struct CEngineVGui *this);
-static VGuiConnect_func orig_VGuiConnect;
-static void VCALLCONV hook_VGuiConnect(struct CEngineVGui *this) {
+DEF_VTABLE_HOOK(VGuiConnect_func, VGuiConnect)
+static void VCALLCONV hookdest_VGuiConnect(struct CEngineVGui *this) {
 	orig_VGuiConnect(this);
 	do_featureinit();
 	fixes_apply();
-	unhook_vtable(vgui->vtable, vtidx_VGuiConnect, (void *)orig_VGuiConnect);
+	unhook_VGuiConnect(vgui->vtable, vtidx_VGuiConnect);
 }
 
 DECL_VFUNC_DYN(struct CEngineVGui, bool, VGuiIsInitialized)
@@ -413,8 +413,7 @@ static bool deferinit() {
 				"feature setup");
 		goto e;
 	}
-	orig_VGuiConnect = (VGuiConnect_func)hook_vtable(vgui->vtable,
-			vtidx_VGuiConnect, (void *)&hook_VGuiConnect);
+	hook_VGuiConnect(vgui->vtable, vtidx_VGuiConnect, &hookdest_VGuiConnect);
 	return true;
 
 e:	con_warn("!!! SOME FEATURES MAY BE BROKEN !!!\n");

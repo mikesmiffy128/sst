@@ -46,26 +46,23 @@ DEF_CVAR_MINMAX_UNREG(fov_desired,
 static struct con_var *real_fov_desired; // engine's if it has it, or ours
 
 typedef void (*VCALLCONV SetDefaultFOV_func)(void *, int);
-static SetDefaultFOV_func orig_SetDefaultFOV;
-static void VCALLCONV hook_SetDefaultFOV(void *this, int fov) {
+DEF_INLINE_HOOK(SetDefaultFOV_func, SetDefaultFOV)
+static void VCALLCONV hookdest_SetDefaultFOV(void *this, int fov) {
 	// disregard server-side clamped value and force our own value instead
 	orig_SetDefaultFOV(this, con_getvari(real_fov_desired));
 }
 
-static bool find_SetDefaultFOV(struct con_cmd *fov) {
-	const uchar *insns = (const uchar *)fov->cb;
+static SetDefaultFOV_func find_SetDefaultFOV(const uchar *insns) {
 	int callcnt = 0;
 	for (const uchar *p = insns; p - insns < 96;) {
 		// The fov command calls 4 functions, one of them virtual. Of the 3
 		// direct calls, SetDefaultFOV() is the third.
 		if (p[0] == X86_CALL && ++callcnt == 3) {
-			orig_SetDefaultFOV = (SetDefaultFOV_func)(p + 5 +
-					mem_loads32(p + 1));
-			return true;
+			return (SetDefaultFOV_func)(p + 5 + mem_loads32(p + 1));
 		}
 		NEXT_INSN(p, "SetDefaultFOV function");
 	}
-	return false;
+	return 0;
 }
 
 // replacement cvar needs to actively set player fov if in a map
@@ -98,16 +95,15 @@ INIT {
 		con_regvar(fov_desired);
 		real_fov_desired = fov_desired;
 	}
-	if_cold (!find_SetDefaultFOV(cmd_fov)) {
+	SetDefaultFOV_func SetDefaultFOV = find_SetDefaultFOV(cmd_fov->cb_insns);
+	if_cold (!SetDefaultFOV) {
 		errmsg_errorx("couldn't find SetDefaultFOV function");
 		return FEAT_INCOMPAT;
 	}
-
-	struct hook_inline_featsetup_ret h = hook_inline_featsetup(
-			(void *)orig_SetDefaultFOV, (void **)&orig_SetDefaultFOV,
-			"SetDefaultFov");
+	struct hook_featsetup_ret_SetDefaultFOV h =
+			hook_featsetup_SetDefaultFOV(SetDefaultFOV);
 	if_cold (h.err) return h.err;
-	hook_inline_commit(h.prologue, (void *)&hook_SetDefaultFOV);
+	hook_commit_SetDefaultFOV(h.hookpos, &hookdest_SetDefaultFOV);
 
 	// we might not be using our cvar but simpler to do this unconditionally
 	fov_desired->cb = &fovcb;
@@ -130,7 +126,7 @@ END {
 		void *player = ent_get(1); // also singleplayer only
 		if (player) orig_SetDefaultFOV(player, 75);
 	}
-	unhook_inline((void *)orig_SetDefaultFOV);
+	unhook_SetDefaultFOV();
 	cmd_fov->base.flags &= ~_CON_NE_DEVONLY;
 }
 

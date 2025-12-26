@@ -28,71 +28,61 @@
 // Almost certainly breaks in some weird cases. Oh well! Most of the time,
 // vtable hooking is more reliable, this is only for, uh, emergencies.
 
-#define SPACE 2048 // NOTE: MUST match SPACE in hook.S!
-extern uchar _hook_trampolinespc[]; // defined in hook.S
-static uchar *curtrampoline = _hook_trampolinespc;
-
-struct hook_inline_prep_ret hook_inline_prep(void *func, void **trampoline) {
-	uchar *p = func;
-	// dumb hack: if we hit some thunk that immediately jumps elsewhere (which
+uchar *_hook_getpos(uchar *func) {
+	// if we are hooking some thunk that immediately jumps elsewhere (which
 	// seems common for win32 API functions), hook the underlying thing instead.
-	// later: that dumb hack has now ended up having implications in the
-	// redesign of the entire API. :-)
-	while (*p == X86_JMPIW) p += mem_loads32(p + 1) + 5;
-	void *prologue = p;
+	// we return this back as the thing that actually ends up getting hooked
+	// after memory protections are changed.
+	while (*func == X86_JMPIW) func += mem_loads32(func + 1) + 5;
+	return func;
+}
+
+struct _hook_prep_ret _hook_prep(uchar *func, uchar *trampoline) {
+	func = _hook_getpos(func);
+	const uchar *p = func;
 	int len = 0;
 	for (;;) {
 		if_cold (p[len] == X86_CALL) {
-			return (struct hook_inline_prep_ret){
-				0, "can't trampoline call instructions"
+			return (struct _hook_prep_ret){
+				0, 0, "can't trampoline call instructions"
 			};
 		}
 		int ilen = x86_len(p + len);
 		if_cold (ilen == -1) {
-			return (struct hook_inline_prep_ret){
-				0, "unknown or invalid instruction"
+			return (struct _hook_prep_ret){
+				0, 0, "unknown or invalid instruction"
 			};
 		}
 		len += ilen;
 		if (len >= 5) {
-			// we should have statically made trampoline buffer size big enough
-			assume(curtrampoline - (uchar *)_hook_trampolinespc <
-					SPACE - len - 6);
-			*curtrampoline = len; // stuff length in there for quick unhooking
-			uchar *newtrampoline = curtrampoline + 1;
-			curtrampoline += len + 6;
-			memcpy(newtrampoline, p, len);
-			newtrampoline[len] = X86_JMPIW;
-			u32 diff = p - (newtrampoline + 5); // goto the continuation
-			memcpy(newtrampoline + len + 1, &diff, 4);
-			*trampoline = newtrampoline;
-			return (struct hook_inline_prep_ret){prologue, 0};
+			memcpy(trampoline, p, len);
+			trampoline[len] = X86_JMPIW;
+			s32 diff = p - (trampoline + 5); // goto the continuation
+			memcpy(trampoline + len + 1, &diff, 4);
+			return (struct _hook_prep_ret){func, len, 0};
 		}
 		if_cold (p[len] == X86_JMPIW) {
-			return (struct hook_inline_prep_ret){
-				0, "can't trampoline jump instructions"
+			return (struct _hook_prep_ret){
+				0, 0, "can't trampoline jump instructions"
 			};
 		}
 	}
 }
 
-bool hook_inline_mprot(void *prologue) {
-	return os_mprot(prologue, 5, PAGE_EXECUTE_READWRITE);
+bool hook_inline_mprot(void *hookpos) {
+	return os_mprot(hookpos, 5, PAGE_EXECUTE_READWRITE);
 }
 
-void hook_inline_commit(void *restrict prologue, void *restrict target) {
-	uchar *p = prologue;
-	u32 diff = (uchar *)target - (p + 5); // goto the hook target
-	p[0] = X86_JMPIW;
-	memcpy(p + 1, &diff, 4);
+void _hook_inline_commit(uchar *restrict hookpos, const uchar *restrict target) {
+	s32 diff = (uchar *)target - (hookpos + 5); // goto the hook target
+	hookpos[0] = X86_JMPIW;
+	memcpy(hookpos + 1, &diff, 4);
 }
 
-void unhook_inline(void *orig) {
-	uchar *p = orig;
-	int len = p[-1];
-	int off = mem_loads32(p + len + 1);
-	uchar *q = p + off + 5;
-	memcpy(q, p, 5); // XXX: not atomic atm! (does any of it even need to be?)
+void _unhook_inline(uchar *trampoline, int len) {
+	s32 off = mem_loads32(trampoline + len + 1);
+	uchar *orig = trampoline + off + 5;
+	memcpy(orig, trampoline, 5);
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

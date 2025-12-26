@@ -76,7 +76,6 @@ src="\
 	gameserver.c
 	hexcolour.c
 	hook.c
-	hook.S
 	hud.c
 	inputhud.c
 	kvsys.c

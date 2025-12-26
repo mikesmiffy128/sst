@@ -44,20 +44,21 @@ static inline int handleidx(ulong h) { return h & (1 << 11) - 1; }
 
 static struct CGameMovement *gmsv = 0, *gmcl = 0;
 typedef bool (*VCALLCONV CheckJumpButton_func)(struct CGameMovement *);
-static CheckJumpButton_func origsv, origcl;
+DEF_VTABLE_HOOK(CheckJumpButton_func, CheckJumpButton_sv)
+DEF_VTABLE_HOOK(CheckJumpButton_func, CheckJumpButton_cl)
 
-static bool VCALLCONV hooksv(struct CGameMovement *this) {
+static bool VCALLCONV hookdest_sv(struct CGameMovement *this) {
 	struct CMoveData *mv = get_mv(this);
 	int idx = handleidx(mv->playerhandle);
 	if (con_getvari(sst_autojump) && mv->firstrun && !justjumped[idx]) {
 		mv->oldbuttons &= ~IN_JUMP;
 	}
-	bool ret = origsv(this);
+	bool ret = orig_CheckJumpButton_sv(this);
 	if (mv->firstrun) justjumped[idx] = ret;
 	return ret;
 }
 
-static bool VCALLCONV hookcl(struct CGameMovement *this) {
+static bool VCALLCONV hookdest_cl(struct CGameMovement *this) {
 	struct CMoveData *mv = get_mv(this);
 	// FIXME: this will stutter in the rare case where justjumped is true.
 	// currently doing clientside justjumped handling makes multiplayer
@@ -65,13 +66,13 @@ static bool VCALLCONV hookcl(struct CGameMovement *this) {
 	// properly.
 	//if (con_getvari(sst_autojump) && !justjumped[0]) mv->oldbuttons &= ~IN_JUMP;
 	if (con_getvari(sst_autojump)) mv->oldbuttons &= ~IN_JUMP;
-	return justjumped[0] = origcl(this);
+	return justjumped[0] = orig_CheckJumpButton_cl(this);
 }
 
 static bool unprot(struct CGameMovement *gm) {
 	bool ret = os_mprot(gm->vtable + vtidx_CheckJumpButton, sizeof(void *),
 			PAGE_READWRITE);
-	if (!ret) errmsg_errorsys("couldn't make virtual table writable");
+	if_cold (!ret) errmsg_errorsys("couldn't make virtual table writable");
 	return ret;
 }
 
@@ -98,10 +99,8 @@ INIT {
 		return FEAT_FAIL;
 	}
 	if_cold (!unprot(gmcl)) return FEAT_FAIL;
-	origsv = (CheckJumpButton_func)hook_vtable(gmsv->vtable,
-			vtidx_CheckJumpButton, (void *)&hooksv);
-	origcl = (CheckJumpButton_func)hook_vtable(gmcl->vtable,
-			vtidx_CheckJumpButton, (void *)&hookcl);
+	hook_CheckJumpButton_sv(gmsv->vtable, vtidx_CheckJumpButton, &hookdest_sv);
+	hook_CheckJumpButton_cl(gmcl->vtable, vtidx_CheckJumpButton, &hookdest_cl);
 
 	if (GAMETYPE_MATCHES(Portal1)) {
 		// this is a stupid, stupid policy that doesn't make any sense, but I've
@@ -118,8 +117,8 @@ INIT {
 }
 
 END {
-	unhook_vtable(gmsv->vtable, vtidx_CheckJumpButton, (void *)origsv);
-	unhook_vtable(gmcl->vtable, vtidx_CheckJumpButton, (void *)origcl);
+	unhook_CheckJumpButton_sv(gmsv->vtable, vtidx_CheckJumpButton);
+	unhook_CheckJumpButton_cl(gmcl->vtable, vtidx_CheckJumpButton);
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

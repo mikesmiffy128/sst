@@ -17,6 +17,7 @@
  */
 
 #include "accessor.h"
+#include "asm.h"
 #include "chunklets/x86.h"
 #include "con_.h"
 #include "errmsg.h"
@@ -46,127 +47,148 @@ DEF_ACCESSORS(struct CDemoFile, int, CDemoFile_protocol)
 // 1022+ demos on any later version of the game.
 
 typedef int (*GetHostVersion_func)();
-static GetHostVersion_func orig_GetHostVersion;
+DEF_INLINE_HOOK_NOTRAMPOLINE(GetHostVersion_func, GetHostVersion)
 
-typedef void (*VCALLCONV ReadDemoHeader_func)(void *);
-static ReadDemoHeader_func orig_ReadDemoHeader;
+typedef void (*VCALLCONV ReadDemoHeader_func)(struct CDemoFile *);
+DEF_INLINE_HOOK(ReadDemoHeader_func, ReadDemoHeader)
 
-static inline bool find_ReadDemoHeader(const uchar *insns) {
+int _l4d1democompat_demover; // extern for asm
+static int gameversion;
+
+static int hookdest_GetHostVersion() {
+	// If the demo version is 1022 or later, and not newer than the version we
+	// are currently using, then we spoof the game version to let the demo play.
+	if (_l4d1democompat_demover >= 1022 &&
+			_l4d1democompat_demover <= gameversion) {
+		return _l4d1democompat_demover;
+	}
+	return gameversion;
+}
+
+int *_l4d1democompat_thisproto; // extern for asm
+static void VCALLCONV hookdest_ReadDemoHeader(struct CDemoFile *this) {
+	// The mid-function hook needs to get the protocol from `this`, but by that
+	// point we won't be able to rely on the ECX register and/or any particular
+	// stack spill layout. So... offset the pointer and stick it in a global.
+	_l4d1democompat_thisproto = getptr_CDemoFile_protocol(this);
+	orig_ReadDemoHeader(this);
+}
+
+// should this be in its own .S file? meh, leaving it here for now.
+__asm (
+	".pushsection " ASM_RWX_SECTION_STR ", \"" ASM_RWX_SECTION_FLAGS "\"\n"
+	".globl " ASM_MANGLE_STR("_l4d1democompat_midpoint_hook") "\n"
+	ASM_MANGLE_STR("_l4d1democompat_midpoint_hook") ":\n"
+	// like in con_.S, we have to assemble stuff manually here, annoyingly.
+	// push eax
+	".byte 0x50\n"
+	// mov eax, [_l4d1democompat_thisproto]
+	".byte 0xA1\n"
+	".long " ASM_MANGLE_STR("_l4d1democompat_thisproto") "\n"
+	// mov eax, [eax]
+	".byte 0x8B\n"
+	".byte 0x00\n"
+	// mov [_l4d1democompat_demover], eax
+	".byte 0xA3\n"
+	".long " ASM_MANGLE_STR("_l4d1democompat_demover") "\n"
+	// pop eax
+	".byte 0x58\n"
+	// and then we leave trampoline space immediately after; we can jump
+	// straight back from here to the rest of the function!
+	".globl " ASM_MANGLE_STR("_l4d1democompat_midpoint_trampoline") "\n"
+	ASM_MANGLE_STR("_l4d1democompat_midpoint_trampoline") ":\n"
+	".space 24\n"
+	".popsection\n"
+);
+// XXX: dummy function prototype. not to be called directly, just to pass into
+// the inline hooking machinery.
+// maybe one day we'll come up with a marginally cleaner way of doing these
+// midpoint hooks, although there's not many uses currently so no big deal.
+int _l4d1democompat_midpoint_hook();
+int _l4d1democompat_midpoint_trampoline();
+DEF_INLINE_HOOK_WITHTRAMPOLINE(int (*)(), ReadDemoHeader_midpoint,
+		_l4d1democompat_midpoint_trampoline)
+
+static inline ReadDemoHeader_func find_ReadDemoHeader(const uchar *insns) {
 	// Find the call to ReadDemoHeader in the listdemo callback
 	for (const uchar *p = insns; p - insns < 192;) {
 		if (p[0] == X86_LEA && p[1] == X86_MODRM(2, 1, 4) && p[2] == 0x24 &&
 				p[7] == X86_CALL && p[12] == X86_LEA &&
 				p[13] == X86_MODRM(2, 1, 4) && p[14] == 0x24) {
-			orig_ReadDemoHeader =
-					(ReadDemoHeader_func)(p + 12 + mem_loads32(p + 8));
-			return true;
+			return (ReadDemoHeader_func)(p + 12 + mem_loads32(p + 8));
 		}
 		NEXT_INSN(p, "ReadDemoHeader");
 	}
-	return false;
+	return 0;
 }
 
-static void *ReadDemoHeader_midpoint;
-
-static inline bool find_midpoint() {
-	uchar *insns = (uchar *)orig_ReadDemoHeader;
+static inline void *find_midpoint(ReadDemoHeader_func ReadDemoHeader) {
+	uchar *insns = (uchar *)ReadDemoHeader;
 	for (uchar *p = insns; p - insns < 128;) {
 		if (p[0] == X86_PUSHIW && p[5] == X86_PUSHEBX && p[6] == X86_CALL &&
 				!memcmp(mem_loadptr(p + 1), "HL2DEMO", 7)) {
-			ReadDemoHeader_midpoint = (p + 11);
-			return true;
+			return p + 11;
 		}
 		NEXT_INSN(p, "ReadDemoHeader hook midpoint");
 	}
-	return false;
+	return 0;
 }
 
-static inline bool find_GetHostVersion() {
-	uchar *insns = (uchar *)orig_ReadDemoHeader;
+static inline GetHostVersion_func find_GetHostVersion(
+		ReadDemoHeader_func ReadDemoHeader) {
+	uchar *insns = (uchar *)ReadDemoHeader;
 	int jzcnt = 0;
 	for (uchar *p = insns; p - insns < 192;) {
 		// GetHostVersion() is called right after the third JZ insn in
 		// ReadDemoHeader()
 		if (p[0] == X86_JZ && ++jzcnt == 3) {
-			orig_GetHostVersion =
-					(GetHostVersion_func)(p + 7 + mem_loads32(p + 3));
-			return true;
+			return (GetHostVersion_func)(p + 7 + mem_loads32(p + 3));
 		}
 		NEXT_INSN(p, "GetHostVersion");
 	}
-	return false;
-}
-
-static int demoversion, gameversion;
-
-static int hook_GetHostVersion() {
-	// If the demo version is 1022 or later, and not newer than the version we
-	// are currently using, then we spoof the game version to let the demo play.
-	if (demoversion >= 1022 && demoversion <= gameversion) return demoversion;
-	return gameversion;
-}
-
-static int *this_protocol;
-static void VCALLCONV hook_ReadDemoHeader(struct CDemoFile *this) {
-	// The mid-function hook needs to get the protocol from `this`, but by that
-	// point we won't be able to rely on the ECX register and/or any particular
-	// stack spill layout. So... offset the pointer and stick it in a global.
-	this_protocol = getptr_CDemoFile_protocol(this);
-	orig_ReadDemoHeader(this);
-}
-
-static asm_only int hook_midpoint() {
-	__asm volatile (
-		"push eax\n"
-		"mov eax, %1\n"
-		"mov eax, [eax]\n" // dereference this_protocol
-		"mov %0, eax\n" // store in demoversion
-		"pop eax\n"
-		"jmp dword ptr %2\n"
-		: "=m" (demoversion)
-		: "m" (this_protocol), "m" (ReadDemoHeader_midpoint)
-	);
+	return 0;
 }
 
 INIT {
 	struct con_cmd *cmd_listdemo = con_findcmd("listdemo");
 	if_cold (!cmd_listdemo) return FEAT_INCOMPAT; // should never happen!
-	if_cold (!find_ReadDemoHeader(cmd_listdemo->cb_insns)) {
+	ReadDemoHeader_func ReadDemoHeader = find_ReadDemoHeader(
+			cmd_listdemo->cb_insns);
+	if_cold (!ReadDemoHeader) {
 		errmsg_errorx("couldn't find ReadDemoHeader function");
 		return FEAT_INCOMPAT;
 	}
-	if_cold (!find_midpoint()) {
+	void *midpoint = find_midpoint(ReadDemoHeader);
+	if_cold (!midpoint) {
 		errmsg_errorx("couldn't find mid-point for ReadDemoHeader hook");
 		return FEAT_INCOMPAT;
 	}
-	if_cold (!find_GetHostVersion()) {
+	GetHostVersion_func GetHostVersion = find_GetHostVersion(ReadDemoHeader);
+	if_cold (!GetHostVersion) {
 		errmsg_errorx("couldn't find GetHostVersion function");
 		return FEAT_INCOMPAT;
 	}
-	gameversion = orig_GetHostVersion();
-	struct hook_inline_featsetup_ret h1 = hook_inline_featsetup(
-			(void *)orig_GetHostVersion, (void **)&orig_GetHostVersion,
-			"GetHostVersion");
-	if_cold (h1.err) return h1.err;
-	struct hook_inline_featsetup_ret h2 = hook_inline_featsetup(
-			(void *)orig_ReadDemoHeader, (void **)&orig_ReadDemoHeader,
-			"ReadDemoHeader");
+	gameversion = GetHostVersion();
+	int err = hook_featsetup_GetHostVersion(GetHostVersion);
+	if_cold (err) return err;
+	struct hook_featsetup_ret_ReadDemoHeader h2 =
+			hook_featsetup_ReadDemoHeader(ReadDemoHeader);
 	if_cold (h2.err) return h2.err;
-	struct hook_inline_featsetup_ret h3 = hook_inline_featsetup(
-			ReadDemoHeader_midpoint, &ReadDemoHeader_midpoint,
-			"ReadDemoHeader midpoint");
+	struct hook_featsetup_ret_ReadDemoHeader_midpoint h3 =
+			hook_featsetup_ReadDemoHeader_midpoint((int (*)())midpoint);
 	if_cold (h3.err) return h3.err;
-	hook_inline_commit(h1.prologue, (void *)&hook_GetHostVersion);
-	hook_inline_commit(h2.prologue, (void *)&hook_ReadDemoHeader);
-	hook_inline_commit(h3.prologue, (void *)&hook_midpoint);
+	hook_commit_GetHostVersion(&hookdest_GetHostVersion);
+	hook_commit_ReadDemoHeader(h2.hookpos, &hookdest_ReadDemoHeader);
+	hook_commit_ReadDemoHeader_midpoint(h3.hookpos,
+			&_l4d1democompat_midpoint_hook);
 	return FEAT_OK;
 }
 
 END {
 	if_cold (sst_userunloaded) {
-		unhook_inline((void *)ReadDemoHeader_midpoint);
-		unhook_inline((void *)orig_ReadDemoHeader);
-		unhook_inline((void *)orig_GetHostVersion);
+		unhook_ReadDemoHeader_midpoint();
+		unhook_ReadDemoHeader();
+		unhook_GetHostVersion();
 	}
 }
 

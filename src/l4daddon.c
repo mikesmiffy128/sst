@@ -61,9 +61,9 @@ DECL_VFUNC_DYN(struct VEngineClient, void, ManageAddonsForActiveSession)
 // don't have to worry about that since it's cdecl (and we don't use it
 // ourselves, just pass it straight through).
 typedef void (*FS_MAFAS_func)(bool, char *, char *, bool);
-static FS_MAFAS_func orig_FS_MAFAS;
-static void hook_FS_MAFAS(bool disallowaddons, char *mission, char *gamemode,
-		bool ismutation) {
+DEF_INLINE_HOOK(FS_MAFAS_func, FS_MAFAS)
+static void hookdest_FS_MAFAS(bool disallowaddons, char *mission,
+		char *gamemode, bool ismutation) {
 	// At the start of a map, particularly in 2204+ in campaigns with L4D1
 	// commons, there can be a ton of hitches due to the game trying to
 	// load uncached materials as models are drawn. This FS_MAFAS function is
@@ -139,21 +139,20 @@ static void hook_FS_MAFAS(bool disallowaddons, char *mission, char *gamemode,
 	orig_FS_MAFAS(disallowaddons, mission, gamemode, ismutation);
 }
 
-static inline bool find_FS_MAFAS() {
+static inline FS_MAFAS_func find_FS_MAFAS() {
 #ifdef _WIN32
 	const uchar *insns = engclient->vtable[vtidx_ManageAddonsForActiveSession];
 	// CEngineClient::ManageAddonsForActiveSession just calls FS_MAFAS
 	for (const uchar *p = insns; p - insns < 32;) {
 		if (p[0] == X86_CALL) {
-			orig_FS_MAFAS = (FS_MAFAS_func)(p + 5 + mem_loads32(p + 1));
-			return true;
+			return (FS_MAFAS_func)(p + 5 + mem_loads32(p + 1));
 		}
 		NEXT_INSN(p, "FileSystem_ManageAddonsForActiveSession function");
 	}
 #else
 #warning: TODO(linux): asm search stuff
 #endif
-	return false;
+	return 0;
 }
 
 static inline bool find_addonvecsz(const uchar *insns) {
@@ -176,8 +175,7 @@ static inline bool find_addonvecsz(const uchar *insns) {
 static void *broken_addon_check = 0;
 static uchar orig_broken_addon_check_bytes[13];
 
-static inline void try_fix_broken_addon_check() {
-	uchar *insns = (uchar *)orig_FS_MAFAS;
+static inline void try_fix_broken_addon_check(uchar *insns) {
 	for (uchar *p = insns; p - insns < 32;) {
 		if (p[0] == X86_ALUMI8S && p[1] == X86_MODRM(0, 7, 5) &&
 				mem_loadptr(p + 2) == addonvecsz) {
@@ -227,23 +225,22 @@ INIT {
 		errmsg_errorx("couldn't find pointer to addon list");
 		return FEAT_INCOMPAT;
 	}
-	if_cold (!find_FS_MAFAS()) {
+	FS_MAFAS_func FS_MAFAS = find_FS_MAFAS();
+	if_cold (!FS_MAFAS) {
 		errmsg_errorx("couldn't find FileSystem_ManageAddonsForActiveSession");
 		return FEAT_INCOMPAT;
 	}
-	try_fix_broken_addon_check();
-	struct hook_inline_featsetup_ret h = hook_inline_featsetup(
-			(void *)orig_FS_MAFAS, (void **)&orig_FS_MAFAS,
-			"FileSystem_ManageAddonsForActiveSession");
+	try_fix_broken_addon_check((uchar *)FS_MAFAS);
+	struct hook_featsetup_ret_FS_MAFAS h = hook_featsetup_FS_MAFAS(FS_MAFAS);
 	if_cold (h.err) return h.err;
-	hook_inline_commit(h.prologue, (void *)&hook_FS_MAFAS);
+	hook_commit_FS_MAFAS(h.hookpos, &hookdest_FS_MAFAS);
 	return FEAT_OK;
 }
 
 END {
 	// TODO(opt): can this unhook be made conditional too? bill suggested it
 	// before but I don't know. maybe Hayden knows - mike
-	unhook_inline((void *)orig_FS_MAFAS);
+	unhook_FS_MAFAS();
 	if_cold (sst_userunloaded) {
 		if (broken_addon_check) {
 			memcpy(broken_addon_check, orig_broken_addon_check_bytes, 13);

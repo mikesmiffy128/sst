@@ -17,8 +17,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdlib.h>
-
 #include "chunklets/x86.h"
 #include "engineapi.h"
 #include "errmsg.h"
@@ -42,12 +40,12 @@ REQUIRE_GAMEDATA(vtidx_Frame)
 REQUIRE_GAMEDATA(vtidx_GetRealTime)
 REQUIRE_GAMEDATA(vtidx_HostFrameTime)
 
-typedef void (*Host_AccumulateTime_func)(float dt);
-static Host_AccumulateTime_func orig_Host_AccumulateTime;
 static float *realtime, *host_frametime;
-
 static float skiptime = 0.0, skiprate;
-static void hook_Host_AccumulateTime(float dt) {
+
+typedef void (*Host_AccumulateTime_func)(float dt);
+DEF_INLINE_HOOK(Host_AccumulateTime_func, Host_AccumulateTime)
+static void hookdest_Host_AccumulateTime(float dt) {
 	float skipinc = skiprate * dt;
 	if_hot (!skiptime) {
 		orig_Host_AccumulateTime(dt);
@@ -127,7 +125,8 @@ static inline void *find_FrameUpdate(void *HostState_Frame) {
 	return 0;
 }
 
-static inline bool find_Host_AccumulateTime(void *_Host_RunFrame) {
+static inline Host_AccumulateTime_func find_Host_AccumulateTime(
+		void *_Host_RunFrame) {
 #ifdef _WIN32
 	const uchar *insns = (const uchar *)_Host_RunFrame;
 	for (const uchar *p = insns; p - insns < 384;) {
@@ -135,17 +134,16 @@ static inline bool find_Host_AccumulateTime(void *_Host_RunFrame) {
 			NEXT_INSN(p, "Host_AccumulateTime");
 			while (p - insns < 384) {
 				if (p[0] == X86_CALL) {
-					orig_Host_AccumulateTime = (Host_AccumulateTime_func)(
+					return (Host_AccumulateTime_func)(
 							p + 5 + mem_loads32(p + 1));
-					return true;
 				}
 				NEXT_INSN(p, "Host_AccumulateTime");
 			}
-			return false;
+			return 0;
 		}
 		NEXT_INSN(p, "Host_AccumulateTime");
 	}
-	return false;
+	return 0;
 #else
 #warning TODO(linux): yet another assembly thing
 #endif
@@ -232,21 +230,22 @@ INIT {
 		errmsg_errorx("couldn't find _Host_RunFrame function");
 		return FEAT_INCOMPAT;
 	}
-	if_cold (!find_Host_AccumulateTime(func)) {
+	Host_AccumulateTime_func Host_AccumulateTime =
+			find_Host_AccumulateTime(func);
+	if_cold (!Host_AccumulateTime) {
 		errmsg_errorx("couldn't find Host_AccumulateTime function");
 		return FEAT_INCOMPAT;
 	}
-	struct hook_inline_featsetup_ret h = hook_inline_featsetup(
-			(void *)orig_Host_AccumulateTime, (void **)&orig_Host_AccumulateTime,
-			"Host_AccumulateTime");
+	struct hook_featsetup_ret_Host_AccumulateTime h =
+			hook_featsetup_Host_AccumulateTime(Host_AccumulateTime);
 	if_cold (h.err) return h.err;
-	hook_inline_commit(h.prologue, (void *)&hook_Host_AccumulateTime);
+	hook_commit_Host_AccumulateTime(h.hookpos, &hookdest_Host_AccumulateTime);
 	return FEAT_OK;
 }
 
 END {
 	if_hot (!sst_userunloaded) return;
-	unhook_inline((void *)orig_Host_AccumulateTime);
+	unhook_Host_AccumulateTime();
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

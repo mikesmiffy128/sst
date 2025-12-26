@@ -90,7 +90,6 @@ setlocal DisableDelayedExpansion
 :+ gameserver.c
 :+ hexcolour.c
 :+ hook.c
-:+ hook.S
 :+ hud.c
 :+ inputhud.c
 :+ kvsys.c
@@ -109,7 +108,10 @@ setlocal DisableDelayedExpansion
 :+ trace.c
 :+ xhair.c
 :: just tack these on, whatever (repeated condition because of expansion memes)
-if "%dbg%"=="1" set src=%src% src/dbg.c
+if "%dbg%"=="1" (
+	set src=%src% src/dbg.c
+	set metasrc=%metasrc% src/dbg.c
+)
 if "%dbg%"=="1" set src=%src% src/udis86.c
 if "%dbg%"=="0" set src=%src% src/wincrt.c
 

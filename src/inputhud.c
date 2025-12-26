@@ -101,10 +101,10 @@ struct CUserCmd {
 DECL_VFUNC_DYN(struct CInput, struct CUserCmd *, GetUserCmd, int)
 DECL_VFUNC_DYN(struct CInput, struct CUserCmd *, GetUserCmd_l4dbased, int, int)
 
-typedef void (*VCALLCONV CreateMove_func)(void *, int, float, bool);
-static CreateMove_func orig_CreateMove;
-static void VCALLCONV hook_CreateMove(void *this, int seq, float ft,
-		bool active) {
+typedef void (*VCALLCONV CreateMove_func)(struct CInput *, int, float, bool);
+DEF_VTABLE_HOOK(CreateMove_func, CreateMove)
+static void VCALLCONV hookdest_CreateMove(struct CInput *this, int seq,
+		float ft, bool active) {
 	orig_CreateMove(this, seq, ft, active);
 	struct CUserCmd *cmd = GetUserCmd(this, seq);
 	// trick: to ensure every input (including scroll wheel) is displayed for at
@@ -114,17 +114,17 @@ static void VCALLCONV hook_CreateMove(void *this, int seq, float ft,
 	if (cmd) { heldbuttons = cmd->buttons; tappedbuttons |= cmd->buttons; }
 }
 // basically a dupe, but calling the other version of GetUserCmd
-static void VCALLCONV hook_CreateMove_l4dbased(struct CInput *this, int seq,
+static void VCALLCONV hookdest_CreateMove_l4dbased(struct CInput *this, int seq,
 		float ft, bool active) {
 	orig_CreateMove(this, seq, ft, active);
 	struct CUserCmd *cmd = GetUserCmd_l4dbased(this, -1, seq);
 	if (cmd) { heldbuttons = cmd->buttons; tappedbuttons |= cmd->buttons; }
 }
 
-typedef void (*VCALLCONV DecodeUserCmdFromBuffer_func)(struct CInput *,
-		void *, int);
-typedef void (*VCALLCONV DecodeUserCmdFromBuffer_l4dbased_func)(struct CInput *,
-		int, void *, int);
+typedef void (*VCALLCONV DecodeUserCmdFromBuffer_func)(
+		struct CInput *, void *, int);
+typedef void (*VCALLCONV DecodeUserCmdFromBuffer_l4dbased_func)(
+		struct CInput *, int, void *, int);
 static union {
 	DecodeUserCmdFromBuffer_func prel4d;
 	DecodeUserCmdFromBuffer_l4dbased_func l4dbased;
@@ -132,14 +132,19 @@ static union {
 #define orig_DecodeUserCmdFromBuffer _orig_DecodeUserCmdFromBuffer.prel4d
 #define orig_DecodeUserCmdFromBuffer_l4dbased \
 		_orig_DecodeUserCmdFromBuffer.l4dbased
-static void VCALLCONV hook_DecodeUserCmdFromBuffer(struct CInput *this,
+
+DEF_VTABLE_HOOK_WITHORIG(DecodeUserCmdFromBuffer_func,
+		DecodeUserCmdFromBuffer, orig_DecodeUserCmdFromBuffer)
+DEF_VTABLE_HOOK_WITHORIG(DecodeUserCmdFromBuffer_l4dbased_func,
+		DecodeUserCmdFromBuffer_l4dbased, orig_DecodeUserCmdFromBuffer_l4dbased)
+static void VCALLCONV hookdest_DecodeUserCmdFromBuffer(struct CInput *this,
 		void *reader, int seq) {
 	orig_DecodeUserCmdFromBuffer(this, reader, seq);
 	struct CUserCmd *cmd = GetUserCmd(this, seq);
 	if (cmd) { heldbuttons = cmd->buttons; tappedbuttons |= cmd->buttons; }
 }
-static void VCALLCONV hook_DecodeUserCmdFromBuffer_l4dbased(struct CInput *this,
-		int slot, void *reader, int seq) {
+static void VCALLCONV hookdest_DecodeUserCmdFromBuffer_l4dbased(
+		struct CInput *this, int slot, void *reader, int seq) {
 	orig_DecodeUserCmdFromBuffer_l4dbased(this, slot, reader, seq);
 	struct CUserCmd *cmd = GetUserCmd_l4dbased(this, slot, seq);
 	if (cmd) { heldbuttons = cmd->buttons; tappedbuttons |= cmd->buttons; }
@@ -417,18 +422,15 @@ INIT {
 		return FEAT_FAIL;
 	}
 	if (GAMETYPE_MATCHES(L4Dbased)) {
-		orig_CreateMove = (CreateMove_func)hook_vtable(vtable, vtidx_CreateMove,
-				(void *)&hook_CreateMove_l4dbased);
-		orig_DecodeUserCmdFromBuffer = (DecodeUserCmdFromBuffer_func)hook_vtable(
+		hook_CreateMove(vtable, vtidx_CreateMove, &hookdest_CreateMove_l4dbased);
+		hook_DecodeUserCmdFromBuffer_l4dbased(
 				vtable, vtidx_DecodeUserCmdFromBuffer,
-				(void *)&hook_DecodeUserCmdFromBuffer_l4dbased);
+				&hookdest_DecodeUserCmdFromBuffer_l4dbased);
 	}
 	else {
-		orig_CreateMove = (CreateMove_func)hook_vtable(vtable, vtidx_CreateMove,
-				(void *)&hook_CreateMove);
-		orig_DecodeUserCmdFromBuffer = (DecodeUserCmdFromBuffer_func)hook_vtable(
-				vtable, vtidx_DecodeUserCmdFromBuffer,
-				(void *)&hook_DecodeUserCmdFromBuffer);
+		hook_CreateMove(vtable, vtidx_CreateMove, &hookdest_CreateMove);
+		hook_DecodeUserCmdFromBuffer(vtable, vtidx_DecodeUserCmdFromBuffer,
+				&hookdest_DecodeUserCmdFromBuffer);
 	}
 
 	if (GAMETYPE_MATCHES(Portal1)) layout = &layout_portal1.l;
@@ -460,11 +462,10 @@ INIT {
 }
 
 END {
-	unhook_vtable(input->vtable, vtidx_CreateMove, (void *)orig_CreateMove);
+	unhook_CreateMove(input->vtable, vtidx_CreateMove);
 	// N.B.: since the orig_ function is in a union, we don't have to worry
 	// about which version we're unhooking
-	unhook_vtable(input->vtable, vtidx_DecodeUserCmdFromBuffer,
-			(void *)orig_DecodeUserCmdFromBuffer);
+	unhook_DecodeUserCmdFromBuffer(input->vtable, vtidx_DecodeUserCmdFromBuffer);
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80 fdm=marker

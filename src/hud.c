@@ -96,8 +96,8 @@ static struct IPanel *toolspanel;
 static struct IScheme *scheme;
 
 typedef void (*VCALLCONV Paint_func)(struct IPanel *);
-static Paint_func orig_Paint;
-void VCALLCONV hook_Paint(struct IPanel *this) {
+DEF_VTABLE_HOOK(Paint_func, Paint)
+void VCALLCONV hookdest_Paint(struct IPanel *this) {
 	if (this == toolspanel) {
 		int width, height;
 		hud_screensize(&width, &height);
@@ -188,8 +188,7 @@ INIT {
 		errmsg_errorsys("couldn't make virtual table writable");
 		return FEAT_FAIL;
 	}
-	orig_Paint = (Paint_func)hook_vtable(toolspanel->vtable, vtidx_Paint,
-			(void *)&hook_Paint);
+	hook_Paint(toolspanel->vtable, vtidx_Paint, &hookdest_Paint);
 	SetPaintEnabled(toolspanel, true);
 	// 1 is the default, first loaded scheme. should always be sourcescheme.res
 	scheme = GetIScheme(schememgr, (struct handlewrap){1});
@@ -199,7 +198,7 @@ INIT {
 END {
 	// don't unhook toolspanel if exiting: it's already long gone!
 	if_cold (sst_userunloaded) {
-		unhook_vtable(toolspanel->vtable, vtidx_Paint, (void *)orig_Paint);
+		unhook_Paint(toolspanel->vtable, vtidx_Paint);
 		SetPaintEnabled(toolspanel, false);
 	}
 }

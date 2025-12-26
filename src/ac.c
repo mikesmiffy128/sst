@@ -154,7 +154,7 @@ static ulong __stdcall inhookthrmain(void *param) {
 }
 
 static ssize orig_wndproc;
-static ssize __stdcall hook_wndproc(void *wnd, uint msg, usize wp, ssize lp) {
+static ssize __stdcall hookdest_wndproc(void *wnd, uint msg, usize wp, ssize lp) {
 	if_cold (msg == WM_COPYDATA && enabled) {
 		return DefWindowProcW(wnd, msg, wp, lp);
 	}
@@ -171,7 +171,7 @@ static inline bool win32_init() {
 		return false;
 	}
 	orig_wndproc = SetWindowLongPtrA(gamewin, GWLP_WNDPROC,
-			(ssize)&hook_wndproc);
+			(ssize)&hookdest_wndproc);
 	if_cold (!orig_wndproc) { // XXX: assuming 0 won't be legitimately returned
 		errmsg_errorsys("failed to attach message handler");
 		return false;
@@ -288,8 +288,8 @@ DECL_VFUNC_DYN(struct IGameUIFuncs, void, GetDesktopResolution, int *, int *)
 DECL_VFUNC_DYN(struct IGame, void, DispatchAllStoredGameMessages)
 
 typedef void (*Key_Event_func)(struct inputevent *);
-static Key_Event_func orig_Key_Event;
-static void hook_Key_Event(struct inputevent *ev) {
+DEF_INLINE_HOOK(Key_Event_func, Key_Event)
+static void hookdest_Key_Event(struct inputevent *ev) {
 	//const char *desc[] = {"DOWN", "UP", "DBL"};
 	//const char desclen[] = {4, 2, 3};
 	switch (ev->type) {
@@ -309,7 +309,7 @@ static void hook_Key_Event(struct inputevent *ev) {
 	orig_Key_Event(ev);
 }
 
-static bool find_Key_Event() {
+static Key_Event_func find_Key_Event() {
 #ifdef _WIN32
 	// Crazy pointer-chasing path to get to DispatchInputEvent:
 	// IGameUIFuncs interface
@@ -321,7 +321,7 @@ static bool find_Key_Event() {
 			"VENGINE_GAMEUIFUNCS_VERSION005", 0);
 	if_cold (!gameuifuncs) {
 		errmsg_errorx("couldn't get engine game UI interface");
-		return false;
+		return 0;
 	}
 	struct IGame *cgame;
 	const uchar *insns = gameuifuncs->vtable[vtidx_GetDesktopResolution];
@@ -334,36 +334,37 @@ static bool find_Key_Event() {
 		NEXT_INSN(p, "CGame instance pointer");
 	}
 	errmsg_errorx("couldn't find pointer to CGame instance");
-	return false;
+	return 0;
 
 ok:	insns = cgame->vtable[vtidx_DispatchAllStoredGameMessages];
+	Key_Event_func Key_Event;
 	for (const uchar *p = insns; p - insns < 128;) {
 		if (p[0] == X86_CALL) {
-			orig_Key_Event = (Key_Event_func)(p + 5 + mem_loads32(p + 1));
+			Key_Event = (Key_Event_func)(p + 5 + mem_loads32(p + 1));
 			goto ok2;
 		}
 		NEXT_INSN(p, "DispatchInputEvent/Key_Event function");
 	}
 	errmsg_errorx("couldn't find DispatchInputEvent/Key_Event function");
-	return false;
+	return 0;
 
-ok2:insns = (const uchar *)orig_Key_Event;
+ok2:insns = (const uchar *)Key_Event;
 	// Depending on compiler inlining decisions, the function we just found can
 	// be either DispatchInputEvent or Key_Event. If another CALL is found at
 	// the start of this function, that means that we actually found
 	// DispatchInputEvent and this CALL points to Key_Event.
 	for (const uchar *p = insns; p - insns < 32;) {
 		if (p[0] == X86_CALL) {
-			orig_Key_Event = (Key_Event_func)(p + 5 + mem_loads32(p + 1));
+			Key_Event = (Key_Event_func)(p + 5 + mem_loads32(p + 1));
 			break;
 		}
 		NEXT_INSN(p, "Key_Event function");
 	}
-	return true;
+	return Key_Event;
 #else
 #warning TODO(linux): more find-y stuff
 #endif
-	return false;
+	return 0;
 }
 
 HANDLE_EVENT(AllowPluginLoading, bool loading) {
@@ -383,9 +384,9 @@ HANDLE_EVENT(PluginUnloaded) {
 }
 
 INIT {
-	if_cold (!find_Key_Event()) return FEAT_INCOMPAT;
-	struct hook_inline_featsetup_ret h = hook_inline_featsetup(
-			(void *)orig_Key_Event, (void **)&orig_Key_Event, "Key_Event");
+	Key_Event_func Key_Event = find_Key_Event();
+	if_cold (!Key_Event) return FEAT_INCOMPAT;
+	struct hook_featsetup_ret_Key_Event h = hook_featsetup_Key_Event(Key_Event);
 	if_cold (h.err) return h.err;
 
 #ifdef _WIN32
@@ -424,7 +425,7 @@ INIT {
 		// run of bytes
 		memcpy(keybox->lbpub, lbpubkeys[LBPK_L4D], 32);
 	}
-	hook_inline_commit(h.prologue, (void *)hook_Key_Event);
+	hook_commit_Key_Event(h.hookpos, hookdest_Key_Event);
 	return FEAT_OK;
 
 #ifdef _WIN32
@@ -445,7 +446,7 @@ END {
 	munmap(keybox, 4096);
 	// TODO(linux): call other cleanup things
 #endif
-	unhook_inline((void *)orig_Key_Event);
+	unhook_Key_Event();
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

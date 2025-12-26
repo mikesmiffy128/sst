@@ -28,7 +28,6 @@
 #include "mem.h"
 #include "ppmagic.h"
 #include "sst.h"
-#include "vcall.h"
 
 FEATURE("portal gun colour customisation")
 GAMESPECIFIC(Portal1)
@@ -61,11 +60,12 @@ static void colourcb(struct con_var *v) {
 // Original sig is the following but we wanna avoid calling convention weirdness
 //typedef struct rgba (*UTIL_Portal_Color_func)(int);
 typedef void (*UTIL_Portal_Color_func)(struct rgba *out, int portal);
-static UTIL_Portal_Color_func orig_UTIL_Portal_Color;
-static void hook_UTIL_Portal_Color(struct rgba *out, int portal) {
+static void hookdest_UTIL_Portal_Color(struct rgba *out, int portal) {
 	if (portal < 0 || portal > 2) *out = (struct rgba){255, 255, 255, 255};
 	else *out = colours[portal];
 }
+
+DEF_INLINE_HOOK_NOTRAMPOLINE(UTIL_Portal_Color_func, UTIL_Portal_Color)
 
 // TODO(compat): would like to do the usual pointer-chasing business instead of
 // using hardcoded offsets, but that's pretty hard here. Would probably have to
@@ -76,38 +76,37 @@ static void hook_UTIL_Portal_Color(struct rgba *out, int portal) {
 //
 // For now we do this!
 
-static bool find_UTIL_Portal_Color(void *base) {
+static UTIL_Portal_Color_func find_UTIL_Portal_Color(void *base) {
 	static const uchar x[] = HEXBYTES(8B, 44, 24, 08, 83, E8, 00, 74, 37, 83,
 			E8, 01, B1, FF, 74, 1E, 83, E8, 01, 8B, 44, 24, 04, 88);
 	// 5135
-	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)mem_offset(base, 0x1BF090);
-	if (!memcmp((void *)orig_UTIL_Portal_Color, x, sizeof(x))) return true;
+	void *f = mem_offset(base, 0x1BF090);
+	if (!memcmp(f, x, sizeof(x))) return (UTIL_Portal_Color_func)f;
 	// 4104
-	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)mem_offset(base, 0x1ADC30);
-	if (!memcmp((void *)orig_UTIL_Portal_Color, x, sizeof(x))) return true;
+	f = mem_offset(base, 0x1ADC30);
+	if (!memcmp(f, x, sizeof(x))) return (UTIL_Portal_Color_func)f;
 	// 3420
-	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)mem_offset(base, 0x1AA810);
-	if (!memcmp((void *)orig_UTIL_Portal_Color, x, sizeof(x))) return true;
+	f = mem_offset(base, 0x1AA810);
+	if (!memcmp(f, x, sizeof(x))) return (UTIL_Portal_Color_func)f;
 	// SteamPipe (7197370) - almost sure to break in a later update!
 	// TODO(compat): this has indeed been broken for ages.
 	static const uchar y[] = HEXBYTES(55, 8B, EC, 8B, 45, 0C, 83, E8, 00, 74,
 			24, 48, 74, 16, 48, 8B, 45, 08, 74, 08, C7, 00, FF, FF);
-	orig_UTIL_Portal_Color = (UTIL_Portal_Color_func)mem_offset(base, 0x234C00);
-	if (!memcmp((void *)orig_UTIL_Portal_Color, y, sizeof(y))) return true;
-	return false;
+	f = mem_offset(base, 0x234C00);
+	if (!memcmp(f, y, sizeof(y))) return (UTIL_Portal_Color_func)f;
+	return 0;
 }
 
 INIT {
 #ifdef _WIN32
-	if_cold (!find_UTIL_Portal_Color(clientlib)) {
+	UTIL_Portal_Color_func UTIL_Portal_Color = find_UTIL_Portal_Color(clientlib);
+	if_cold (!UTIL_Portal_Color) {
 		errmsg_errorx("couldn't find UTIL_Portal_Color");
 		return FEAT_INCOMPAT;
 	}
-	struct hook_inline_featsetup_ret h = hook_inline_featsetup(
-			(void *)orig_UTIL_Portal_Color, (void **)&orig_UTIL_Portal_Color,
-			"UTIL_Portal_Color");
-	if_cold (h.err) return h.err;
-	hook_inline_commit(h.prologue, (void *)&hook_UTIL_Portal_Color);
+	int err = hook_featsetup_UTIL_Portal_Color(UTIL_Portal_Color);
+	if_cold (err) return err;
+	hook_commit_UTIL_Portal_Color(&hookdest_UTIL_Portal_Color);
 	sst_portal_colour0->cb = &colourcb;
 	sst_portal_colour1->cb = &colourcb;
 	sst_portal_colour2->cb = &colourcb;
@@ -120,7 +119,7 @@ INIT {
 
 END {
 	if_hot (!sst_userunloaded) return;
-	unhook_inline((void *)orig_UTIL_Portal_Color);
+	unhook_UTIL_Portal_Color();
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

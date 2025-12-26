@@ -235,10 +235,7 @@ HANDLE_EVENT(Tick, bool simulating) {
 	}
 }
 
-typedef void (*VCALLCONV OnGameplayStart_func)(struct CDirector *this);
-static OnGameplayStart_func orig_OnGameplayStart;
-static void VCALLCONV hook_OnGameplayStart(struct CDirector *this) {
-	orig_OnGameplayStart(this);
+static void onstart() {
 	if (nextmapnum) {
 		// if we changed map more than 1 time, cancel the reset. this'll happen
 		// if someone prematurely disconnects and then starts a new session.
@@ -247,11 +244,21 @@ static void VCALLCONV hook_OnGameplayStart(struct CDirector *this) {
 	}
 	nextmapnum = 0; // resume countdown if there is one! otherwise do nothing.
 }
-// Simply reuse the above for L4D1, since the calling ABI is the exact same!
-#define UnfreezeTeam_func OnGameplayStart_func
-#define UnfreezeTeam OnGameplayStart
-#define orig_UnfreezeTeam orig_OnGameplayStart
-#define hook_UnfreezeTeam hook_OnGameplayStart
+
+typedef void (*VCALLCONV OnGameplayStart_func)(struct CDirector *this);
+DEF_VTABLE_HOOK(OnGameplayStart_func, OnGameplayStart)
+static void VCALLCONV hookdest_OnGameplayStart(struct CDirector *this) {
+	orig_OnGameplayStart(this);
+	onstart();
+}
+typedef void (*VCALLCONV UnfreezeTeam_func)(struct CDirector *this);
+DEF_INLINE_HOOK(UnfreezeTeam_func, UnfreezeTeam)
+// UnfreezeTeam is pretty much identical to OnGameplayStart except for using
+// a direct orig_ call (static trampoline) rather than a function pointer.
+static void VCALLCONV hookdest_UnfreezeTeam(struct CDirector *this) {
+	orig_UnfreezeTeam(this);
+	onstart();
+}
 
 static int getffidx(const char *campaign) {
 	if (GAMETYPE_MATCHES(L4D1)) {
@@ -471,7 +478,9 @@ static inline bool find_TheDirector(void *GameShutdown) {
 }
 #endif
 
-static inline bool find_UnfreezeTeam(void *GameFrame) { // note: L4D1 only
+// note: this function is for L4D1 only
+static inline UnfreezeTeam_func find_UnfreezeTeam(void *GameFrame) {
+#ifdef _WIN32
 	// CServerGameDLL::GameFrame() loads TheDirector into ECX and then calls
 	// Director::Update()
 	const uchar *insns = (const uchar *)GameFrame, *p = insns;
@@ -485,20 +494,19 @@ static inline bool find_UnfreezeTeam(void *GameFrame) { // note: L4D1 only
 		}
 		NEXT_INSN(p, "Director::Update call");
 	}
-	return false;
+	return 0;
 ok:	// Director::Update calls UnfreezeTeam after the first jmp instruction
 	while (p - insns < 96) {
 		// jz XXX; mov ecx, <reg>; call Director::UnfreezeTeam
 		if (p[0] == X86_JZ && p[2] == X86_MOVRMW && (p[3] & 0xF8) == 0xC8 &&
 				p[4] == X86_CALL) {
-			p += 9 + mem_loads32(p + 5);
-			orig_UnfreezeTeam = (UnfreezeTeam_func)p;
-			return true;
+			return (UnfreezeTeam_func)(p + 9 + mem_loads32(p + 5));
 		}
 		NEXT_INSN(p, "Director::UnfreezeTeam call");
 	}
-	return false;
- }
+#endif
+	return 0;
+}
 
 // XXX: duped def in democustom: should this belong somewhere else?
 DECL_VFUNC_DYN(struct VEngineClient, int, GetEngineBuildNumber)
@@ -529,32 +537,28 @@ INIT {
 #warning TODO(linux): should be able to just dlsym(server, "TheDirector")
 	return FEAT_INCOMPAT;
 #endif
-#ifdef _WIN32 // L4D1 has no Linux build, no need to check whether L4D2
 	if (GAMETYPE_MATCHES(L4D2)) {
-#endif
 		vtable = director->vtable;
 		if_cold (!os_mprot(vtable + vtidx_OnGameplayStart, sizeof(*vtable),
 				PAGE_READWRITE)) {
 			errmsg_errorsys("couldn't make virtual table writable");
 			return FEAT_FAIL;
 		}
-		orig_OnGameplayStart = (OnGameplayStart_func)hook_vtable(vtable,
-				vtidx_OnGameplayStart, (void *)&hook_OnGameplayStart);
-#ifdef _WIN32 // L4D1 has no Linux build!
+		hook_OnGameplayStart(vtable, vtidx_OnGameplayStart,
+				&hookdest_OnGameplayStart);
 	}
 	else /* L4D1 */ {
 		void *GameFrame = srvdll->vtable[vtidx_GameFrame];
-		if_cold (!find_UnfreezeTeam(GameFrame)) {
+		UnfreezeTeam_func UnfreezeTeam = find_UnfreezeTeam(GameFrame);
+		if_cold (!UnfreezeTeam) {
 			errmsg_errorx("couldn't find UnfreezeTeam function");
 			return FEAT_INCOMPAT;
 		}
-		struct hook_inline_featsetup_ret h = hook_inline_featsetup(
-			(void *)orig_UnfreezeTeam, (void **)&orig_UnfreezeTeam,
-			"UnfreezeTeam");
+		struct hook_featsetup_ret_UnfreezeTeam h =
+			hook_featsetup_UnfreezeTeam( UnfreezeTeam);
 		if_cold (h.err) return h.err;
-		hook_inline_commit(h.prologue, (void *)&hook_UnfreezeTeam);
+		hook_commit_UnfreezeTeam(h.hookpos, &hookdest_UnfreezeTeam);
 	}
-#endif
 	// Only try cooldown stuff for L4D2, since L4D1 always had unlimited votes.
 	if (GAMETYPE_MATCHES(L4D2)) {
 		// g_voteController is invalid if not running a server so get the
@@ -589,11 +593,10 @@ nocd:		errmsg_note("resetting a first map will not clear vote cooldowns");
 
 END {
 	if (GAMETYPE_MATCHES(L4D2)) {
-		unhook_vtable(mem_loadptr(director), vtidx_OnGameplayStart,
-				(void *)orig_OnGameplayStart);
+		unhook_OnGameplayStart(mem_loadptr(director), vtidx_OnGameplayStart);
 	}
 	else {
-		unhook_inline((void *)orig_UnfreezeTeam);
+		unhook_UnfreezeTeam();
 	}
 }
 
