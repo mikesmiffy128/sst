@@ -80,19 +80,21 @@ __asm (
 	".globl " ASM_MANGLE_STR("_l4d1democompat_midpoint_hook") "\n"
 	ASM_MANGLE_STR("_l4d1democompat_midpoint_hook") ":\n"
 	// like in con_.S, we have to assemble stuff manually here, annoyingly.
-	// push eax
-	".byte 0x50\n"
-	// mov eax, [_l4d1democompat_thisproto]
-	".byte 0xA1\n"
-	".long " ASM_MANGLE_STR("_l4d1democompat_thisproto") "\n"
-	// mov eax, [eax]
+	// note: ebx is safe to clobber here because we're hooking immediately after
+	// a call, ebx is caller-save, and also ebx is explicitly pushed before the
+	// call which means we know the code we're hooking obeys the calling conv.
+	// see also find_midpoint() below.
+	// mov ebx, [_l4d1democompat_thisproto]
 	".byte 0x8B\n"
-	".byte 0x00\n"
-	// mov [_l4d1democompat_demover], eax
-	".byte 0xA3\n"
+	".byte 0x1D\n"
+	".long " ASM_MANGLE_STR("_l4d1democompat_thisproto") "\n"
+	// mov ebx, [ebx]
+	".byte 0x8B\n"
+	".byte 0x1B\n"
+	// mov [_l4d1democompat_demover], ebx
+	".byte 0x89\n"
+	".byte 0x1D\n"
 	".long " ASM_MANGLE_STR("_l4d1democompat_demover") "\n"
-	// pop eax
-	".byte 0x58\n"
 	// and then we leave trampoline space immediately after; we can jump
 	// straight back from here to the rest of the function!
 	".globl " ASM_MANGLE_STR("_l4d1democompat_midpoint_trampoline") "\n"
