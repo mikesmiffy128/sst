@@ -124,17 +124,26 @@ DEF_CCMD_COMPAT_HOOK(record) {
 			int gdlen = os_strlen(gameinfo_gamedir);
 			if (gdlen + 1 + argdirlen < PATH_MAX) { // if not, too bad
 				os_char dir[PATH_MAX], *q = dir;
-				memcpy(q, gameinfo_gamedir, gdlen * sizeof(*gameinfo_gamedir));
+				mem_copy(q, gameinfo_gamedir, gdlen * sizeof(*gameinfo_gamedir));
 				q += gdlen;
 				*q++ = OS_LIT('/');
-				// ascii->wtf16 (probably turns into memcpy() on linux)
+#ifdef _WIN32
+				// ascii->wtf16
 				for (const char *p = arg; p - arg < argdirlen; ++p, ++q) {
 					*q = (uchar)*p;
 				}
+#else
+				// we're -ffreestanding, so don't rely on the compiler turning
+				// the above into a memcpy() call automatically.
+				mem_copy(q, arg, argdirlen);
+				q += argdirlen;
+#endif
 				*q = OS_LIT('\0');
 				// this is pretty ugly. the error cases would be way tidier if
 				// we could use open(O_DIRECTORY), but that's not a thing on
 				// windows, of course.
+				// TODO(opt): actually, yes it is, as a more low-level NT thing.
+				// revisit, if/when we can be bothered. (not exactly crucial)
 				struct os_stat s;
 				static const char *const errpfx = "ERROR: can't record demo: ";
 				if (os_stat(dir, &s) == -1) {

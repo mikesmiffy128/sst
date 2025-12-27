@@ -120,10 +120,7 @@ typedef char os_char;
 #endif
 
 /* Copies n characters from src to dest, using the OS-specific char type. */
-static inline void os_spancopy(os_char *restrict dest,
-		const os_char *restrict src, int n) {
-	memcpy(dest, src, n * sizeof(os_char));
-}
+void os_spancopy(os_char *restrict dest, const os_char *restrict src, int n);
 
 /*
  * Returns the last error code from an OS function - equivalent to calling

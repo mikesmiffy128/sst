@@ -14,8 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <string.h>
-
 #include "con_.h"
 #include "engineapi.h"
 #include "errmsg.h"
@@ -81,19 +79,19 @@ static UTIL_Portal_Color_func find_UTIL_Portal_Color(void *base) {
 			E8, 01, B1, FF, 74, 1E, 83, E8, 01, 8B, 44, 24, 04, 88);
 	// 5135
 	void *f = mem_offset(base, 0x1BF090);
-	if (!memcmp(f, x, sizeof(x))) return (UTIL_Portal_Color_func)f;
+	if (!mem_cmp(f, x, sizeof(x))) return (UTIL_Portal_Color_func)f;
 	// 4104
 	f = mem_offset(base, 0x1ADC30);
-	if (!memcmp(f, x, sizeof(x))) return (UTIL_Portal_Color_func)f;
+	if (!mem_cmp(f, x, sizeof(x))) return (UTIL_Portal_Color_func)f;
 	// 3420
 	f = mem_offset(base, 0x1AA810);
-	if (!memcmp(f, x, sizeof(x))) return (UTIL_Portal_Color_func)f;
+	if (!mem_cmp(f, x, sizeof(x))) return (UTIL_Portal_Color_func)f;
 	// SteamPipe (7197370) - almost sure to break in a later update!
 	// TODO(compat): this has indeed been broken for ages.
 	static const uchar y[] = HEXBYTES(55, 8B, EC, 8B, 45, 0C, 83, E8, 00, 74,
 			24, 48, 74, 16, 48, 8B, 45, 08, 74, 08, C7, 00, FF, FF);
 	f = mem_offset(base, 0x234C00);
-	if (!memcmp(f, y, sizeof(y))) return (UTIL_Portal_Color_func)f;
+	if (!mem_cmp(f, y, sizeof(y))) return (UTIL_Portal_Color_func)f;
 	return 0;
 }
 

@@ -111,11 +111,11 @@ static ssize __stdcall kproc(int code, usize wp, ssize lp) {
 			// something like the following, but with a proper abstraction...
 			//uchar buf[28 + 16], *p = buf;
 			//msg_putasz4(p, 2); p += 1;
-			//	msg_putssz5(p, 8); memcpy(p + 1, "FakeKey", 7); p += 8;
+			//	msg_putssz5(p, 8); mem_copy(p + 1, "FakeKey", 7); p += 8;
 			//	msg_putmsz4(p, 2); p += 1;
-			//		msg_putssz5(p, 3); memcpy(p + 1, "vk", 2); p += 3;
+			//		msg_putssz5(p, 3); mem_copy(p + 1, "vk", 2); p += 3;
 			//			p += msg_putu32(p, data->vkCode);
-			//		msg_putssz5(p, 3); memcpy(p + 1, "scan", 4); p += 5;
+			//		msg_putssz5(p, 3); mem_copy(p + 1, "scan", 4); p += 5;
 			//			p += msg_putu32(p, data->scanCode);
 			//++keybox->nonce;
 			//// append mac at end of message
@@ -297,14 +297,14 @@ static void hookdest_Key_Event(struct inputevent *ev) {
 			// TODO(rta): do something interesting with button data
 			//uchar buf[28], *p = buf;
 			//msg_putasz4(p, 2); p += 1;
-			//	msg_putssz5(p, 8); memcpy(p + 1, "KeyInput", 8); p += 9;
+			//	msg_putssz5(p, 8); mem_copy(p + 1, "KeyInput", 8); p += 9;
 			//	msg_putmsz4(p, 2); p += 1;
-			//		msg_putssz5(p, 3); memcpy(p + 1, "key", 3); p += 4;
+			//		msg_putssz5(p, 3); mem_copy(p + 1, "key", 3); p += 4;
 			//			p += msg_puts32(p, ev->data);
-			//		msg_putssz5(p, 3); memcpy(p + 1, "btn", 3); p += 4;
+			//		msg_putssz5(p, 3); mem_copy(p + 1, "btn", 3); p += 4;
 			//			int idx = ev->type - BTNDOWN;
 			//			msg_putssz5(p++, desclen[idx]);
-			//			memcpy(p, desc[idx], desclen[idx]); p += desclen[idx];
+			//			mem_copy(p, desc[idx], desclen[idx]); p += desclen[idx];
 	}
 	orig_Key_Event(ev);
 }
@@ -423,7 +423,7 @@ INIT {
 	if (GAMETYPE_MATCHES(L4D)) {
 		// copy into the keybox so key derivation blake2 gets a nice contiguous
 		// run of bytes
-		memcpy(keybox->lbpub, lbpubkeys[LBPK_L4D], 32);
+		mem_copy(keybox->lbpub, lbpubkeys[LBPK_L4D], 32);
 	}
 	hook_commit_Key_Event(h.hookpos, hookdest_Key_Event);
 	return FEAT_OK;

@@ -29,8 +29,8 @@ if "%dbg%"=="1" (
 	set cflags=-O0 -g3 -masm=intel -fsanitize-trap=undefined -DSST_DBG
 	set ldflags=-O0 -g3
 ) else (
-	set cflags=-O2 -masm=intel
-	set ldflags=-O2
+	set cflags=-O2 -masm=intel -ffreestanding
+	set ldflags=-O2 -ffreestanding
 )
 
 set objs=
@@ -46,8 +46,8 @@ set dmodname= -DMODULE_NAME=%basename%
 if "%dmodname%"==" -DMODULE_NAME=con_" set dmodname= -DMODULE_NAME=con
 if "%dmodname%"==" -DMODULE_NAME=sst" set dmodname=
 set objs=%objs% .build/%basename%%ext%.o
-%CC% -c -flto -mno-stack-arg-probe %cflags% %warnings% %stdflags% -I.build/include ^
--D_DLL%dmodname% -o .build/%basename%%ext%.o %1 || goto :end
+%CC% -c -flto -mno-stack-arg-probe %cflags% %warnings% %stdflags% -include src/1.h ^
+-I.build/include -D_DLL%dmodname% -o .build/%basename%%ext%.o %1 || goto :end
 goto :eof
 
 :main

@@ -18,6 +18,7 @@
 #define assume(x) ((void)(!!(x) || (unreachable, 0)))
 #define cold __attribute((__cold__, __noinline__))
 #define asm_only __attribute((__naked__)) // N.B.: may not actually work in GCC?
+#define forceinline inline __attribute((__always_inline__))
 #else
 #define if_hot(x) if (x)
 #define if_cold(x) if (x)
@@ -27,12 +28,14 @@
 #define assume(x) ((void)(__assume(x), 0))
 #define cold __declspec(noinline)
 #define asm_only __declspec(naked)
+#define forceinline __forceinline
 #else
 static inline _Noreturn void _invoke_ub() {}
 #define unreachable (_invoke_ub())
 #define assume(x) ((void)(!!(x) || (_invoke_ub(), 0)))
 #define cold
 //#define asm_only // Can't use this without Clang/GCC/MSVC. Too bad.
+#define forceinline inline
 #endif
 #endif
 

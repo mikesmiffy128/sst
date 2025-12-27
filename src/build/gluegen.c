@@ -877,8 +877,9 @@ _( "")
 _( "static inline void shuntvars() {")
 _( "#ifdef _WIN32")
 	for (int i = 1; i < ncvars; ++i) {
-F( "	memmove(&%.*s->v1, &%.*s->v2, sizeof(struct con_var_common));",
+F( "	__builtin_memmove(&%.*s->v1, &%.*s->v2, ",
 		cvar_names[i].len, cvar_names[i].s, cvar_names[i].len, cvar_names[i].s)
+_( "			sizeof(struct con_var_common));")
 	}
 _( "#endif")
 _( "}")

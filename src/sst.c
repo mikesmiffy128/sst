@@ -180,7 +180,7 @@ DEF_CCMD_HERE(sst_autoload_enable, "Register SST to load on game startup", 0) {
 			}
 		}
 	}
-c:	memcpy(r, p + slash + 1, rellen);
+c:	mem_copy(r, p + slash + 1, rellen);
 #endif
 	int len = os_strlen(gameinfo_gamedir);
 	if (len + ssizeof("/addons/" VDFBASENAME ".vdf") > countof(path)) {
@@ -200,9 +200,11 @@ c:	memcpy(r, p + slash + 1, rellen);
 	if_cold (f == -1) { errmsg_errorsys("couldn't open %" fS, path); return; }
 #ifdef _WIN32
 	char buf[19 + PATH_MAX];
-	memcpy(buf, "Plugin { file \"", 15);
+	// XXX: with actual calls to memcpy gone, we need this builtin to produce 4
+	// 4-byte movs from this string; can we expose this in a less hideous way?
+	__builtin_memcpy_inline(buf, "Plugin { file \"", 15);
 	for (int i = 0; i < rellen; ++i) buf[i + 15] = relpath[i];
-	memcpy(buf + 15 + rellen, "\" }\n", 4);
+	__builtin_memcpy_inline(buf + 15 + rellen, "\" }\n", 4);
 	if_cold (os_write(f, buf, rellen + 19) == -1) { // blegh
 #else
 	struct iovec iov[3] = {

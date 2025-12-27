@@ -127,8 +127,9 @@ static inline ReadDemoHeader_func find_ReadDemoHeader(const uchar *insns) {
 static inline void *find_midpoint(ReadDemoHeader_func ReadDemoHeader) {
 	uchar *insns = (uchar *)ReadDemoHeader;
 	for (uchar *p = insns; p - insns < 128;) {
+		const u64 HL2DEMO = 0x4F4D4544324C48; // "HL2DEMO\0" ascii, little-endian
 		if (p[0] == X86_PUSHIW && p[5] == X86_PUSHEBX && p[6] == X86_CALL &&
-				!memcmp(mem_loadptr(p + 1), "HL2DEMO", 7)) {
+				!mem_loadu64(mem_loadptr(p + 1)) == HL2DEMO) {
 			return p + 11;
 		}
 		NEXT_INSN(p, "ReadDemoHeader hook midpoint");

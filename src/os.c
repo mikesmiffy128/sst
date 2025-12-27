@@ -32,6 +32,22 @@
 
 #include "intdefs.h"
 #include "langext.h"
+#include "os.h"
+
+// HACK: host tools link in os.c as well. if cross-compiling, we can't use our
+// inline asm mem_copy implementation. just use memcpy if not on 32-bit x86.
+// the host tools will have the C runtime available, unlike SST itself
+#if defined(__i386__) || defined(_M_IX86)
+#include "mem.h"
+#endif
+
+void os_spancopy(os_char *restrict dest, const os_char *restrict src, int n) {
+#if defined(__i386__) || defined(_M_IX86)
+	mem_copy(dest, src, n * sizeof(os_char));
+#else
+	memcpy(dest, src, n * sizeof(os_char));
+#endif
+}
 
 #ifdef _WIN32
 
@@ -196,7 +212,7 @@ int os_dlfile(void *lib, char *buf, int sz) {
 	struct link_map *lm = lib;
 	int ssz = strlen(lm->l_name) + 1;
 	if_cold (ssz > sz) { errno = ENAMETOOLONG; return -1; }
-	memcpy(buf, lm->l_name, ssz);
+	mem_copy(buf, lm->l_name, ssz);
 	return ssz;
 }
 #endif

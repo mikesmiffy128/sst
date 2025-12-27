@@ -15,8 +15,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <string.h>
-
 #ifdef _WIN32
 #include <d3d9.h>
 #endif
@@ -216,7 +214,7 @@ static inline void portal1specific() {
 	void *EyeAngles = mem_offset(clientlib, 0x19D1B0); // in C_PortalPlayer
 	static const char match[] =
 			HEXBYTES(56, 8B, F1, E8, 48, 50, EA, FF, 84, C0, 74, 25);
-	if (!memcmp(EyeAngles, match, sizeof(match))) {
+	if (!mem_cmp(EyeAngles, match, sizeof(match))) {
 		char *patch = mem_offset(EyeAngles, 39);
 		if (patch[0] == 0x75 && patch[1] == 0x08) {
 			if_hot (os_mprot(patch, 2, PAGE_EXECUTE_READWRITE)) {

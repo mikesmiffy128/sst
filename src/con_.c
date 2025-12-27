@@ -201,13 +201,13 @@ void VCALLCONV Dispatch_OE(struct con_cmd *this) {
 
 static void ChangeStringValue_common(struct con_var *this,
 		struct con_var_common *common, char *old, const char *s) {
-	memcpy(old, common->strval, common->strlen);
+	mem_copy(old, common->strval, common->strlen);
 	int len = strlen(s) + 1;
 	if (len > common->strlen) {
 		common->strval = extrealloc(common->strval, len);
 		common->strlen = len;
 	}
-	memcpy(common->strval, s, len);
+	mem_copy(common->strval, s, len);
 	// callbacks don't matter as far as ABI compat goes (and thank goodness
 	// because e.g. portal2 randomly adds a *list* of callbacks!?). however we
 	// do need callbacks for at least one feature, so do our own minimal thing
@@ -215,15 +215,19 @@ static void ChangeStringValue_common(struct con_var *this,
 }
 static void VCALLCONV ChangeStringValue(struct con_var *this, const char *s,
 		float oldf) {
-	char *old = alloca(this->v2.strlen);
+	char oldbuf[128], *old = oldbuf;
+	if_cold (this->v2.strlen > sizeof(oldbuf)) old = extmalloc(this->v2.strlen);
 	ChangeStringValue_common(this, &this->v2, old, s);
 	CallGlobalChangeCallbacks(_con_iface, this, old, oldf);
+	if_cold (old != oldbuf) extfree(old);
 }
 #ifdef _WIN32
 static void VCALLCONV ChangeStringValue_OE(struct con_var *this, const char *s) {
-	char *old = alloca(this->v1.strlen);
+	char oldbuf[128], *old = oldbuf;
+	if_cold (this->v1.strlen > sizeof(oldbuf)) old = extmalloc(this->v1.strlen);
 	ChangeStringValue_common(this, &this->v1, old, s);
 	CallGlobalChangeCallbacks_OE(_con_iface, this, old);
+	extfree(old);
 }
 #endif
 
@@ -418,7 +422,7 @@ void con_regvar(struct con_var *v) {
 	fudgeflags(&v->base);
 	struct con_var_common *c = con_getvarcommon(v);
 	c->strval = extmalloc(c->strlen); // note: _DEF_CVAR() sets strlen member
-	memcpy(c->strval, c->defaultval, c->strlen);
+	mem_copy(c->strval, c->defaultval, c->strlen);
 	RegisterConCommand(_con_iface, v);
 }
 
@@ -578,7 +582,7 @@ bool con_detect(int pluginver) {
 		if (!find_argcargv()) return false;
 		if (!find_Con_ColorPrintf()) return false;
 		// note: _con_colourmsg is already RWX, just overwrite it.
-		memcpy((void *)&_con_colourmsg, (void *)&_con_colourmsg_OE,
+		mem_copy((void *)&_con_colourmsg, (void *)&_con_colourmsg_OE,
 				SELFMOD_LEN);
 		// NOTE: the default static struct layout is for NE; immediately after
 		// engineapi init finishes, the generated glue code will shunt

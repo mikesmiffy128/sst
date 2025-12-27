@@ -15,8 +15,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <string.h>
-
 #include "chunklets/x86.h"
 #include "hook.h"
 #include "intdefs.h"
@@ -55,10 +53,10 @@ struct _hook_prep_ret _hook_prep(uchar *func, uchar *trampoline) {
 		}
 		len += ilen;
 		if (len >= 5) {
-			memcpy(trampoline, p, len);
+			mem_copy(trampoline, p, len);
 			trampoline[len] = X86_JMPIW;
 			s32 diff = p - (trampoline + 5); // goto the continuation
-			memcpy(trampoline + len + 1, &diff, 4);
+			mem_stores32(trampoline + len + 1, diff);
 			return (struct _hook_prep_ret){func, len, 0};
 		}
 		if_cold (p[len] == X86_JMPIW) {
@@ -76,13 +74,14 @@ bool hook_inline_mprot(void *hookpos) {
 void _hook_inline_commit(uchar *restrict hookpos, const uchar *restrict target) {
 	s32 diff = (uchar *)target - (hookpos + 5); // goto the hook target
 	hookpos[0] = X86_JMPIW;
-	memcpy(hookpos + 1, &diff, 4);
+	mem_stores32(hookpos + 1, diff);
 }
 
 void _unhook_inline(uchar *trampoline, int len) {
 	s32 off = mem_loads32(trampoline + len + 1);
 	uchar *orig = trampoline + off + 5;
-	memcpy(orig, trampoline, 5);
+	mem_storeu32(orig, mem_loadu32(trampoline));
+	orig[4] = trampoline[4];
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

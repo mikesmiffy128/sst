@@ -14,7 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <string.h>
 #ifdef _WIN32
 #include <Windows.h> // MultiByteToWideChar()
 #endif
@@ -24,6 +23,7 @@
 #include "gamedata.h"
 #include "gametype.h"
 #include "langext.h"
+#include "mem.h"
 #include "os.h"
 #include "vcall.h"
 
@@ -77,10 +77,10 @@ bool gameinfo_init() {
 		int len = GetWindowTextA(gamewin, title, ssizeof(title));
 		// argh, why did they start doing this, it's so pointless!
 		// hopefully nobody included these suffixes in their mod names, lol
-		if (len > 13 && !memcmp(title + len - 13, " - Direct3D 9", 13)) {
+		if (len > 13 && !mem_cmp(title + len - 13, " - Direct3D 9", 13)) {
 			title[len - 13] = '\0';
 		}
-		else if (len > 9 && !memcmp(title + len - 9, " - Vulkan", 9)) {
+		else if (len > 9 && !mem_cmp(title + len - 9, " - Vulkan", 9)) {
 			title[len - 9] = '\0';
 		}
 #else

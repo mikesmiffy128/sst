@@ -2,72 +2,13 @@
 
 // We get most of the libc functions from ucrtbase.dll, which comes with
 // Windows, but for some reason a few of the intrinsic-y things are part of
-// vcruntime, which does *not* come with Windows!!! We can statically link just
-// that part but it adds ~12KiB of random useless bloat to our binary. So, let's
-// just implement the handful of required things here instead. This is only for
-// release/non-debug builds; we want the extra checks in Microsoft's CRT when
-// debugging.
+// vcruntime, which does *not* come with Windows!!!
 //
-// Is it actually reasonable to have to do any of this? Of course not.
-
-// Note: these functions have ifdefs with non-asm fallbacks just in case this
-// file is ever useful somewhere else, but generally we assume this codebase
-// will be built with Clang.
-
-int memcmp(const void *restrict x, const void *restrict y, unsigned int sz) {
-#if defined(__GNUC__) || defined(__clang__)
-	int a, b;
-	__asm volatile (
-		"xor eax, eax\n"
-		"repz cmpsb\n"
-		: "+D" (x), "+S" (y), "+c" (sz), "=@cca"(a), "=@ccb"(b)
-		:
-		: "ax", "memory"
-	);
-	return b - a;
-#else
-	const char *x = x_, *y = y_;
-	for (unsigned int i = 0; i < sz; ++i) {
-		if (x[i] > y[i]) return 1;
-		if (x[i] < y[i]) return -1;
-	}
-	return 0;
-#endif
-}
-
-void *memcpy(void *restrict x, const void *restrict y, unsigned int sz) {
-#if defined(__GNUC__) || defined(__clang__)
-	void *r = x;
-	__asm volatile (
-		"rep movsb\n"
-		: "+D" (x), "+S" (y), "+c" (sz)
-		:
-		: "memory"
-	);
-	return r;
-#else
-	char *restrict xb = x; const char *restrict yb = y;
-	for (unsigned int i = 0; i < sz; ++i) xb[i] = yb[i];
-	return x;
-#endif
-}
-
-void *memset(void *x, int c, unsigned int sz) {
-#if defined(__GNUC__) || defined(__clang__)
-    void *r = x;
-    __asm volatile (
-        "rep stosb\n"
-        : "+D" (x), "+c" (sz)
-        : "a"(c)
-        : "memory"
-    );
-    return r;
-#else
-	const unsigned char *xb = x;
-	for (unsigned int i = 0; i < len; ++i) xb[i] = (unsigned char)c;
-	return x;
-#endif
-}
+// At this point, we no longer use memcpy/memcmp/memset (preferring to use the
+// x86 single-instruction equivalents and/or explicit builtins/intrinsics).
+//
+// So all we actually have to define here are a couple of dummy symbols to
+// appease the linker.
 
 int __stdcall _DllMainCRTStartup(void *inst, unsigned int reason,
 		void *reserved) {

@@ -14,9 +14,8 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <string.h>
-
 #include "intdefs.h"
+#include "mem.h"
 
 void hexcolour_rgb(uchar out[static 4], const char *s) {
 	const char *p = s;
@@ -30,7 +29,7 @@ void hexcolour_rgb(uchar out[static 4], const char *s) {
 		else {
 			// screw it, just fall back on white, I guess.
 			// note: this also handles *p == '\0' so we don't overrun the string
-			memset(out, 255, 4); // should be a single mov
+			mem_storeu32(out, -1u); // 255, 255, 255, 255
 			return;
 		}
 		// repetitive unrolled nonsense
@@ -41,7 +40,7 @@ void hexcolour_rgb(uchar out[static 4], const char *s) {
 			*q |= 10 + (*p++ | 32) - 'a';
 		}
 		else {
-			memset(out, 255, 4); // should be a single mov
+			mem_storeu32(out, -1u); // 255, 255, 255, 255
 			return;
 		}
 	}
@@ -65,7 +64,7 @@ void hexcolour_rgba(uchar out[static 4], const char *s) {
 				out[3] = 255;
 				return;
 			}
-			memset(out, 255, 4);
+			mem_storeu32(out, -1u); // 255, 255, 255, 255
 			return;
 		}
 		// even more repetitive unrolled nonsense
@@ -76,7 +75,7 @@ void hexcolour_rgba(uchar out[static 4], const char *s) {
 			*q |= 10 + (*p++ | 32) - 'a';
 		}
 		else {
-			memset(out, 255, 4);
+			mem_storeu32(out, -1u); // 255, 255, 255, 255
 			return;
 		}
 	}

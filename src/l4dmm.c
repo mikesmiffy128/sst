@@ -95,7 +95,7 @@ const char *l4dmm_curcampaign() {
 		// reasonable...
 		usize len = strlen(ret);
 		if_cold (len > sizeof(campaignbuf) - 1) ret = 0;
-		else ret = memcpy(campaignbuf, ret, len + 1);
+		else ret = mem_copy(campaignbuf, ret, len + 1);
 	}
 	kvsys_free(kv);
 	return ret;

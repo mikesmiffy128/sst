@@ -121,8 +121,8 @@ static void hookdest_FS_MAFAS(bool disallowaddons, char *mission,
 					!strncmp(gamemode, last_gamemode, gamemodelen + 1);
 		}
 		last_disallowaddons = disallowaddons;
-		memcpy(last_mission, mission, missionlen + 1);
-		memcpy(last_gamemode, gamemode, gamemodelen + 1);
+		mem_copy(last_mission, mission, missionlen + 1);
+		mem_copy(last_gamemode, gamemode, gamemodelen + 1);
 		if_hot (canskip) return;
 	}
 	else {
@@ -198,8 +198,8 @@ static inline void try_fix_broken_addon_check(uchar *insns) {
 			// mprot too just so there's no page boundary issues
 			if_hot (os_mprot(p, 13, PAGE_EXECUTE_READWRITE)) {
 				broken_addon_check = p; // conditional so END doesn't crash!
-				memcpy(orig_broken_addon_check_bytes, broken_addon_check, 13);
-				memcpy(broken_addon_check, nops, noplen);
+				mem_copy(orig_broken_addon_check_bytes, broken_addon_check, 13);
+				mem_copy(broken_addon_check, nops, noplen);
 			}
 			else {
 				errmsg_warnsys("couldn't fix broken addon check: "
@@ -243,7 +243,7 @@ END {
 	unhook_FS_MAFAS();
 	if_cold (sst_userunloaded) {
 		if (broken_addon_check) {
-			memcpy(broken_addon_check, orig_broken_addon_check_bytes, 13);
+			mem_copy(broken_addon_check, orig_broken_addon_check_bytes, 13);
 		}
 	}
 }

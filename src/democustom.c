@@ -72,13 +72,13 @@ static WriteMessages_func WriteMessages = 0;
 void democustom_write(const void *buf, int len) {
 	for (; len > CHUNKSZ; len -= CHUNKSZ) {
 		createhdr(&bb, CHUNKSZ, false);
-		memcpy(bb.buf + (bb.nbits >> 3), buf, CHUNKSZ);
+		mem_copy(bb.buf + (bb.nbits >> 3), buf, CHUNKSZ);
 		bb.nbits += CHUNKSZ << 3;
 		WriteMessages(demorecorder, &bb);
 		bitbuf_reset(&bb);
 	}
 	createhdr(&bb, len, true);
-	memcpy(bb.buf + (bb.nbits >> 3), buf, len);
+	mem_copy(bb.buf + (bb.nbits >> 3), buf, len);
 	bb.nbits += len << 3;
 	WriteMessages(demorecorder, &bb);
 	bitbuf_reset(&bb);

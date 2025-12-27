@@ -19,6 +19,7 @@
 #define INC_CON_H
 
 #include "intdefs.h"
+#include "mem.h"
 
 #if defined(__GNUC__) || defined(__clang__)
 #define _CON_PRINTF(x, y) __attribute((format(printf, (x), (y))))
@@ -417,10 +418,10 @@ extern struct _con_vtab_iconvar_wrap {
 			   and back to avoid confusing side effects for the caller. */ \
 			/* XXX: not bothering with the null term here; should we be? */ \
 			const char *_orig_argv[80]; \
-			memcpy(_orig_argv, _con_argv, _orig_argc * sizeof(*argv)); \
-			memcpy(_con_argv, argv, argc * sizeof(*argv)); \
+			mem_copy(_orig_argv, _con_argv, _orig_argc * sizeof(*argv)); \
+			mem_copy(_con_argv, argv, argc * sizeof(*argv)); \
 			_orig_##name##_cb.v1(); \
-			memcpy(_con_argv, _orig_argv, _orig_argc * sizeof(*argv)); \
+			mem_copy(_con_argv, _orig_argv, _orig_argc * sizeof(*argv)); \
 		} \
 		else { \
 			_orig_##name##_cb.v1(); \
