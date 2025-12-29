@@ -1,0 +1,49 @@
+#!/bin/sh
+# This file is dedicated to the public domain.
+
+set -e # windows git doesn't seem to like flags in the shebang!?
+
+usage() {
+	printf 'usage: git grab [-p projectid] patchset\n' >&2
+	exit 1
+}
+
+while getopts ":p:" arg; do
+	case "$arg" in
+		p) projectid="$OPTARG" ;;
+		*) usage ;;
+	esac
+done
+shift $((OPTIND - 1))
+
+if [ $# != 1 ]; then usage; fi
+patchset="$1"
+
+. "`dirname "$0"`/../lib/patchbot-setup.sh"
+
+doreq() {
+	flags="-sL"
+	if [ -n "$token" ]; then flags="-sLHAuthorization: Bearer $token"; fi
+	"$curl" -XGET "$flags" \
+			-H"User-Agent patchbot-client v3" \
+			--url-query "projectid=$projectid" \
+			--url-query "patchset=$patchset" \
+			-w"%{response_code}" \
+			-o "$gitdir/PatchBot.$patchset.tmp" \
+			"$server/grab" || :
+}
+dumpresponse() {
+	printf "Server returned HTTP status $httpcode.\nResponse:\n" >&2
+	< "$gitdir/PatchBot.$patchset.tmp" sed 's/^/|   /' >&2 # indent it!
+	rm "$gitdir/PatchBot.$patchset.tmp"
+}
+
+# if we don't have a token we can try an anonymous grab first. if the project
+# doesn't allow it we'll get a 401 and can then do the auth setup prompt.
+httpcode="`doreq`"
+if [ "$httpcode" = 401 ]; then dumpresponse; setupauth; doreq; fi
+if [ "$httpcode" != 200 ]; then dumpresponse; exit 2; fi
+< "$gitdir/PatchBot.$patchset.tmp" git am --keep-cr
+rm "$gitdir/PatchBot.$patchset.tmp"
+
+# vi: sw=4 ts=4 noet tw=80 cc=80

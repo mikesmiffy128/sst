@@ -1,0 +1,64 @@
+#!/bin/sh
+# This file is dedicated to the public domain.
+
+set -e # windows git doesn't seem to like flags in the shebang!?
+
+usage() {
+	printf 'usage: git submit [-p projectid] description [range]\n' >&2
+	exit 1
+}
+
+while getopts ":p:" arg; do
+	case "$arg" in
+		p) projectid="$OPTARG" ;;
+		*) usage ;;
+	esac
+done
+shift $((OPTIND - 1))
+
+if [ $# -lt 1 -o $# -gt 2 ]; then usage; fi
+description="$1"
+
+. "`dirname "$0"`/../lib/patchbot-setup.sh"
+
+range="${2:-"$remote_branch"}"
+
+git format-patch --histogram --stdout "$range" > "$gitdir/PatchBot.req.tmp"
+
+rmtmp() {
+	rm -f "$gitdir/PatchBot.req.tmp" "$gitdir/PatchBot.resp.tmp"
+}
+
+doreq() {
+	"$curl" -sLXPOST -H"Authorization: Bearer $token" \
+		-H"Content-Type: application/mbox" \
+		-H"User-Agent: patchbot-client v3" \
+		--data-binary @"$gitdir/PatchBot.req.tmp" - \
+		--url-query "projectid=$projectid" \
+		--url-query "description=$description" \
+		-o "$gitdir/PatchBot.resp.tmp" \
+		"$server/submit" >&2
+}
+dumpresponse() {
+	printf "Server returned HTTP status $httpcode.\nResponse:\n" >&2
+	< "$gitdir/PatchBot.resp.tmp" sed 's/^/|   /' >&2 # indent it!
+}
+
+# server doesn't allow anonymous submits. make sure we have a token first.
+if [ -z "$token" ]; then
+	printf "error: submitting to PatchBot requires an auth token\n">&2
+	setupauth;
+fi
+httpcode="`doreq`"
+if [ "$httpcode" != 200 ]; then
+	dumpresponse
+	rmtmp
+	exit 2
+else
+	# just cat the response directly, it should be a brief message intended for
+	# direct display, containing the patchset number.
+	cat "$gitdir/PatchBot.resp.tmp"
+	rmtmp
+fi
+
+# vi: sw=4 ts=4 noet tw=80 cc=80

@@ -77,5 +77,41 @@ some console aliases or set up a bind to reload the plugin quickly on-the-fly.
 Note: some very old (and very new) Source builds don’t have a plugin_load
 command. For the time being, these versions are unsupported.
 
+════ How to contribute changes ════
+
+SST has a somewhat unusual development process. We don’t really take drive-by
+changes via the likes of GitHub pull requests or similar, because the project
+has very very specific goals and requirements, and also because I find those
+workflows annoyingly unwieldy.
+
+Instead, development takes place in a Discord community known as the Sorse
+Tecknoledgy Committy™, which you’re welcome to join:
+
+    https://discord.gg/pC6e7RGQmD
+
+Do be aware that much of the day-to-day activity there is just rants and memes,
+but nonetheless, the best way to get involved in this project is to come and
+hang out and talk to people. The #sst-dev channel has plenty of discussion of
+what needs done, how to do it, etc. Don’t be shy! Everyone is friendly!
+
+We have a bot in the Discord called PatchBot which allows Git changes to be
+submitted as patch sets, and creates Discord threads for discussion and review.
+For convenience, the Git subcommands for working with PatchBot are implemented
+inside the SST repository itself. You can use one of the following commands to
+set it up for your current terminal session:
+
+ • `tools\patchbot\setup-path.bat` (Windows cmd.exe)
+ • `. tools/patchbot/setup-path.sh` (Unix-like/POSIX shell)
+
+This will enable the use of `git grab <number>` to apply a numbered patch series
+from a corresponding Discord thread under the #sst-dev channel, as well as
+`git submit "description"` to create a new thread from your current WIP. Note
+however that the latter requires an authorisation token, both to prevent random
+spam and to associate submissions with individuals. Once you’re somewhat
+involved in the project I can happily set this up for you. It’s a bit of a
+manual process at the moment because there’s nowhere enough people to justify
+implementing a proper login system. That’s time that could be spent on SST
+itself, or something.
+
 Thanks, and have fun!
 - Michael Smith <mikesmiffy128@gmail.com>
