@@ -30,13 +30,14 @@ Note that GCC and Clang will generally give the best-performing output.
 Once the .c file is built, the public header can be consumed by virtually any C
 or C++ compiler, as well as probably most half-decent FFIs.
 
-Note that the .c source file is probably C++-compatible at the moment, but this
-is not guaranteed, so it's best to compile it as a C source. The header will
-work fine from either language.
+Note that the .c source file is not C++-compatible, only the header is. The
+source file relies on array designated initialisers, which are only standardised
+in C. Some C++ compilers may still allow this with a warning, but the most
+straightforward thing would be to compile the source using a C compiler.
 
 == API usage ==
 
-See documentation comments in x86.h for a basic idea. Some *pro tips*:
+See documentation comments in x86.h for a basic idea.
 
 == OS compatibility ==
 
