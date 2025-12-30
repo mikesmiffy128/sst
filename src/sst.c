@@ -466,7 +466,7 @@ enum unload_action {
 	UNLOAD_SELF,
 	UNLOAD_OTHER
 };
-static int hook_plugin_unload_common(int argc, const char **argv) {
+static opt_small int hook_plugin_unload_common(int argc, const char **argv) {
 	if (argc > 1) {
 		if (!CHECK_AllowPluginLoading(false)) return UNLOAD_SKIP;
 		if (!*argv[1]) {
@@ -513,7 +513,7 @@ static int hook_plugin_unload_common(int argc, const char **argv) {
 	return UNLOAD_OTHER;
 }
 
-static void hook_plugin_unload_cbv1() {
+static opt_small void hook_plugin_unload_cbv1() {
 	extern int *_con_argc;
 	extern const char **_con_argv;
 	int action = hook_plugin_unload_common(*_con_argc, _con_argv);
@@ -527,7 +527,7 @@ static void hook_plugin_unload_cbv1() {
 			EMIT_PluginUnloaded();
 	}
 }
-static void hook_plugin_unload_cbv2(struct con_cmdargs *args) {
+static opt_small void hook_plugin_unload_cbv2(struct con_cmdargs *args) {
 	int action = hook_plugin_unload_common(args->argc, args->argv);
 	switch_exhaust_enum(unload_action, action) {
 		case UNLOAD_SKIP:
@@ -540,7 +540,7 @@ static void hook_plugin_unload_cbv2(struct con_cmdargs *args) {
 	}
 }
 
-static bool do_load(ifacefactory enginef, ifacefactory serverf) {
+static inline bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	factory_engine = enginef; factory_server = serverf;
 	if_cold (!engineapi_init(ifacever)) return false;
 	if (GAMETYPE_MATCHES(OE)) shuntvars(); // see also comment in con_detect()
@@ -574,7 +574,7 @@ static bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	return true;
 }
 
-static void do_unload() {
+static inline void do_unload() {
 	// slow path: reloading shouldn't happen all the time, prioritise fast exit
 	if_cold (sst_userunloaded) { // note: if we're here, pluginhandler is set
 		unhook_plugin_load_cb(cmd_plugin_load);

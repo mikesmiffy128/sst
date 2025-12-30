@@ -29,10 +29,10 @@ GAMESPECIFIC(L4D)
 
 struct ray {
 	// these have type VectorAligned in the engine, which occupies 16 bytes
-	struct vec3f _Alignas(16) start, delta, startoff, extents;
+	alignas(16) struct vec3f start, delta, startoff, extents;
 	// align to 16 since "extents" is supposed to occupy 16 bytes.
 	// TODO(compat): this member isn't in every engine branch
-	const float _Alignas(16) (*worldaxistransform)[3][4];
+	alignas(16) const float (*worldaxistransform)[3][4];
 	bool isray, isswept;
 };
 

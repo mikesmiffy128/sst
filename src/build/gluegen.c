@@ -739,7 +739,7 @@ F( "extern struct con_var *%.*s;", cvar_names[i].len, cvar_names[i].s);
 F( "extern struct con_cmd *%.*s;", ccmd_names[i].len, ccmd_names[i].s);
 	}
 _( "")
-_( "static inline void preinitfeatures() {")
+_( "static inline opt_small void preinitfeatures() {")
 	for (int i = 1; i < nmods; ++i) {
 		if (mod_flags[i] & HAS_PREINIT) {
 F( "	feats.preinit_%.*s = _feat_preinit_%.*s();",

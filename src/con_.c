@@ -490,18 +490,16 @@ static bool find_Con_ColorPrintf() {
 }
 #endif
 
-static void helpuserhelpus(int pluginver, char ifaceverchar) {
+// note: for now at least, not using errmsg_*() macros here because it doesn't
+// really make sense for these messages to be coming from "con"
+static cold void helpuserhelpus(int pluginver, char ifaceverchar) {
 	con_msg("\n");
 	con_msg("-- Please include ALL of the following if asking for help:\n");
 	con_msg("--   plugin:     " LONGNAME " v" VERSION "\n");
 	con_msg("--   interfaces: %d/%c\n", pluginver, ifaceverchar);
 	con_msg("\n");
 }
-
-// note: for now at least, not using errmsg_*() macros here because it doesn't
-// really make sense for these messages to be coming from "con"
-
-static void badver() {
+static inline void badver() {
 	con_warn("sst: error: this engine version is not yet supported\n");
 }
 

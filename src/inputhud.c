@@ -164,10 +164,7 @@ static inline int bsf(uint x) {
 }
 
 // IMPORTANT: these things must all match the button order in engineapi.h
-static const struct {
-	hud_wchar len;
-	hud_wchar s[6];
-} text[] = { // 7 * 20 = 140B
+static const struct { hud_wchar len, s[6]; } text[] = { // 2 * 7 * 20 = 280B
 	/* IN_ATTACK */		{3, L"Pri"},
 	/* IN_JUMP */		{4, L"Jump"},
 	/* IN_DUCK */		{4, L"Duck"},
@@ -191,14 +188,14 @@ static const struct {
 	// ignoring the rest
 };
 
-struct layout_header {
+struct layout_header { // 4B
 	// current IN_* things go up to 25 bits (1 << 24) however we don't use
 	// anything past IN_ZOOM here (1 << 19)
 	u32 mask : 24;
 	// our max width is currently 15; max height is 7 but allow some room here
 	u32 w : 4, h : 4;
 };
-struct layout_btn { u8 x : 4, y : 4; };
+struct layout_btn { u8 x : 4, y : 4; }; // 1B
 struct layout {
 	struct layout_header hdr;
 	struct layout_btn btns[];
@@ -216,7 +213,7 @@ struct layout {
 // XXX: just manually sizing these unions for flexible arrays right now.
 // not ideal, but simple enough... I guess.
 
-static const LAYOUT_FLEX(20) layout_hl2 = {
+static const LAYOUT_FLEX(20) layout_hl2 = { // 24B
 	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE |
 	IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2 | IN_RELOAD | IN_SPEED |
 	IN_WALK | IN_ZOOM,
@@ -242,7 +239,7 @@ static const LAYOUT_FLEX(20) layout_hl2 = {
 	}
 };
 
-static const LAYOUT_FLEX(12) layout_portal1 = {
+static const LAYOUT_FLEX(12) layout_portal1 = { // 16B
 	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE |
 	IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2,
 	11, 7,
@@ -264,7 +261,7 @@ static const LAYOUT_FLEX(12) layout_portal1 = {
 };
 
 // TODO(compat): add portal2 layout once there's hud gamedata for portal 2
-//static const LAYOUT_FLEX(20) layout_portal2 = {
+//static const LAYOUT_FLEX(20) layout_portal2 = { // 24B
 //	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE |
 //	IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2 | IN_ZOOM,
 //	11, 7,
@@ -289,7 +286,7 @@ static const LAYOUT_FLEX(12) layout_portal1 = {
 //	}
 //};
 
-static const LAYOUT_FLEX(20) layout_l4d = {
+static const LAYOUT_FLEX(20) layout_l4d = { // 24B
 	IN_ATTACK | IN_JUMP | IN_DUCK | IN_FORWARD | IN_BACK | IN_USE |
 	IN_MOVELEFT | IN_MOVERIGHT | IN_ATTACK2 | IN_RELOAD | IN_SPEED | IN_ZOOM,
 	13, 7,
@@ -328,10 +325,9 @@ static const char *const fontnames[] = {
 };
 static struct { ulong h; int sz; } fonts[countof(fontnames)];
 
-
 static int lastw = 0, lasth = 0;
 
-static void reloadfonts() {
+static cold void reloadfonts() {
 	for (int i = 0; i < countof(fontnames); ++i) {
 		if (fonts[i].h = hud_getfont(fontnames[i], true)) {
 			int dummy;

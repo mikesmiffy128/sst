@@ -28,11 +28,9 @@
 #include "ppmagic.h"
 #include "sst.h"
 
-static inline void chflags(const char *name, int unset, int unset_ne, int set) {
+static void chflags(const char *name, int unset, int unset_ne, int set) {
 	struct con_var *v = con_findvar(name);
-	if_hot (!GAMETYPE_MATCHES(OE)) {
-		unset |= unset_ne;
-	}
+	if_hot (!GAMETYPE_MATCHES(OE)) unset |= unset_ne;
 	if (v) {
 		struct con_var *p = con_getvarcommon(v)->parent;
 		p->base.flags = p->base.flags & ~unset | set;
