@@ -141,17 +141,16 @@ INIT {
 		sym_game = kvsys_strtosym("game");
 		sym_campaign = kvsys_strtosym("campaign");
 		sym_chapter = kvsys_strtosym("chapter");
+		return FEAT_OK;
 	}
 #ifdef _WIN32 // L4D1 has no Linux build, btw!
 	else {
 		oldmmiface = factory_engine("VENGINE_MATCHMAKING_VERSION001", 0);
-		if_cold (!oldmmiface) {
-			errmsg_errorx("couldn't get IMatchmaking interface");
-			return FEAT_INCOMPAT;
-		}
-#endif
+		if_hot (oldmmiface) return FEAT_OK;
 	}
-	return FEAT_OK;
+#endif
+	errmsg_errorx("couldn't get matchmaking interface");
+	return FEAT_INCOMPAT;
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
