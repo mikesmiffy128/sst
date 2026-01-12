@@ -477,7 +477,7 @@ static inline void handle(s16 mod, s16 mods, s16 *featdescs, s16 *events,
 							s16 depmod = radix_lookup(mods, mod_names, param.s,
 									param.len, false);
 							if_cold (!depmod) {
-								fprintf(stderr, "cmeta_fatal: %" fS ":%d: "
+								fprintf(stderr, "gluegen: fatal: %" fS ":%d: "
 										"feature `%.*s` does not exist\n",
 										file, cmeta_line(cm, i),
 										param.len, param.s);
