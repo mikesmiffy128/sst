@@ -29,8 +29,8 @@ if "%dbg%"=="1" (
 	set cflags=-O0 -g3 -masm=intel -fsanitize-trap=undefined -DSST_DBG
 	set ldflags=-O0 -g3
 ) else (
-	set cflags=-O2 -masm=intel -ffreestanding
-	set ldflags=-O2 -ffreestanding
+	set cflags=-flto -O2 -masm=intel -ffreestanding
+	set ldflags=-flto -O2 -ffreestanding
 )
 
 set objs=
@@ -46,7 +46,7 @@ set dmodname= -DMODULE_NAME=%basename%
 if "%dmodname%"==" -DMODULE_NAME=con_" set dmodname= -DMODULE_NAME=con
 if "%dmodname%"==" -DMODULE_NAME=sst" set dmodname=
 set objs=%objs% .build/%basename%%ext%.o
-%CC% -c -flto -mno-stack-arg-probe %cflags% %warnings% %stdflags% -include src/1.h ^
+%CC% -c -mno-stack-arg-probe %cflags% %warnings% %stdflags% -include src/1.h ^
 -I.build/include -D_DLL%dmodname% -o .build/%basename%%ext%.o %1 || goto :end
 goto :eof
 
@@ -145,7 +145,7 @@ if "%dbg%"=="1" (
 ) else (
 	set clibs=-lucrt
 )
-%CC% -fuse-ld=lld -shared -flto %ldflags% -Wl,-implib:.build/sst.lib,-Brepro,-nodefaultlib,-safeseh:no ^
+%CC% -fuse-ld=lld -shared %ldflags% -Wl,-implib:.build/sst.lib,-Brepro,-nodefaultlib,-safeseh:no ^
 -L.build %clibs% -lkernel32 -luser32 -lbcryptprimitives -lshlwapi -ld3d9 -ldsound ^
 -ltier0 -lvstdlib -lntdll -o .build/sst.dll%objs% .build/dll.res || goto :end
 :: get rid of another useless file (can we just not create this???)

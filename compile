@@ -28,8 +28,8 @@ if [ "$dbg" = 1 ]; then
 	cflags="-O0 -g3 -masm=intel -fsanitize-trap=undefined -DSST_DBG"
 	ldflags="-O0 -g3"
 else
-	cflags="-O2 -fvisibility=hidden -masm=intel -ffreestanding"
-	ldflags="-O2 -s -ffreestanding"
+	cflags="-flto -O2 -fvisibility=hidden -masm=intel -ffreestanding"
+	ldflags="-flto -O2 -s -ffreestanding"
 fi
 
 objs=
@@ -40,12 +40,12 @@ cc() {
 	# ugly annoying special case
 	if [ "$_mn" = " -DMODULE_NAME=con_" ]; then _mn=" -DMODULE_NAME=con"
 	elif [ "$_mn" = "-DMODULE_NAME=sst" ]; then _mn=; fi
-	$CC -c -flto -fpic -fno-ident $cflags $warnings -include src/1.h \
+	$CC -c -fpic -fno-ident $cflags $warnings -include src/1.h \
 			-I.build/include $stdflags$_mn -o ".build/${_bn%%.c}.o" "src/$1"
 }
 
 ld() {
-	$CC -shared -flto -fpic -fuse-ld=lld $ldflags -L.build -ldl \
+	$CC -shared -fpic -fuse-ld=lld $ldflags -L.build -ldl \
 			-ltier0 -lvstdlib -o .build/sst.so$objs
 	mv .build/sst.so sst.so
 }
