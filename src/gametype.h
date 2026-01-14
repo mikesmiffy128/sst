@@ -26,8 +26,8 @@ extern u32 _gametype_tag;
 #define GAMETYPE_BASETAGS(ALL, WINDOWSONLY) \
 	/* general engine branches used in a bunch of stuff */ \
 	WINDOWSONLY(OE) \
-	ALL(OrangeBox) \
-	ALL(2013) \
+	ALL(OrangeBox) /* 2007, plugin interface v2 */ \
+	ALL(2013) /* ~2013, sometimes earlier (includes 4104), interface v3 */ \
 \
 	/* specific games with dedicated branches / engine changes */ \
 	/* TODO(compat): dmomm seems to fail currently (VEngineServer broke?) */ \
@@ -55,7 +55,7 @@ extern u32 _gametype_tag;
 	ALL(SrvDLL005) /* mostly everything else, it seems */ \
 \
 	/* games needing version-specific stuff */ \
-	WINDOWSONLY(Portal1_3420) \
+	WINDOWSONLY(Near4104) /* Episode 1 and 2, Portal 1, some time around 2010 */ \
 	WINDOWSONLY(L4D1_1015plus) /* Crash Course update */ \
 	WINDOWSONLY(L4D1_1022plus) /* Mac update, bunch of code reshuffling */ \
 	ALL(L4D2_2125plus) \
@@ -78,7 +78,6 @@ GAMETYPE_BASETAGS(_GAMETYPE_ENUMBIT, _GAMETYPE_DISCARD)
 GAMETYPE_BASETAGS(_GAMETYPE_ENUMVAL, _GAMETYPE_DISCARD)
 GAMETYPE_BASETAGS(_GAMETYPE_DISCARD, _GAMETYPE_ZERO)
 #endif
-#define _GAMETYPE_ENUMVAL(x) _gametype_tag_##x = 1 << _gametype_tagbit_##x,
 #undef _GAMETYPE_ZERO
 #undef _GAMETYPE_DISCARD
 #undef _GAMETYPE_ENUMVAL

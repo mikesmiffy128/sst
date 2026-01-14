@@ -553,14 +553,19 @@ bool con_detect(int pluginver) {
 	if (_con_iface = factory_engine("VEngineCvar004", 0)) {
 		// TODO(compat): are there any cases where 004 is incompatible? could
 		// this crash? find out!
-		if (pluginver == 3) _gametype_tag |= _gametype_tag_2013;
-		else _gametype_tag |= _gametype_tag_OrangeBox;
-		// detect Portal 1 versions while we're here...
+		if (pluginver == 3) {
+			_gametype_tag |= _gametype_tag_2013;
+			// this was added *some time* after 4104, or around 5135. don't know
+			// exactly. good enough for our current compatibility needs.
+			if (!FindVar_nonp2(_con_iface, "tf_escort_score_rate")) {
+				_gametype_tag |= _gametype_tag_Near4104;
+			}
+		}
+		else /* pluginver == 2 */ {
+			_gametype_tag |= _gametype_tag_OrangeBox;
+		}
 		if (FindCommand_nonp2(_con_iface, "upgrade_portalgun")) {
 			_gametype_tag |= _gametype_tag_Portal1;
-			if (!FindVar_nonp2(_con_iface, "tf_escort_score_rate")) {
-				_gametype_tag |= _gametype_tag_Portal1_3420;
-			}
 		}
 		else if (FindCommand_nonp2(_con_iface, "phys_swap")) {
 			_gametype_tag |= _gametype_tag_HL2series;

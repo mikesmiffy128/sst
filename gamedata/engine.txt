@@ -59,9 +59,10 @@ vtidx_GetEngineBuildNumber
 	Client014
 		L4D2 31
 		2013 98
-	Portal1_3420 91
+	OrangeBox
+		Portal1 91 # probably applies to other 2007 stuff too? haven't tested
 	# TODO(compat): we'll need these... but need to detect first
-	#Portal1_5135 102
+	#Portal1_5135 102 # probably applies to everything 5135?
 	#L4D1_1005 99
 	#L4D1_Steam 97
 vtidx_ManageAddonsForActiveSession
