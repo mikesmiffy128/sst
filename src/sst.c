@@ -14,8 +14,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <string.h>
-
 #ifdef _WIN32
 #include <Windows.h>
 #include <shlwapi.h>
@@ -28,7 +26,6 @@
 #include "engineapi.h"
 #include "errmsg.h"
 #include "event.h"
-#include "extmalloc.h" // for freevars() in generated code
 #include "feature.h"
 #include "fixes.h"
 #include "gamedata.h"
@@ -543,7 +540,6 @@ static opt_small void hook_plugin_unload_cbv2(struct con_cmdargs *args) {
 static inline bool do_load(ifacefactory enginef, ifacefactory serverf) {
 	factory_engine = enginef; factory_server = serverf;
 	if_cold (!engineapi_init(ifacever)) return false;
-	if (GAMETYPE_MATCHES(OE)) shuntvars(); // see also comment in con_detect()
 	const void **p = vtable_firstdiff;
 	if (GAMETYPE_MATCHES(Portal2)) *p++ = (void *)&nop_p_v; // ClientFullyConnect
 	*p++ = (void *)&nop_p_v;		  // ClientDisconnect
@@ -598,7 +594,6 @@ static inline void do_unload() {
 	}
 	endfeatures();
 	con_disconnect();
-	freevars();
 }
 
 static bool VCALLCONV Load(void *this, ifacefactory enginef,

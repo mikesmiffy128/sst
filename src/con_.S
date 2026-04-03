@@ -42,4 +42,24 @@ ASM_MANGLE(_con_colourmsg):
 	.byte 0x25
 	.long ASM_MANGLE(_con_colourmsgf)
 
+// The DEF_CVAR macros put stuff in .rdata$y/.rodata.cvars1. Sandwiching that
+// between empty x/0 and z/2 sections gives us section start/end pointers to
+// iterate the cvars, which is used for freeing the values on unload. Relies
+// on the section merging not adding extra padding, which is fine with the
+// linker + settings we use in practice.
+#ifdef _WIN32
+.section .rdata$x, "rw"
+#else
+.section .rodata.cvars0, "rw"
+#endif
+.globl ASM_MANGLE(_con_vars_start)
+ASM_MANGLE(_con_vars_start):
+#ifdef _WIN32
+.section .rdata$z, "rw"
+#else
+.section .rodata.cvars2, "rw"
+#endif
+.globl ASM_MANGLE(_con_vars_end)
+ASM_MANGLE(_con_vars_end):
+
 // vi: sw=4 ts=4 noet tw=80 cc=80

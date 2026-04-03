@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "abi.h"
+#include "asm.h"
 #include "chunklets/x86.h"
 #include "con_.h"
 #include "engineapi.h" // for factories and rgba - XXX: is this a bit circular?
@@ -503,6 +504,16 @@ static inline void badver() {
 	con_warn("sst: error: this engine version is not yet supported\n");
 }
 
+extern struct con_var _con_vars_start, _con_vars_end; // con_.S
+
+static inline void shuntvars() {
+#ifdef _WIN32
+	for (struct con_var *v = &_con_vars_start; v != &_con_vars_end; ++v) {
+		__builtin_memmove(&v->v1, &v->v2, sizeof(struct con_var_common));
+	}
+#endif
+}
+
 bool con_detect(int pluginver) {
 	if (_con_iface = factory_engine("VEngineCvar007", 0)) {
 		// GENIUS HACK (BUT STILL BAD): Portal 2 has everything in ICvar shifted
@@ -574,6 +585,7 @@ bool con_detect(int pluginver) {
 	}
 	if (_con_iface = factory_engine("VEngineCvar003", 0)) {
 #ifdef _WIN32 // there's no OE on linux!
+		shuntvars(); // just doing this as early as possible atm, it's fine
 		_gametype_tag |= _gametype_tag_OE;
 		// for deletion/unlinking on unload, we need an indirect linked list
 		// pointer. calling GetCommands gives us a direct pointer. so we have to
@@ -733,6 +745,12 @@ void con_init() {
 	*pi++ = (void *)&GetSplitScreenPlayerSlot;
 }
 
+static inline void freevars() {
+	for (struct con_var *v = &_con_vars_start; v != &_con_vars_end; ++v) {
+		extfree(con_getvarcommon(v)->strval);
+	}
+}
+
 void con_disconnect() {
 #ifdef _WIN32
 	if (linkedlist) {
@@ -749,10 +767,11 @@ void con_disconnect() {
 				pp = next;
 			}
 		}
-		return;
+		goto f;
 	}
 #endif
 	UnregisterConCommands(_con_iface, dllid);
+f:	freevars();
 }
 
 struct con_var *con_findvar(const char *name) {

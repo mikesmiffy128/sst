@@ -273,7 +273,14 @@ extern struct _con_vtab_iconvar_wrap {
 } _con_vtab_iconvar_wrap;
 #define _con_vtab_iconvar _con_vtab_iconvar_wrap.vtable
 
+#ifdef _WIN32
+#define _CON_VAR_SEG ".rdata$y"
+#else
+#define _CON_VAR_SEG ".rodata.cvars1"
+#endif
+
 #define _DEF_CVAR(name_, desc, value, hasmin_, min, hasmax_, max, flags_) \
+	__attribute__((section(_CON_VAR_SEG))) \
 	static struct con_var _cvar_##name_ = { \
 		.base = { \
 			.vtable = _con_vtab_var, \
