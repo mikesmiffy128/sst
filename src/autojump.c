@@ -111,7 +111,7 @@ INIT {
 		// it's also necessary to do this extremely stupid callback nonsense!
 		sst_autojump->base.flags |= CON_CHEAT;
 		sv_cheats = con_findvar("sv_cheats");
-		sst_autojump->cb = cheatcb;
+		sst_autojump->cb = &cheatcb;
 	}
 	return FEAT_OK;
 }

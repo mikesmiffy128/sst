@@ -246,7 +246,6 @@ bool demorec_start(const char *name) {
 	if (was) return false;
 	// dumb but easy way to do this: call the record command callback. note:
 	// this args object is very incomplete by enough to make the command work
-	// TODO(compat): will this be a problem for OE with the global argc/argv?
 	orig_record_cb(2, (const char *[]){0, name});
 	if (!was && *recording) *demonum = 0; // same logic as in the hook
 	EMIT_DemoRecordStarting();
