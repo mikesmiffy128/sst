@@ -104,6 +104,7 @@ setlocal DisableDelayedExpansion
 :+ portalcolours.c
 :+ portalisg.c
 :+ rinput.c
+:+ speedrun.c
 :+ sst.c
 :+ trace.c
 :+ xhair.c

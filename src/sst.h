@@ -24,7 +24,7 @@
 DECL_EVENT(ClientActive, struct edict */*player*/)
 DECL_EVENT(Tick, bool /*simulating*/)
 
-DECL_PREDICATE(AllowPluginLoading, void)
+DECL_PREDICATE(AllowPluginLoading, bool)
 DECL_EVENT(PluginLoaded, void)
 DECL_EVENT(PluginUnloaded, void)
 

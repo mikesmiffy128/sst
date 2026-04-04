@@ -86,6 +86,7 @@ src="\
 	nosleep.c
 	os.c
 	portalcolours.c
+	speedrun.c
 	sst.c
 	trace.c
 	xhair.c"

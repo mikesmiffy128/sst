@@ -26,7 +26,7 @@ extern struct CDemoRecorder { void **vtable; } *demorecorder;
 
 /*
  * Whether to ignore the value of the sst_autorecord cvar and just keep
- * recording anyway. Will be used to further automate demo recording later.
+ * recording anyway. Currently used by the speedrun recording feature.
  */
 extern bool demorec_forceauto;
 
