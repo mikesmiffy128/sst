@@ -117,9 +117,19 @@ int os_dlfile(void *lib, ushort *buf, int sz) {
 	return n;
 }
 
+void *os_pagealloc(int sz, int prot) {
+	return VirtualAlloc(0, sz, MEM_RESERVE | MEM_COMMIT, prot);
+}
+void os_pagefree(void *addr, int sz) {
+	VirtualFree(addr, sz, MEM_RELEASE);
+}
+
 bool os_mprot(void *addr, int len, int mode) {
 	ulong old;
 	return !!VirtualProtect(addr, len, mode, &old);
+}
+bool os_mlock(void *addr, int sz) {
+	return VirtualLock(addr, 4096);
 }
 
 #else
@@ -155,11 +165,37 @@ void *os_dlsym(void *restrict lib, const char *restrict name) {
 	return dlsym(lib, name);
 }
 
+void *os_pagealloc(int sz, int prot) {
+	sz = sz + 4095 & ~4095; // round up size
+	void *ret = mmap(0, sz, prot, MAP_SHARED | MAP_ANON, -1, 0);
+	if (ret == MAP_FAILED) return 0;
+	return ret;
+}
+void os_pagefree(void *addr, int sz) {
+	// round down address and round up size
+	addr = (void *)((ulong)addr & ~4095);
+	len = len + 4095 & ~4095;
+	munmap(addr, len);
+}
+
 bool os_mprot(void *addr, int len, int mode) {
 	// round down address and round up size
-	addr = (void *)((ulong)addr & ~(4095));
-	len = len + 4095 & ~(4095);
+	addr = (void *)((ulong)addr & ~4095);
+	len = len + 4095 & ~4095;
 	return mprotect(addr, len, mode) != -1;
+}
+
+bool os_mlock(void *addr, int sz) {
+#ifdef __linux__
+	// Linux-specific madvise stuff (there are some equivalents in OpenBSD and
+	// FreeBSD, if anyone's wondering, but we don't use need them for our
+	// purposes).
+	if (madvise(addr, len, MADV_DONTFORK) == -1 ||
+			madvise(addr, len, MADV_DONTDUMP) == - 1) {
+		return false;
+	}
+#endif
+	return mlock(addr, len) != -1;
 }
 
 void os_randombytes(void *buf, int sz) { while (getentropy(buf, sz) == -1); }
@@ -200,8 +236,8 @@ void *os_dlhandle(const char *name) {
 		int namelen = strlen(lm->l_name);
 		int sublen = strlen(name);
 		if (sublen >= namelen) continue;
-		if (lm->l_name[namelen - sublen - 1] == '/' && !memcmp(
-				lm->l_name + namelen - sublen, name, sublen)) {
+		if (lm->l_name[namelen - sublen - 1] == '/' &&
+				!memcmp(lm->l_name + namelen - sublen, name, sublen)) {
 			return lm;
 		}
 	}

@@ -228,11 +228,30 @@ int os_dlfile(void *lib, os_char *buf, int sz);
 #endif
 
 /*
+ * Allocates some memory from the operating system. Rounds the size up to the
+ * page size (4096). Returns an address on success, or null on failure.
+ */
+void *os_pagealloc(int sz, int prot);
+
+/*
+ * Frees a page range allocated using os_pagealloc(). Rounds the address and
+ * size to page boundaries (4096).
+ */
+void os_pagefree(void *addr, int sz);
+
+/*
  * Changes memory protection for the address range given by addr and len, using
  * one of the Win32-style PAGE_* flags specified above. Returns true on success
  * and false on failure.
  */
 bool os_mprot(void *addr, int len, int mode);
+
+/*
+ * Locks a page range in physical memory; prevents paging to disk. The address
+ * and size *must* be page-aligned, otherwise behaviour is undefined.
+ * Returns true on success, false on failure.
+ */
+bool os_mlock(void *addr, int sz);
 
 /*
  * Fills buf with up to sz cryptographically random bytes. sz has an OS-specific

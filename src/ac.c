@@ -389,31 +389,18 @@ INIT {
 	struct hook_featsetup_ret_Key_Event h = hook_featsetup_Key_Event(Key_Event);
 	if_cold (h.err) return h.err;
 
-#ifdef _WIN32
-	keybox = VirtualAlloc(0, 4096, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	keybox = os_pagealloc(4096, PAGE_READWRITE);
 	if_cold (!keybox) {
 		errmsg_errorsys("couldn't allocate memory for session state");
 		return FEAT_FAIL;
 	}
-	if_cold (!VirtualLock(keybox, 4096)) {
+	if_cold (!os_mlock(keybox, 4096)) {
 		errmsg_errorsys("couldn't secure session state");
 		goto e;
 	}
+#ifdef _WIN32
 	if_cold (!win32_init()) goto e;
 #else
-	keybox = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
-	if_cold (keybox == MAP_FAILED) {
-		errmsg_errorstd("couldn't allocate memory for session state");
-		return FEAT_FAIL;
-	}
-	// linux-specific madvise stuff (there are some equivalents in OpenBSD and
-	// FreeBSD, if anyone's wondering, but we don't need to worry about those)
-	if_cold (madvise(keybox, 4096, MADV_DONTFORK) == -1 ||
-			madvise(keybox, 4096, MADV_DONTDUMP) == - 1 ||
-			mlock(keybox, 4096) == -1) {
-		errmsg_errorstd("couldn't secure session state");
-		goto e;
-	}
 	// TODO(linux): call other init things
 #endif
 
@@ -428,22 +415,17 @@ INIT {
 	hook_commit_Key_Event(h.hookpos, hookdest_Key_Event);
 	return FEAT_OK;
 
-#ifdef _WIN32
-e:	VirtualFree(keybox, 4096, MEM_RELEASE);
-#else
-e:	munmap(keybox, 4096);
-#endif
+e:	os_pagefree(keybox, 4096);
 	return FEAT_FAIL;
 }
 
 END {
 	// TODO(opt): *maybe* do the skip-on-quit stuff here. feels a bit scary...
 	ac_disable();
+	os_pagefree(keybox, 4096);
 #if defined(_WIN32)
-	VirtualFree(keybox, 4096, MEM_RELEASE);
 	win32_end();
 #else
-	munmap(keybox, 4096);
 	// TODO(linux): call other cleanup things
 #endif
 	unhook_Key_Event();
