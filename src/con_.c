@@ -237,25 +237,27 @@ static void VCALLCONV ChangeStringValue_OE(struct con_var *this, const char *s) 
 // vtable just in case (see below), though arguably nothing in the engine
 // *should* be calling these internal things anyway.
 
-static void InternalSetValue_common(struct con_var *this,
-		struct con_var_common *common, const char *v) {
+static const char *InternalSetValue_common(struct con_var *this,
+		struct con_var_common *common, const char *v, char tmp[static 32]) {
 	float newf = atof(v);
-	char tmp[32];
 	if (ClampValue_common(common, &newf)) {
-		snprintf(tmp, sizeof(tmp), "%f", newf);
+		snprintf(tmp, 32, "%f", newf);
 		v = tmp;
 	}
 	common->fval = newf;
 	common->ival = (int)newf;
+	return v;
 }
 static void VCALLCONV InternalSetValue(struct con_var *this, const char *v) {
 	float oldf = this->v2.fval;
-	InternalSetValue_common(this, &this->v2, v);
+	char tmp[32];
+	v = InternalSetValue_common(this, &this->v2, v, tmp);
 	if (!(this->base.flags & CON_NOPRINT)) ChangeStringValue(this, v, oldf);
 }
 #ifdef _WIN32
 static void VCALLCONV InternalSetValue_OE(struct con_var *this, const char *v) {
-	InternalSetValue_common(this, &this->v1, v);
+	char tmp[32];
+	v = InternalSetValue_common(this, &this->v1, v, tmp);
 	if (!(this->base.flags & CON_NOPRINT)) ChangeStringValue_OE(this, v);
 }
 #endif
