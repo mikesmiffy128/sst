@@ -128,7 +128,8 @@ static inline void *list_grow_p(struct list_chunkhdr **tailp, int amt) {
 	}
 
 // trickery to enable 1-based indexing (and thus 0-as-null) for various arrays
-#define SHUNT(T, x) typeof(T) _array_##x[], *const x = _array_##x - 1, _array_##x
+#define ARRAY(T, x, sz) \
+	typeof(T) _array_##x[sz], *const x = _array_##x - 1, _array_##x[sz]
 
 #define MAX_MODULES 512
 // note that by 1-indexing these, we enable the radix stuff above to use the
@@ -136,9 +137,9 @@ static inline void *list_grow_p(struct list_chunkhdr **tailp, int amt) {
 // direct index into each array when looping through files passed to main()!
 // XXX: padded 16-byte structs. could eventually switch to u32 indices. for now,
 // locality is favoured over packing. no clue whether that's the right call!
-static SHUNT(struct cmeta_slice, mod_names)[MAX_MODULES] = {0};
-static SHUNT(struct cmeta_slice, mod_featdescs)[MAX_MODULES] = {0};
-static SHUNT(struct cmeta_slice, mod_gamespecific)[MAX_MODULES] = {0};
+static ARRAY(struct cmeta_slice, mod_names, MAX_MODULES) = {0};
+static ARRAY(struct cmeta_slice, mod_featdescs, MAX_MODULES) = {0};
+static ARRAY(struct cmeta_slice, mod_gamespecific, MAX_MODULES) = {0};
 enum {
 	HAS_INIT = 1, // really, this means this *is a feature*!
 	HAS_PREINIT = 2,
@@ -149,10 +150,10 @@ enum {
 	DFS_SEEN = 128
 };
 static u8 mod_flags[MAX_MODULES] = {0};
-static SHUNT(struct list_chunk, mod_needs)[MAX_MODULES] = {0};
-static SHUNT(struct list_chunk, mod_wants)[MAX_MODULES] = {0};
-static SHUNT(struct list_chunk, mod_gamedata)[MAX_MODULES] = {0};
-static SHUNT(struct list_chunk, mod_globals)[MAX_MODULES] = {0};
+static ARRAY(struct list_chunk, mod_needs, MAX_MODULES) = {0};
+static ARRAY(struct list_chunk, mod_wants, MAX_MODULES) = {0};
+static ARRAY(struct list_chunk, mod_gamedata, MAX_MODULES) = {0};
+static ARRAY(struct list_chunk, mod_globals, MAX_MODULES) = {0};
 static int nmods = 1;
 
 static s16 feat_initorder[MAX_MODULES];
@@ -160,34 +161,34 @@ static int nfeatures = 0;
 
 #define MAX_CVARS 8192
 #define MAX_CCMDS MAX_CVARS
-static SHUNT(struct cmeta_slice, cvar_names)[MAX_CVARS];
-static SHUNT(struct cmeta_slice, ccmd_names)[MAX_CCMDS];
-static SHUNT(s16, cvar_feats)[MAX_CVARS];
-static SHUNT(s16, ccmd_feats)[MAX_CVARS];
-static SHUNT(u8, cvar_flags)[MAX_CVARS];
-static SHUNT(u8, ccmd_flags)[MAX_CVARS];
+static ARRAY(struct cmeta_slice, cvar_names, MAX_CVARS);
+static ARRAY(struct cmeta_slice, ccmd_names, MAX_CCMDS);
+static ARRAY(s16, cvar_feats, MAX_CVARS);
+static ARRAY(s16, ccmd_feats, MAX_CVARS);
+static ARRAY(u8, cvar_flags, MAX_CVARS);
+static ARRAY(u8, ccmd_flags, MAX_CVARS);
 static int ncvars = 1, nccmds = 1;
 DEF_NEW(s16, cvar_new, ncvars, MAX_CVARS, "cvar entries")
 DEF_NEW(s16, ccmd_new, nccmds, MAX_CCMDS, "ccmd entries")
 
 #define MAX_EVENTS 512
-static SHUNT(struct cmeta_slice, event_names)[MAX_EVENTS];
-static SHUNT(s16, event_owners)[MAX_EVENTS];
-static SHUNT(struct list_chunk, event_handlers)[MAX_EVENTS] = {0};
-static SHUNT(struct list_chunkhdr *, event_handlers_tails)[MAX_EVENTS] = {0};
-static SHUNT(struct list_chunk, event_params)[MAX_EVENTS] = {0};
+static ARRAY(struct cmeta_slice, event_names, MAX_EVENTS);
+static ARRAY(s16, event_owners, MAX_EVENTS);
+static ARRAY(struct list_chunk, event_handlers, MAX_EVENTS) = {0};
+static ARRAY(struct list_chunkhdr *, event_handlers_tails, MAX_EVENTS) = {0};
+static ARRAY(struct list_chunk, event_params, MAX_EVENTS) = {0};
 // XXX: would simply things a little if we could segregate the regular event and
 // predicate arrays, but because of how the event.h API is currently set up,
 // HANDLE_EVENT doesn't give context for what kind of event something is, so we
 // can't do that in a single pass (right now we create placeholder event entries
 // and check at the end to make sure we didn't miss one). fixing this is tricky!
-static SHUNT(bool, event_predicateflags)[MAX_EVENTS] = {0};
+static ARRAY(bool, event_predicateflags, MAX_EVENTS) = {0};
 static int nevents = 1;
 DEF_NEW(s16, event_new, nevents, MAX_EVENTS, "event entries")
 
 // a "crit-nybble tree" (see also: djb crit-bit trees)
 struct radix { s16 children[16], critpos; };
-static SHUNT(struct radix, radices)[MAX_MODULES * 2 + MAX_EVENTS];
+static ARRAY(struct radix, radices, MAX_MODULES * 2 + MAX_EVENTS);
 static int nradices = 1; // also reserve a null value
 
 // NOTE: this will never fail, as node count is bounded by modules * 2 + events
