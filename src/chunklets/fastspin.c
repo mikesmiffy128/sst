@@ -236,7 +236,7 @@ int fastspin_wait(volatile int *p_) {
 #else
 	if (x > 0) return x;
 	if (!x) {
-		for (int c = 1000; c; --c) {
+		for (int c = 40; c; --c) {
 			x = atomic_load_explicit(p, memory_order_relaxed);
 			RELAX();
 			if (x > 0) return x;
@@ -269,7 +269,7 @@ top:	x = 0;
 			return;
 		}
 		if (x) {
-			for (int c = 1000; c; --c) {
+			for (int c = 40; c; --c) {
 				x = atomic_load_explicit(p, memory_order_relaxed);
 				RELAX();
 				// note: top sets x to 0 unnecessarily but clang actually does
