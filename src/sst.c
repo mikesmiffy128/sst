@@ -269,6 +269,10 @@ static bool already_loaded = false, skip_unload = false;
 
 // auto-update message. see below in do_featureinit()
 static const char *updatenotes = "\
+* Fixed 4104 autojump\n\
+* Added sst_speedrun_start and sst_speedrun_stop\n\
+* Fixed a bug with cvar values not clamping correctly\n\
+* Various code size and speed optimisations\n\
 ";
 
 enum { // used in generated code, must line up with featmsgs arrays below
