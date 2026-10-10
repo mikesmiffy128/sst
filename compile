@@ -24,6 +24,8 @@ warnings="-Wall -pedantic -Wno-parentheses -Wno-missing-braces \
 stdflags="-std=c2x -D_DEFAULT_SOURCE -D_FILE_OFFSET_BITS=64 -D_TIME_BITS=64"
 
 dbg=0
+if [ "$1" = "dbg" ]; then dbg=1; fi
+
 if [ "$dbg" = 1 ]; then
 	cflags="-O0 -g3 -masm=intel -fsanitize-trap=undefined -DSST_DBG"
 	ldflags="-O0 -g3"
