@@ -4,14 +4,19 @@ function! Todo(...)
 	if exists("a:1") && a:1 != ""
 		copen
 		" cex "" | cadde to avoid insta-jumping
-		if &shell == "cmd.exe"
-			cex "" | cadde system("git grep -nF TODO(".shellescape(a:1).")")
+		if &shell !~ "(.*[\\/])?cmd\.exe"
+			" for some reason vim ties quoting behaviour to whether or not the
+			" user prefers forward slashes in their file paths.
+			let oldssl=&ssl
+			set nossl
+			cex "" | cadde system("git grep -nF TODO^(".shellescape(a:1)."^)")
+			let &ssl=oldssl
 		else
 			cex "" | cadde system("git grep -nF \"TODO(\"".shellescape(a:1)."\\)")
 		endif
 	else
 		" just displaying like this for now...
-		if &shell == "cmd.exe"
+		if &shell !~ "(.*[\\/])?cmd\.exe"
 			" FIXME: write a Windows batch equivalent!? in the meantime, you
 			" need a Unix shell to track issues :^)
 			cex "" | cclose | !sh tools/todo
