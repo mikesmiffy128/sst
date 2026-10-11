@@ -239,11 +239,11 @@ DEF_CCMD_HERE(sst_printversion, "Display plugin version information", 0) {
 // interested parties identify the version of SST used by just writing a dummy
 // cvar to the top of the demo. this will be removed later, once there's a less
 // stupid way of achieving the same goal.
-#if VERSION_MAJOR != 0 || VERSION_MINOR != 18
+#if VERSION_MAJOR != 0 || VERSION_MINOR != 19
 #error Need to change this manually, since gluegen requires it to be spelled \
 out in DEF_CVAR - better yet, can we get rid of this yet?
 #endif
-DEF_CVAR(__sst_0_18_beta, "", 0, CON_INIT_HIDDEN | CON_DEMO)
+DEF_CVAR(__sst_0_19_beta, "", 0, CON_INIT_HIDDEN | CON_DEMO)
 
 // most plugin callbacks are unused - define dummy functions for each signature
 static void VCALLCONV nop_v_v(void *this) {}
@@ -269,10 +269,6 @@ static bool already_loaded = false, skip_unload = false;
 
 // auto-update message. see below in do_featureinit()
 static const char *updatenotes = "\
-* Fixed 4104 autojump\n\
-* Added sst_speedrun_start and sst_speedrun_stop\n\
-* Fixed a bug with cvar values not clamping correctly\n\
-* Various code size and speed optimisations\n\
 ";
 
 enum { // used in generated code, must line up with featmsgs arrays below
