@@ -31,7 +31,7 @@
 //#define sprintf sprintf_is_dangerous_and_slow_and_should_never_be_used
 //#define snprintf snprintf_is_dangerous_and_slow_and_should_never_be_used
 #define vsprintf vsprintf_is_dangerous_and_slow_and_should_never_be_used
-// XXX: have some straggling vsnprintf usage I'd like to get rid of...
+// same issue with windows headers, unfortunately:
 //#define vsnprintf vsnprintf_is_dangerous_and_slow_and_should_never_be_used
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
