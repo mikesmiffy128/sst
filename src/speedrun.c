@@ -24,6 +24,7 @@
 #include "feature.h"
 #include "gameinfo.h"
 #include "intdefs.h"
+#include "langext.h"
 #include "mem.h"
 #include "os.h"
 #include "sst.h"
@@ -130,15 +131,14 @@ DEF_CCMD_HERE(sst_speedrun_start, "Start recording demos for a speedrun", 0) {
 		errmsg_errorx("sst_speedrun_dir must not point outside the game");
 		return;
 	}
-	// basedir/yyyymmddhhmmssNN/yymmdd
 	int baselen = strlen(basedir);
 	int maxlen = baselen + !!baselen; // slash, unless empty (no subdir)
 	bool usesubdirs = con_getvari(sst_speedrun_usesubdirs);
-	if (usesubdirs) maxlen += sizeof("yyyymmddhhmmss/") - 1;
+	if (usesubdirs) maxlen += sizeof("yyyymmddhhmmssNN/") - 1;
 	// for this length calc we assume there'll never been 100 *million* demos
 	// (the max possible int would of course be 2 billion, but the game would
 	// likely crash way before then)
-	maxlen += sizeof("yymmddhhmmss_99999999.dem"); // include \0
+	maxlen += sizeof("yymmddhhmmssNN_99999999.dem"); // include \0
 	if (maxlen > PATH_MAX) {
 		errmsg_errorx("demo filename is too long");
 		return;
@@ -168,45 +168,75 @@ DEF_CCMD_HERE(sst_speedrun_start, "Start recording demos for a speedrun", 0) {
 		path[pathsz++] = OS_LIT('/');
 	}
 	struct datetime dt = datetime();
-	if (usesubdirs) {
-		fmttime(path + pathsz, &dt);
-		path[pathsz + 14] = OS_LIT('\0');
-		if (!os_mkdir(path) && os_lasterror() != OS_EEXIST) {
-			errmsg_errorsys("couldn't create directory %" fS, path);
+	fmttime(path + pathsz, &dt);
+	int namelen = 14;
+	int nameend;
+	for (;;) {
+		if (usesubdirs) {
+			path[pathsz + namelen] = OS_LIT('\0');
+			if (!os_mkdir(path) && os_lasterror() != OS_EEXIST) {
+				errmsg_errorsys("couldn't create directory %" fS, path);
+				return;
+			}
+			path[pathsz + namelen] = OS_LIT('/');
+			mem_copy(path + pathsz + namelen + 1, path + pathsz,
+					namelen * sizeof(*path));
+			nameend = pathsz + namelen * 2 + 1;
+		}
+		else {
+			nameend = pathsz + namelen;
+		}
+		__builtin_memcpy_inline(path + nameend, OS_LIT(".dem"),
+				sizeof(OS_LIT(".dem")));
+		// check for an existing demo file with this name: if we started
+		// recording, then stopped, then started again in quick succession, we
+		// could have one. in this scenario, append a 2-digit counter to the end
+		// of the filename (or directory name; the above will dupe it to be the
+		// filename too in that case). from there the only way we'd have a
+		// collision is if someone started two recordings within 10
+		// milliseconds, and that shouldn't even be possible at standard
+		// tickrates.
+		struct os_stat st;
+		if_hot (os_stat(path, &st) == -1) break;
+		if_cold (errno != ENOENT) {
+			// XXX: should this just be a warning instead? shouldn't ever happen
+			// either way but still...
+			errmsg_errorstd("couldn't get info for file %" fS, path);
 			return;
 		}
-		path[pathsz + 14] = OS_LIT('/');
-		__builtin_memcpy_inline(path + pathsz + 15, path + pathsz,
-				14 * sizeof(*path));
-		__builtin_memcpy_inline(path + pathsz + 29, OS_LIT(".dem"),
-				sizeof(OS_LIT(".dem")));
-		pathsz += 33;
-	}
-	else {
-		fmttime(path + pathsz, &dt);
-		__builtin_memcpy_inline(path + pathsz + 14, OS_LIT(".dem"),
-				sizeof(OS_LIT(".dem")));
-		pathsz += 18;
-	}
-	struct os_stat st;
-	if (os_stat(path, &st) != -1) {
-		errmsg_errorx("demo with this timestamp already exists; "
-				"try again in ~1s");
-		return;
-	}
-	else if (errno != ENOENT) {
-		errmsg_errorstd("couldn't get info for file %" fS, path);
-		return;
+		os_char *retrydigits = path + pathsz + 14;
+		// first time around: append the digits. pretty silly conditional but
+		// it's pretty unlikely we'll ever get to this conditional once let
+		// alone twice so that's fine.
+		if_hot (namelen == 14) {
+			retrydigits[0] = OS_LIT('0'); retrydigits[1] = OS_LIT('1');
+			namelen = 16;
+		}
+		else if_cold (retrydigits[1] == '9') {
+			if_cold (retrydigits[0] == '9') {
+				// this should actually *never* be able to happen but...
+				// never know! if we feel more ballsy one day we could just
+				// assume() this case away.
+				errmsg_errorx("spamming too many record commands; "
+					"try again in a moment");
+				return;
+			}
+			retrydigits[1] = OS_LIT('0');
+			++retrydigits[0];
+		}
+		else {
+			++retrydigits[1];
+		}
 	}
 #ifdef _WIN32
 	char recordpath[PATH_MAX];
-	for (int i = 0; i < pathsz - prefixsz - 4; ++i) { // leave off .dem
+	for (int i = 0; i < nameend - prefixsz; ++i) { // note: leaves off .dem
 		recordpath[i] = path[i + prefixsz]; // back to ascii
 	}
 #else
 	char *recordpath = path + prefixsz;
 #endif
-	recordpath[pathsz - prefixsz - 4] = OS_LIT('\0');
+	recordpath[pathsz - nameend] = OS_LIT('\0');
 	con_msg("Speedrun recording started\n");
 	recording = true;
 	demorec_forceauto = true;
@@ -226,7 +256,9 @@ DEF_CCMD_HERE(sst_speedrun_stop, "Finish recording speedrun demos", 0) {
 	demorec_forceauto = false;
 	int n = demorec_stop();
 	if (n) {
-		con_msg("Finished speedrun; recorded %d demos.\n", n);
+		con_msg("Finished speedrun; recorded %d demo%s %s.dem\n", n,
+				n == 1 ? " to" : "s starting at",
+				demorec_basename);
 	}
 	else {
 		con_msg("Cancelled speedrun; no demos were recorded.\n");
