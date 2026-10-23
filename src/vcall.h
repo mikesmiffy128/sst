@@ -49,9 +49,9 @@
 #define _VCALL_ARG11(t, ...) typeof(t) a11, _VCALL_ARG10(__VA_ARGS__)
 #define _VCALL_ARG12(t, ...) typeof(t) a12, _VCALL_ARG11(__VA_ARGS__)
 #define _VCALL_ARG13(t, ...) typeof(t) a13, _VCALL_ARG12(__VA_ARGS__)
-#define _VCALL_ARG14(t, ...) typeof(t) a14, _VCALL_ARG14(__VA_ARGS__)
-#define _VCALL_ARG15(t, ...) typeof(t) a15, _VCALL_ARG15(__VA_ARGS__)
-#define _VCALL_ARG16(t, ...) typeof(t) a16, _VCALL_ARG16(__VA_ARGS__)
+#define _VCALL_ARG14(t, ...) typeof(t) a14, _VCALL_ARG13(__VA_ARGS__)
+#define _VCALL_ARG15(t, ...) typeof(t) a15, _VCALL_ARG14(__VA_ARGS__)
+#define _VCALL_ARG16(t, ...) typeof(t) a16, _VCALL_ARG15(__VA_ARGS__)
 
 #define _VCALL_ARG_N(x01, x02, x03, x04, x05, x06, x07, x08, x09, x10, \
 		x11, x12, x13, x14, x15, x16, N, ...) \
