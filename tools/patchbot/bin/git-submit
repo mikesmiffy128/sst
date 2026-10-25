@@ -33,9 +33,10 @@ doreq() {
 	"$curl" -sLXPOST -H"Authorization: Bearer $token" \
 		-H"Content-Type: application/mbox" \
 		-H"User-Agent: patchbot-client v3" \
-		--data-binary @"$gitdir/PatchBot.req.tmp" - \
+		--data-binary @"$gitdir/PatchBot.req.tmp" \
 		--url-query "projectid=$projectid" \
 		--url-query "description=$description" \
+		-w"%{response_code}" \
 		-o "$gitdir/PatchBot.resp.tmp" \
 		"$server/submit" >&2
 }
