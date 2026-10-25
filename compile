@@ -61,6 +61,7 @@ src="\
 	chunklets/fastspin.c
 	chunklets/msg.c
 	chunklets/x86.c
+	chatmsg.c
 	clientcon.c
 	con_.c
 	con_.S

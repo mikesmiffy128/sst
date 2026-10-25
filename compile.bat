@@ -99,6 +99,7 @@ setlocal DisableDelayedExpansion
 :+ alias.c
 :+ autojump.c
 :+ bind.c
+:+ chatmsg.c
 :+ clientcon.c
 :+ con_.c
 :+ con_.S
