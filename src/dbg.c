@@ -14,6 +14,8 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <stdlib.h>
+
 #ifdef _WIN32
 #include <Windows.h>
 #endif
@@ -21,6 +23,7 @@
 #include "accessor.h"
 #include "con_.h"
 #include "engineapi.h"
+#include "ent.h"
 #include "errmsg.h"
 #include "gamedata.h"
 #include "intdefs.h"
@@ -142,6 +145,38 @@ DEF_CCMD_HERE(sst_dbg_sendtables, "Dump ServerClass/SendTable hierarchy", 0) {
 DEF_CCMD_HERE(sst_dbg_gamedata, "Dump current gamedata values", 0) {
 	dumpgamedata();
 	dumpentprops();
+}
+
+DEF_CCMD_HERE(sst_dbg_edict, "Dump edict state", 0) {
+	if (argc != 2) {
+		con_warn("usage: sst_dbg_edict index\n");
+		return;
+	}
+	int n = atoi(argv[1]); // meh
+	// XXX: assumes ent feature is working, because this file can't be hooked
+	// into the feature system (well... it would be annoying). since this is
+	// debug code anyway this is deemed sorta borderline acceptable for now but
+	// it would still be good to smooth over the sharp edge
+	struct edict *e = ent_getedict(n);
+	if (!e) {
+		con_warn("edict %d does not exist or could not be accessed\n", n);
+		return;
+	}
+	con_msg("edict %d (%p)\n", n, (void *)e);
+	con_msg("  stateflags: %d\n", e->stateflags);
+	if (e->stateflags & 1) con_msg("  - FL_EDICT_CHANGED (1)\n");
+	if (e->stateflags & 2) con_msg("  - FL_EDICT_FREE (2)\n");
+	if (e->stateflags & 4) con_msg("  - FL_EDICT_FULL (4)\n");
+	if (e->stateflags & 8) con_msg("  - FL_EDICT_ALWAYS (8)\n");
+	if (e->stateflags & 16) con_msg(" - FL_EDICT_DONTSEND (16)\n");
+	if (e->stateflags & 32) con_msg("  - FL_EDICT_PVSCHECK (32)\n");
+	if (e->stateflags & 64) con_msg("  - FL_EDICT_PENDING_DORMANT_CHECK (64)\n");
+	if (e->stateflags & 128) con_msg("  - FL_EDICT_DIRTY_PVS_INFORMATION (128)\n");
+	if (e->stateflags & 256) con_msg("  - FL_EDICT_FULL_EDICT_CHANGED (256)\n");
+	con_msg("  netserial: %d\n", e->netserial);
+	con_msg("  ent_networkable: %p\n", e->ent_networkable);
+	con_msg("  ent_unknown: %p\n", e->ent_unknown);
+	if (!GAMETYPE_MATCHES(L4Dbased)) con_msg("  freetime: %f\n", e->freetime);
 }
 
 // vi: sw=4 ts=4 noet tw=80 cc=80
