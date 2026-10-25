@@ -67,6 +67,18 @@ struct edict {
 	float freetime;
 };
 
+struct CGlobalVars {
+	float realtime;
+	int framecount;
+	float absoluteframetime;
+	float curtime;
+	float frametime;
+	int maxclients;
+	int tickcount;
+	float tickinterval;
+	// other members differ after this point
+};
+
 struct vec3f { float x, y, z; };
 
 /* an RGBA colour, used for colour console messages as well as VGUI/HUD stuff */
