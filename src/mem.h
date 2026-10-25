@@ -18,7 +18,18 @@
 #define INC_MEMUTIL_H
 
 #ifdef SST_DBG
+// HACK: if langext.h is included before this (which for alphabet reasons happens
+// often), our noreturn definition breaks Microsoft's debug headers for
+// string.h, if it wasn't already included. so we do something similar to the
+// hack in gamedata.h except this time not only to avoid namespace pollution but
+// to avoid completely breaking everything. dumb, bad, very doubleplusungood.
+#ifdef noreturn
+#undef noreturn
+#endif
 #include <string.h>
+#ifdef INC_LANGEXT_H
+#define noreturn _Noreturn void
+#endif
 #endif
 
 #include "intdefs.h"
