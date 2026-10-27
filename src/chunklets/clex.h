@@ -27,16 +27,6 @@
 #define _clex_restrict restrict
 #endif
 
-#ifdef _WIN32
-#ifdef __cplusplus
-typedef wchar_t clex_os_char; // ugh
-#else
-typedef unsigned short clex_os_char;
-#endif
-#else
-typedef char clex_os_char;
-#endif
-
 #ifdef _WIN64
 typedef long long clex_size;
 #else
