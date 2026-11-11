@@ -180,4 +180,28 @@ vtidx_AddBoxOverlay2
 	L4D1 19
 	L4D2 20
 
+# CBaseClient
+vtidx_GetClientName
+	Client014
+		L4D2 16
+	Client013
+		L4D1 16
+			L4D1_1022plus 17
+		L4D2 17
+
+# CBaseClientState
+vtidx_CBCSConnect
+	Client014
+		L4D2 12
+	Client013
+		L4D1 11
+			L4D1_1015plus 12
+				L4D1_1022plus 13
+		L4D2 13
+
+# CSteam3Server
+off_NoSteamLogonCallback
+	L4D1 116
+	#Portal2 120 # build 5723/pdb. no idea about anything else
+
 # vi: sw=4 ts=4 noet tw=80 cc=80

@@ -87,6 +87,7 @@ src="\
 	l4dreset.c
 	l4dwarp.c
 	nosleep.c
+	nosteamlogon.c
 	os.c
 	portalcolours.c
 	speedrun.c
