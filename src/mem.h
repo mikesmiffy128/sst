@@ -223,6 +223,28 @@ static forceinline int mem_cmp(const void *restrict x, const void *restrict y,
 #endif
 }
 
+/*
+ * Copies a small fixed-size chunk of memory using some appropriate
+ * compiler-chosen arrangement of move instructions, without calling any
+ * functions. Length must be a compile-time constant.
+ */
+#ifdef __clang__
+#define mem_copy_fixed __builtin_memcpy_inline
+#else
+#define mem_copy_fixed mem_copy // meh
+#endif
+
+/*
+ * Sets a small fixed-size chunk of memory using some appropriate
+ * compiler-chosen arrangement of instructions, without calling any
+ * functions. Length and value must be compile-time constants.
+ */
+#ifdef __clang__
+#define mem_set_fixed __builtin_memcpy_inline
+#else
+#define mem_set_fixed mem_set // meh
+#endif
+
 #endif
 
 // vi: sw=4 ts=4 noet tw=80 cc=80

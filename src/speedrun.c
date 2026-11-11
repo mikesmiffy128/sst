@@ -186,8 +186,7 @@ DEF_CCMD_HERE(sst_speedrun_start, "Start recording demos for a speedrun", 0) {
 		else {
 			nameend = pathsz + namelen;
 		}
-		__builtin_memcpy_inline(path + nameend, OS_LIT(".dem"),
-				sizeof(OS_LIT(".dem")));
+		mem_copy_fixed(path + nameend, OS_LIT(".dem"), sizeof(OS_LIT(".dem")));
 		// check for an existing demo file with this name: if we started
 		// recording, then stopped, then started again in quick succession, we
 		// could have one. in this scenario, append a 2-digit counter to the end
