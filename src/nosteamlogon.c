@@ -40,8 +40,6 @@ GAMESPECIFIC(L4D)
 REQUIRE(chatmsg)
 REQUIRE_GAMEDATA(vtidx_GetClientName)
 
-// FIXME: introduce a convar to control the chat reporting behaviour
-
 static void *Steam3Server = 0;
 
 // find CSteam3Server instance in hostname callback
