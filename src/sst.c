@@ -267,6 +267,11 @@ static bool already_loaded = false, skip_unload = false;
 
 // auto-update message. see below in do_featureinit()
 static const char *updatenotes = "\
+* sst_speedrun_start no longer fails when recording demos in quick succession\n\
+* Fixed Left 4 Dead games kicking players with the dreaded \"No Steam Logon\"\n\
+* Fixed a crash regression triggered by unloading and reloading the plugin\n\
+* Fixed a regression in the Left 4 Dead 1 demo playback compatibility feature\n\
+* Added portal colour change support for latest SteamPipe build\n\
 ";
 
 enum { // used in generated code, must line up with featmsgs arrays below
