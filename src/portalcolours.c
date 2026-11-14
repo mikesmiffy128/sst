@@ -86,11 +86,13 @@ static UTIL_Portal_Color_func find_UTIL_Portal_Color(void *base) {
 	// 3420
 	f = mem_offset(base, 0x1AA810);
 	if (!mem_cmp(f, x, sizeof(x))) return (UTIL_Portal_Color_func)f;
-	// SteamPipe (7197370) - almost sure to break in a later update!
-	// TODO(compat): this has indeed been broken for ages.
+	// SteamPipe 7197370
 	static const uchar y[] = HEXBYTES(55, 8B, EC, 8B, 45, 0C, 83, E8, 00, 74,
 			24, 48, 74, 16, 48, 8B, 45, 08, 74, 08, C7, 00, FF, FF);
 	f = mem_offset(base, 0x234C00);
+	if (!mem_cmp(f, y, sizeof(y))) return (UTIL_Portal_Color_func)f;
+	// SteamPipe 9862575
+	f = mem_offset(base, 0x23A450);
 	if (!mem_cmp(f, y, sizeof(y))) return (UTIL_Portal_Color_func)f;
 	return 0;
 }
