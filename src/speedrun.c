@@ -235,7 +235,7 @@ DEF_CCMD_HERE(sst_speedrun_start, "Start recording demos for a speedrun", 0) {
 #else
 	char *recordpath = path + prefixsz;
 #endif
-	recordpath[pathsz - nameend] = OS_LIT('\0');
+	recordpath[nameend - prefixsz] = '\0';
 	con_msg("Speedrun recording started\n");
 	recording = true;
 	demorec_forceauto = true;
